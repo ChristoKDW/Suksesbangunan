@@ -1,0 +1,292 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   LAYER 1: PRIMITIVE TOKENS
+   ============================================================ */
+:root {
+  /* Minimal Dark Theme Primitives */
+  --color-black: #050505;
+  --color-gray-900: #0A0A0B;
+  --color-gray-800: #121214;
+  --color-gray-700: #1C1C1F;
+  --color-gray-600: #27272A;
+  --color-gray-500: #3F3F46;
+  --color-gray-400: #71717A;
+  --color-gray-300: #A1A1AA;
+  --color-gray-200: #E4E4E7;
+  --color-gray-100: #F4F4F5;
+  --color-white: #FFFFFF;
+  
+  --color-blue-500: #3B82F6;
+  --color-blue-hover: #2563EB;
+  
+  /* Font Primitives */
+  --font-inter: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-16: 4rem;
+  --space-64: 16rem;
+
+  /* Border Radius Primitives */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Animation Primitives */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Sidebar specific */
+  --sidebar-width: 256px;
+  --topbar-height: 64px;
+}
+
+/* ============================================================
+   LAYER 2: SEMANTIC TOKENS (LIGHT MODE - DEFAULT)
+   ============================================================ */
+:root {
+  --bg-page: #F8FAFC; /* Sangat sedikit abu-abu untuk kontras dengan surface putih */
+  --bg-surface: #FFFFFF;
+  --bg-surface-raised: #FFFFFF;
+  --bg-sidebar: #FFFFFF;
+  --bg-topbar: rgba(255, 255, 255, 0.9);
+
+  /* Tema Merah Profesional (Tailwind Red 600) */
+  --color-primary: #dc2626; 
+  --color-primary-hover: #b91c1c;
+  --color-primary-light: #fee2e2;
+  --color-primary-foreground: #ffffff;
+
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --text-inverse: #ffffff;
+  --text-on-sidebar: #4b5563;
+  --text-on-sidebar-active: #dc2626;
+
+  --border-default: #e5e7eb;
+  --border-strong: #d1d5db;
+  --border-focus: #dc2626;
+
+  /* Status colors */
+  --color-success: #10B981;
+  --color-success-bg: rgba(16, 185, 129, 0.1);
+  --color-success-border: rgba(16, 185, 129, 0.2);
+
+  --color-warning: #F59E0B;
+  --color-warning-bg: rgba(245, 158, 11, 0.1);
+  --color-warning-border: rgba(245, 158, 11, 0.2);
+
+  --color-danger: #ef4444;
+  --color-danger-bg: rgba(239, 68, 68, 0.1);
+  --color-danger-border: rgba(239, 68, 68, 0.2);
+
+  --color-info: #dc2626;
+  --color-info-bg: #fee2e2;
+  --color-info-border: #fca5a5;
+
+  --color-neutral: #6b7280;
+  --color-neutral-bg: #f3f4f6;
+  --color-neutral-border: #e5e7eb;
+
+  --sidebar-item-active-bg: #fef2f2;
+  --sidebar-item-active-indicator: #dc2626;
+  --sidebar-item-hover-bg: #f9fafb;
+  --sidebar-section-label: #9ca3af;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+}
+
+/* ============================================================
+   LAYER 2: SEMANTIC TOKENS (DARK MODE)
+   ============================================================ */
+.dark {
+  /* Slate-infused elevated neutrals for Dark Mode */
+  --bg-page: #0B0F17;
+  --bg-surface: #111827;
+  --bg-surface-raised: #1E293B;
+  --bg-sidebar: #090D16;
+  --bg-topbar: rgba(11, 15, 23, 0.85);
+
+  /* Tema Merah Profesional (Dark Mode) */
+  --color-primary: #ef4444; /* red-500 */
+  --color-primary-hover: #f87171; /* red-400 */
+  --color-primary-light: rgba(239, 68, 68, 0.1);
+  --color-primary-foreground: #ffffff;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-inverse: #0F172A;
+  --text-on-sidebar: #94A3B8;
+  --text-on-sidebar-active: #ef4444;
+
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-focus: #ef4444;
+
+  /* Desaturated Status colors to avoid vibration */
+  --color-success: #34D399;
+  --color-success-bg: rgba(52, 211, 153, 0.12);
+  --color-success-border: rgba(52, 211, 153, 0.25);
+
+  --color-warning: #FBBF24;
+  --color-warning-bg: rgba(251, 191, 36, 0.12);
+  --color-warning-border: rgba(251, 191, 36, 0.25);
+
+  --color-danger: #F87171;
+  --color-danger-bg: rgba(248, 113, 113, 0.12);
+  --color-danger-border: rgba(248, 113, 113, 0.25);
+
+  --color-info: #60A5FA;
+  --color-info-bg: rgba(96, 165, 250, 0.12);
+  --color-info-border: rgba(96, 165, 250, 0.25);
+
+  --color-neutral: #94A3B8;
+  --color-neutral-bg: rgba(148, 163, 184, 0.12);
+  --color-neutral-border: rgba(148, 163, 184, 0.25);
+
+  --sidebar-item-active-bg: rgba(239, 68, 68, 0.1);
+  --sidebar-item-active-indicator: #ef4444;
+  --sidebar-item-hover-bg: rgba(255, 255, 255, 0.05);
+  --sidebar-section-label: #64748B;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================================
+   LAYER 3: BASE STYLES
+   ============================================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-inter);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   COMPONENT TOKENS — Sidebar
+   ============================================================ */
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-on-sidebar);
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--ease-default),
+              color var(--duration-fast) var(--ease-default);
+  position: relative;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sidebar-nav-item:hover {
+  background-color: var(--sidebar-item-hover-bg);
+  color: var(--text-primary);
+}
+
+.sidebar-nav-item.active {
+  background-color: var(--sidebar-item-active-bg);
+  color: var(--text-on-sidebar-active);
+  font-weight: 600;
+  box-shadow: inset 0 2px 4px 0 rgba(220, 38, 38, 0.15), inset 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 50%;
+  background-color: var(--sidebar-item-active-indicator);
+  border-radius: 0 2px 2px 0;
+}
+
+.sidebar-section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sidebar-section-label);
+  padding: 0 0.875rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.375rem;
+}
+
+/* ============================================================
+   COMPONENT TOKENS — Cards
+   ============================================================ */
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+  transition: border-color var(--duration-normal) var(--ease-default),
+              transform var(--duration-normal) var(--ease-default);
+}
+
+.stat-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+/* ============================================================
+   COMPONENT TOKENS — Topbar glassmorphism
+   ============================================================ */
+.topbar-glass {
+  background: var(--bg-topbar);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-default);
+}
+
+/* ============================================================
+   UTILITY — Status badge base colors
+   ============================================================ */
+.badge-success { background: var(--color-success-bg); color: var(--color-success); border: 1px solid var(--color-success-border); }
+.badge-warning { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid var(--color-warning-border); }
+.badge-danger  { background: var(--color-danger-bg);  color: var(--color-danger);  border: 1px solid var(--color-danger-border); }
+.badge-info    { background: var(--color-info-bg);    color: var(--color-info);    border: 1px solid var(--color-info-border); }
+.badge-neutral { background: var(--color-neutral-bg); color: var(--color-neutral); border: 1px solid var(--color-neutral-border); }
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
