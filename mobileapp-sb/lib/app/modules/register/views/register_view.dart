@@ -23,7 +23,6 @@ class RegisterView extends GetView<RegisterController> {
               const AppBrandHeader(
                 title: 'Claim Account',
                 subtitle: 'Aktivasi akun kehadiran menggunakan NIK Anda',
-                icon: Icons.badge_outlined,
               ),
               const SizedBox(height: 48),
               CustomTextField(

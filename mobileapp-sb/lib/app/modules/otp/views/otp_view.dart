@@ -23,7 +23,6 @@ class OtpView extends GetView<OtpController> {
               const AppBrandHeader(
                 title: 'Verifikasi OTP',
                 subtitle: 'Masukkan 6 digit kode yang dikirim ke email Anda',
-                icon: Icons.mark_email_read_outlined,
               ),
               const SizedBox(height: 8),
               Text(

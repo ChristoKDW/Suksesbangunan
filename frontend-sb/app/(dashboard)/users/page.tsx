@@ -72,9 +72,9 @@ export default function UsersPage() {
     if (!editingUser) return
     setSubmitting(true)
     try {
-      const id = editingUser.idUser
-      if (id) {
-        await userApi.update(id, editingUser)
+      const { idUser, ...updates } = editingUser
+      if (idUser) {
+        await userApi.update(idUser, updates)
       }
       setIsEditModalOpen(false)
       setEditingUser(null)

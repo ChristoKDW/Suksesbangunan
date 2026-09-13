@@ -2,10 +2,11 @@ import pkg from 'pg';
 const { Client } = pkg;
 
 const client = new Client({
-  port: 5433,
-  user: 'postgres',
-  password: 'root',
-  database: 'absensi_sukses_bangunan'
+  host: process.env.DATABASE_HOST || '127.0.0.1',
+  port: Number(process.env.DATABASE_PORT || 5432),
+  user: process.env.DATABASE_USERNAME,
+  password: process.env.DATABASE_PASSWORD,
+  database: process.env.DATABASE_NAME || 'absensi_sukses_bangunan',
 });
 
 async function run() {

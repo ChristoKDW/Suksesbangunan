@@ -3,7 +3,7 @@
 // Auto-attaches JWT token and handles 401 redirects
 // =============================================================================
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alfiyah.my.id"
 
 class ApiError extends Error {
   status: number
@@ -41,7 +41,9 @@ async function request<T>(
     headers["Authorization"] = `Bearer ${token}`
   }
 
-  const response = await fetch(`${BASE_URL}/${endpoint}`, {
+  const cleanBaseUrl = BASE_URL.replace(/\/+$/, "")
+  const cleanEndpoint = endpoint.replace(/^\/+/, "")
+  const response = await fetch(`${cleanBaseUrl}/${cleanEndpoint}`, {
     ...options,
     headers,
   })

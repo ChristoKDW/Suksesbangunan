@@ -22,10 +22,11 @@ export class MobileAuthService {
     private readonly configService: ConfigService,
     private readonly faceService: FaceRecognitionService,
   ) {
+    const smtpPort = Number(this.configService.get('SMTP_PORT', '587'));
     this.transporter = nodemailer.createTransport({
       host: this.configService.get('SMTP_HOST', 'smtp.gmail.com'),
-      port: Number(this.configService.get('SMTP_PORT', '587')),
-      secure: false,
+      port: smtpPort,
+      secure: smtpPort === 465,
       auth: {
         user: this.configService.get('SMTP_USER'),
         pass: this.configService.get('SMTP_PASS'),
@@ -115,8 +116,10 @@ export class MobileAuthService {
       });
       console.log(`[OTP] Email berhasil dikirim ke ${email}`);
     } catch (error) {
-      // Log error tapi tetap lanjut supaya user bisa minta resend
       console.error('Gagal kirim email OTP:', error);
+      throw new ServiceUnavailableException(
+        'Kode OTP gagal dikirim. Silakan coba kembali atau hubungi administrator.',
+      );
     }
   }
 

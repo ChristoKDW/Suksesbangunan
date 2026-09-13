@@ -1,5 +1,7 @@
 import 'dart:convert';
+
 import 'package:camera/camera.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 /// Mengelola inisialisasi kamera (khususnya kamera depan untuk wajah).
@@ -51,7 +53,9 @@ class CameraService extends GetxService {
 
     try {
       await controller!.initialize();
+      await controller!.lockCaptureOrientation(DeviceOrientation.portraitUp);
       isInitialized.value = true;
+      errorMessage.value = null;
     } catch (e) {
       isInitialized.value = false;
       errorMessage.value = e.toString();
@@ -60,8 +64,20 @@ class CameraService extends GetxService {
 
   /// Ambil foto wajah dan kembalikan objek XFile.
   Future<XFile?> takePictureFile() async {
-    if (controller == null || !controller!.value.isInitialized) return null;
-    return controller!.takePicture();
+    final activeController = controller;
+    if (activeController == null || !activeController.value.isInitialized) {
+      throw StateError(
+        errorMessage.value ??
+            'Kamera belum siap. Tutup layar lalu coba kembali.',
+      );
+    }
+    if (activeController.value.isTakingPicture) return null;
+
+    final file = await activeController.takePicture();
+    if (await file.length() == 0) {
+      throw StateError('Kamera menghasilkan gambar kosong.');
+    }
+    return file;
   }
 
   /// Ambil foto wajah dan ubah langsung ke base64 JPEG.

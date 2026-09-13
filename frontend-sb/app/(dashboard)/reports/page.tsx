@@ -29,7 +29,9 @@ export default function ReportsPage() {
 
   const downloadFile = async (url: string, filename: string) => {
     const token = localStorage.getItem("accessToken")
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"}/${url}`, {
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "https://alfiyah.my.id").replace(/\/+$/, "")
+    const cleanUrl = url.replace(/^\/+/, "")
+    const res = await fetch(`${baseUrl}/${cleanUrl}`, {
       headers: {
         Authorization: `Bearer ${token}`
       }

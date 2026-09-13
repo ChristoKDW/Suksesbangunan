@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../../core/services/camera_service.dart';
 import '../../../core/services/liveness_service.dart';
 import '../../../data/services/api_service.dart';
@@ -16,7 +18,8 @@ class FaceRegistrationController extends GetxController {
 
   final isScanning = false.obs;
   final isSuccess = false.obs;
-  final instructionText = "Tekan 'Mulai Pendaftaran' untuk memulai verifikasi liveness".obs;
+  final instructionText =
+      "Tekan 'Mulai Pendaftaran' untuk memulai verifikasi liveness".obs;
   final livenessProgress = 0.0.obs;
   final currentStep = LivenessStep.lookStraight.obs;
 
@@ -40,9 +43,16 @@ class FaceRegistrationController extends GetxController {
       if (!cameraService.isInitialized.value) {
         await cameraService.startFrontCamera();
       }
+      if (!cameraService.isInitialized.value) {
+        throw ApiException(
+          cameraService.errorMessage.value ??
+              'Kamera depan tidak dapat diinisialisasi.',
+        );
+      }
 
       int attempts = 0;
-      const maxAttempts = 150; // Toleransi waktu ~45 detik agar user leluasa menahan pose
+      const maxAttempts =
+          150; // Toleransi waktu ~45 detik agar user leluasa menahan pose
 
       while (isScanning.value && !passed && attempts < maxAttempts) {
         attempts++;
@@ -57,26 +67,36 @@ class FaceRegistrationController extends GetxController {
             passed = true;
             final bytes = await xfile.readAsBytes();
             finalBase64Image = base64Encode(bytes);
-            try { await File(xfile.path).delete(); } catch (_) {}
+            try {
+              await File(xfile.path).delete();
+            } catch (_) {}
             break;
           }
-          try { await File(xfile.path).delete(); } catch (_) {}
+          try {
+            await File(xfile.path).delete();
+          } catch (_) {}
         }
         await Future.delayed(const Duration(milliseconds: 300));
       }
 
       if (!passed) {
-        throw ApiException('Waktu verifikasi liveness habis. Silakan coba lagi dan ikuti gerakan.');
+        throw ApiException(
+          'Waktu verifikasi liveness habis. Silakan coba lagi dan ikuti gerakan.',
+        );
       }
 
-      instructionText.value = "Liveness Terverifikasi! Menyimpan biometrik wajah ke AI server...";
+      instructionText.value =
+          "Liveness Terverifikasi! Menyimpan biometrik wajah ke AI server...";
       final res = await _api.registerFace(finalBase64Image!);
       _session.markFaceRegistered();
 
       isScanning.value = false;
       isSuccess.value = true;
-      final conf = res['confidence'] != null ? " (${(res['confidence'] * 100).toInt()}%)" : "";
-      instructionText.value = "Pendaftaran wajah & verifikasi liveness berhasil!$conf";
+      final conf = res['confidence'] != null
+          ? " (${(res['confidence'] * 100).toInt()}%)"
+          : "";
+      instructionText.value =
+          "Pendaftaran wajah & verifikasi liveness berhasil!$conf";
 
       await Future.delayed(const Duration(seconds: 1));
       Get.snackbar(

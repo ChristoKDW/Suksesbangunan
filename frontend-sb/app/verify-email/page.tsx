@@ -19,7 +19,8 @@ function VerifyEmailContent() {
 
     const verifyToken = async () => {
       try {
-        const res = await fetch(`http://localhost:3002/auth/mobile/verify-email?token=${token}`)
+        const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "https://alfiyah.my.id").replace(/\/+$/, "")
+        const res = await fetch(`${baseUrl}/auth/mobile/verify-email?token=${token}`)
         const data = await res.json()
         
         if (res.ok) {

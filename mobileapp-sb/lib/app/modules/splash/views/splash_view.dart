@@ -14,17 +14,10 @@ class SplashView extends GetView<SplashController> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: AppColors.redContainer,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.domain,
-                size: 64,
-                color: AppColors.redPrimary,
-              ),
+            Image.asset(
+              'assets/logo/logo.png',
+              width: 120,
+              height: 120,
             ),
             const SizedBox(height: 24),
             Text(

@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
+
 import '../../../core/services/camera_service.dart';
 import '../../../core/services/liveness_service.dart';
 import '../../../data/services/api_service.dart';
@@ -34,7 +36,9 @@ class FaceRecognitionController extends GetxController {
     }
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      throw ApiException('Izin lokasi ditolak. Aktifkan izin lokasi untuk absen.');
+      throw ApiException(
+        'Izin lokasi ditolak. Aktifkan izin lokasi untuk absen.',
+      );
     }
 
     return Geolocator.getCurrentPosition(
@@ -53,6 +57,13 @@ class FaceRecognitionController extends GetxController {
     livenessProgress.value = 0.25;
 
     await cameraService.startFrontCamera();
+    if (!cameraService.isInitialized.value) {
+      isScanning.value = false;
+      statusText.value =
+          cameraService.errorMessage.value ??
+          'Kamera depan tidak dapat diinisialisasi.';
+      return;
+    }
     await Future.delayed(const Duration(milliseconds: 500));
 
     bool passed = false;
@@ -76,19 +87,26 @@ class FaceRecognitionController extends GetxController {
             passed = true;
             final bytes = await xfile.readAsBytes();
             finalBase64 = base64Encode(bytes);
-            try { await File(xfile.path).delete(); } catch (_) {}
+            try {
+              await File(xfile.path).delete();
+            } catch (_) {}
             break;
           }
-          try { await File(xfile.path).delete(); } catch (_) {}
+          try {
+            await File(xfile.path).delete();
+          } catch (_) {}
         }
         await Future.delayed(const Duration(milliseconds: 300));
       }
 
       if (!passed) {
-        throw ApiException('Verifikasi keaslian wajah (liveness) gagal. Pastikan mengikuti gerakan.');
+        throw ApiException(
+          'Verifikasi keaslian wajah (liveness) gagal. Pastikan mengikuti gerakan.',
+        );
       }
 
-      statusText.value = 'Liveness terverifikasi! Mengambil lokasi GPS & mengirim absensi...';
+      statusText.value =
+          'Liveness terverifikasi! Mengambil lokasi GPS & mengirim absensi...';
       final position = await _getCurrentPosition();
 
       final tipe = (Get.arguments is Map && Get.arguments['tipe'] != null)
@@ -112,7 +130,8 @@ class FaceRecognitionController extends GetxController {
       await Future.delayed(const Duration(seconds: 1));
       Get.snackbar(
         'Absen $labelTipe Berhasil',
-        res['message']?.toString() ?? 'Data absensi $labelTipe Anda telah tercatat',
+        res['message']?.toString() ??
+            'Data absensi $labelTipe Anda telah tercatat',
         snackPosition: SnackPosition.TOP,
         backgroundColor: const Color(0xFF16A34A),
         colorText: const Color(0xFFFFFFFF),

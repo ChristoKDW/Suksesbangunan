@@ -1,13 +1,15 @@
 import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 enum LivenessStep {
   lookStraight, // Hadap lurus (tahan stabil)
-  turnLeft,     // Menoleh ke kiri (tahan stabil)
-  turnRight,    // Menoleh ke kanan (tahan stabil)
-  lookUp,       // Menengadah ke atas (tahan stabil)
-  blink,        // Kedipkan mata (Buka -> Tutup -> Buka)
-  completed,    // Selesai & terverifikasi
+  turnLeft, // Menoleh ke kiri (tahan stabil)
+  turnRight, // Menoleh ke kanan (tahan stabil)
+  lookUp, // Menengadah ke atas (tahan stabil)
+  blink, // Kedipkan mata (Buka -> Tutup -> Buka)
+  completed, // Selesai & terverifikasi
 }
 
 class LivenessChallengeResult {
@@ -42,7 +44,8 @@ class LivenessService {
 
   // Counter stabilitas pergerakan
   int _consecutiveFrames = 0;
-  static const int requiredHoldFrames = 3; // Butuh 3 frame berturut-turut (~1 detik stabil)
+  static const int requiredHoldFrames =
+      3; // Butuh 3 frame berturut-turut (~1 detik stabil)
 
   // Arah putaran untuk adaptif mirroring kamera depan
   int _leftTurnDirection = 0;
@@ -52,14 +55,14 @@ class LivenessService {
   bool _blinkSawClosed = false;
 
   // Ambang sudut (degrees)
-  static const double yawThreshold = 14.0;   // Sudut toleh kiri/kanan
+  static const double yawThreshold = 14.0; // Sudut toleh kiri/kanan
   static const double pitchThreshold = 11.0; // Sudut dongak atas
 
   LivenessService() {
     final options = FaceDetectorOptions(
       enableClassification: true,
       enableLandmarks: true,
-      performanceMode: FaceDetectorMode.accurate,
+      performanceMode: FaceDetectorMode.fast,
       minFaceSize: 0.15,
     );
     _detector = FaceDetector(options: options);
@@ -108,7 +111,8 @@ class LivenessService {
       switch (currentStep) {
         // ─── 1. HADAP LURUS KE DEPAN (Presisi 3 frame stabil) ───────────────
         case LivenessStep.lookStraight:
-          final isStraight = (yaw != null && yaw.abs() < 9.0) &&
+          final isStraight =
+              (yaw != null && yaw.abs() < 9.0) &&
               (pitch != null && pitch.abs() < 13.0);
 
           if (isStraight) {
@@ -125,7 +129,8 @@ class LivenessService {
             }
             return LivenessChallengeResult(
               isSuccess: false,
-              instruction: 'Tahan posisi lurus... ($_consecutiveFrames/$requiredHoldFrames)',
+              instruction:
+                  'Tahan posisi lurus... ($_consecutiveFrames/$requiredHoldFrames)',
               currentStep: currentStep,
               progress: _calculateProgress(),
               currentFrameCount: _consecutiveFrames,
@@ -144,7 +149,8 @@ class LivenessService {
         // ─── 2. TENGOK KE KIRI (Presisi 3 frame stabil) ─────────────────────
         case LivenessStep.turnLeft:
           // Deteksi toleh kiri: yaw signifikan (pada kamera depan yaw < -14 atau > 14)
-          final isTurningLeft = yaw != null && (yaw < -yawThreshold || yaw > yawThreshold);
+          final isTurningLeft =
+              yaw != null && (yaw < -yawThreshold || yaw > yawThreshold);
 
           if (isTurningLeft) {
             _consecutiveFrames++;
@@ -162,7 +168,8 @@ class LivenessService {
             }
             return LivenessChallengeResult(
               isSuccess: false,
-              instruction: 'Tahan menoleh ke KIRI... ($_consecutiveFrames/$requiredHoldFrames)',
+              instruction:
+                  'Tahan menoleh ke KIRI... ($_consecutiveFrames/$requiredHoldFrames)',
               currentStep: currentStep,
               progress: _calculateProgress(),
               currentFrameCount: _consecutiveFrames,
@@ -172,7 +179,8 @@ class LivenessService {
             _consecutiveFrames = 0;
             return LivenessChallengeResult(
               isSuccess: false,
-              instruction: 'Tengokkan wajah perlahan ke KIRI dan tahan sebentar',
+              instruction:
+                  'Tengokkan wajah perlahan ke KIRI dan tahan sebentar',
               currentStep: currentStep,
               progress: _calculateProgress(),
             );
@@ -184,7 +192,8 @@ class LivenessService {
           bool isTurningRight = false;
           if (yaw != null) {
             if (_leftTurnDirection != 0) {
-              isTurningRight = (_leftTurnDirection > 0 && yaw < -yawThreshold) ||
+              isTurningRight =
+                  (_leftTurnDirection > 0 && yaw < -yawThreshold) ||
                   (_leftTurnDirection < 0 && yaw > yawThreshold);
             } else {
               isTurningRight = yaw.abs() > yawThreshold;
@@ -205,7 +214,8 @@ class LivenessService {
             }
             return LivenessChallengeResult(
               isSuccess: false,
-              instruction: 'Tahan menoleh ke KANAN... ($_consecutiveFrames/$requiredHoldFrames)',
+              instruction:
+                  'Tahan menoleh ke KANAN... ($_consecutiveFrames/$requiredHoldFrames)',
               currentStep: currentStep,
               progress: _calculateProgress(),
               currentFrameCount: _consecutiveFrames,
@@ -241,7 +251,8 @@ class LivenessService {
             }
             return LivenessChallengeResult(
               isSuccess: false,
-              instruction: 'Tahan kepala menengadah ke ATAS... ($_consecutiveFrames/2)',
+              instruction:
+                  'Tahan kepala menengadah ke ATAS... ($_consecutiveFrames/2)',
               currentStep: currentStep,
               progress: _calculateProgress(),
             );
@@ -266,7 +277,8 @@ class LivenessService {
               _blinkSawOpenFirst = true;
               return LivenessChallengeResult(
                 isSuccess: false,
-                instruction: 'Mata terbuka terdeteksi... Silakan KEDIPKAN mata sekarang',
+                instruction:
+                    'Mata terbuka terdeteksi... Silakan KEDIPKAN mata sekarang',
                 currentStep: currentStep,
                 progress: _calculateProgress(),
               );
@@ -277,7 +289,8 @@ class LivenessService {
               _blinkSawClosed = true;
               return LivenessChallengeResult(
                 isSuccess: false,
-                instruction: 'Mata tertutup terdeteksi... Buka kembali mata Anda',
+                instruction:
+                    'Mata tertutup terdeteksi... Buka kembali mata Anda',
                 currentStep: currentStep,
                 progress: _calculateProgress(),
               );
@@ -311,12 +324,11 @@ class LivenessService {
             progress: 1.0,
           );
       }
-    } catch (e) {
-      return LivenessChallengeResult(
-        isSuccess: false,
-        instruction: 'Mendeteksi pergerakan wajah...',
-        currentStep: currentStep,
-        progress: _calculateProgress(),
+    } catch (error, stackTrace) {
+      debugPrint('[LivenessService] Gagal memproses frame: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      throw StateError(
+        'Kamera gagal membaca wajah. Pastikan HP tegak, izin kamera aktif, lalu coba kembali.',
       );
     }
   }

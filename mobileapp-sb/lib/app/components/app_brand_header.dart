@@ -5,13 +5,11 @@ import '../core/theme/app_colors.dart';
 class AppBrandHeader extends StatelessWidget {
   final String title;
   final String subtitle;
-  final IconData icon;
 
   const AppBrandHeader({
     super.key,
     required this.title,
     required this.subtitle,
-    this.icon = Icons.business,
   });
 
   @override
@@ -19,17 +17,10 @@ class AppBrandHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.redContainer,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            icon,
-            color: AppColors.redPrimary,
-            size: 32,
-          ),
+        Image.asset(
+          'assets/logo/logo.png',
+          width: 64,
+          height: 64,
         ),
         const SizedBox(height: 24),
         Text(

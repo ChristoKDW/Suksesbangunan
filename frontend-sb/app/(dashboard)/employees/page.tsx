@@ -8,13 +8,13 @@ import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import type { Karyawan, Departemen, Jabatan } from "@/lib/types"
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alfiyah.my.id"
 
 function getPhotoUrl(fotoProfil?: string | null) {
   if (!fotoProfil) return null
   if (fotoProfil.startsWith("http://") || fotoProfil.startsWith("https://")) return fotoProfil
   const clean = fotoProfil.replace(/\\/g, "/")
-  return `${BASE_URL}${clean.startsWith("/") ? "" : "/"}${clean}`
+  return `${BASE_URL.replace(/\/+$/, "")}/${clean.replace(/^\/+/, "")}`
 }
 
 const variantMap: Record<string, "success" | "warning" | "destructive" | "secondary"> = {
