@@ -43,6 +43,8 @@ dependencies:
   table_calendar: ^3.2.1
   intl: ^0.20.3
   image_picker: ^1.2.3
+  file_picker: ^12.3.0
+  skeletonizer: ^3.0.0
 
 dev_dependencies:
   flutter_test:

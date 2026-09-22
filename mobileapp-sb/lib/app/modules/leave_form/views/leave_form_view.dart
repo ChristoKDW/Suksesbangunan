@@ -33,7 +33,11 @@ class LeaveFormView extends GetView<LeaveFormController> {
               _buildLeaveTypeDropdown(),
               const SizedBox(height: 20),
               
-              _buildSectionTitle('Rentang Tanggal'),
+              Obx(() => _buildSectionTitle(
+                controller.selectedTypeCode.value == 'izin'
+                    ? 'Tanggal Izin (Maksimal 1 Hari)'
+                    : 'Rentang Tanggal',
+              )),
               const SizedBox(height: 12),
               _buildDateRangePicker(context),
               const SizedBox(height: 20),
@@ -43,7 +47,11 @@ class LeaveFormView extends GetView<LeaveFormController> {
               _buildReasonInput(),
               const SizedBox(height: 20),
               
-              _buildSectionTitle('Dokumen Pendukung (Opsional)'),
+              Obx(() => _buildSectionTitle(
+                controller.selectedTypeCode.value == 'sakit'
+                    ? 'Surat Keterangan Dokter (Wajib)'
+                    : 'Dokumen Pendukung (Opsional)',
+              )),
               const SizedBox(height: 12),
               _buildAttachmentPicker(),
               const SizedBox(height: 32),
@@ -152,19 +160,91 @@ class LeaveFormView extends GetView<LeaveFormController> {
         )),
         Obx(() {
           if (controller.isLoadingProfile.value) return const SizedBox.shrink();
-          if (!controller.hasHakCuti.value) {
+          final typeCode = controller.selectedTypeCode.value;
+
+          if (typeCode == 'izin') {
             return Container(
-              margin: const EdgeInsets.only(top: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              margin: const EdgeInsets.only(top: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, color: Colors.amber.shade800, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ketentuan Izin (Maksimal 1 Hari)',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Izin maksimal 1 hari. Pada hari izin, karyawan tidak mendapatkan uang makan dan tidak mendapatkan gaji harian.',
+                          style: TextStyle(color: Colors.amber.shade900, fontSize: 11, height: 1.3),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (typeCode == 'sakit') {
+            return Container(
+              margin: const EdgeInsets.only(top: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.shade300),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.medical_services_outlined, color: Colors.blue.shade800, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ketentuan Izin Sakit (Wajib Surat Dokter)',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Durasi sakit sesuai surat dokter. Wajib mengunggah surat dokter. Karyawan tetap menerima gaji pokok, namun uang makan ditiadakan.',
+                          style: TextStyle(color: Colors.blue.shade900, fontSize: 11, height: 1.3),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (typeCode == 'cuti' && !controller.hasHakCuti.value) {
+            return Container(
+              margin: const EdgeInsets.only(top: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: AppColors.warning.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline, color: AppColors.warning, size: 16),
-                  SizedBox(width: 8),
+                  Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 18),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Catatan: Hak cuti tahunan belum diaktifkan oleh HRD.',
@@ -195,23 +275,32 @@ class LeaveFormView extends GetView<LeaveFormController> {
         ),
         child: Obx(() {
           final range = controller.selectedDateRange.value;
+          final isIzin = controller.selectedTypeCode.value == 'izin';
+
           if (range == null) {
             return Row(
-              children: const [
-                Icon(Icons.calendar_today_outlined, color: AppColors.slateLight, size: 20),
-                SizedBox(width: 12),
-                Text('Pilih Tanggal Mulai & Selesai', style: TextStyle(color: AppColors.slateLight)),
+              children: [
+                const Icon(Icons.calendar_today_outlined, color: AppColors.slateLight, size: 20),
+                const SizedBox(width: 12),
+                Text(
+                  isIzin ? 'Pilih Tanggal Izin (1 Hari)' : 'Pilih Tanggal Mulai & Selesai',
+                  style: const TextStyle(color: AppColors.slateLight),
+                ),
               ],
             );
           }
           
+          final dateText = isIzin
+              ? _formatDate(range.start)
+              : '${_formatDate(range.start)} - ${_formatDate(range.end)}';
+
           return Row(
             children: [
               const Icon(Icons.calendar_today, color: AppColors.redPrimary, size: 20),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  '${_formatDate(range.start)} - ${_formatDate(range.end)}',
+                  dateText,
                   style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.slateDark),
                 ),
               ),
@@ -289,11 +378,23 @@ class LeaveFormView extends GetView<LeaveFormController> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  fileName,
-                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fileName,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.slateDark),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (controller.attachedFileSize.value != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        controller.attachedFileSize.value!,
+                        style: const TextStyle(fontSize: 11, color: AppColors.slateLight),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               IconButton(
@@ -307,6 +408,8 @@ class LeaveFormView extends GetView<LeaveFormController> {
         );
       }
 
+      final isSakit = controller.selectedTypeCode.value == 'sakit';
+
       return InkWell(
         onTap: controller.pickAttachment,
         borderRadius: BorderRadius.circular(12),
@@ -314,20 +417,30 @@ class LeaveFormView extends GetView<LeaveFormController> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 24),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: isSakit ? Colors.blue.shade50.withValues(alpha: 0.3) : AppColors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: AppColors.borderGrey,
+              color: isSakit ? Colors.blue.shade300 : AppColors.borderGrey,
               style: BorderStyle.solid,
             ),
           ),
           child: Column(
-            children: const [
-              Icon(Icons.upload_file, color: AppColors.slateLight, size: 32),
-              SizedBox(height: 8),
+            children: [
+              Icon(
+                isSakit ? Icons.medical_services_outlined : Icons.upload_file,
+                color: isSakit ? Colors.blue.shade700 : AppColors.slateLight,
+                size: 32,
+              ),
+              const SizedBox(height: 8),
               Text(
-                'Tap untuk lampirkan dokumen (Opsional)',
-                style: TextStyle(color: AppColors.slateLight, fontSize: 13),
+                isSakit
+                    ? 'Tap untuk unggah Surat Dokter (Wajib)'
+                    : 'Tap untuk lampirkan dokumen (Opsional)',
+                style: TextStyle(
+                  color: isSakit ? Colors.blue.shade900 : AppColors.slateLight,
+                  fontWeight: isSakit ? FontWeight.w600 : FontWeight.normal,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),

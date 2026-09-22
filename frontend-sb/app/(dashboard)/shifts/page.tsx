@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
-import { Search, Plus, Edit2, Trash2, X, Clock, Coffee, Building2, Loader2, ShieldCheck, Filter } from "lucide-react"
+import { Search, Plus, Edit2, Trash2, X, Clock, Building2, Loader2, ShieldCheck, Filter } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Shift, Departemen } from "@/lib/types"
@@ -21,8 +21,6 @@ export default function ShiftsPage() {
     namaShift: "",
     jamMulai: "",
     jamSelesai: "",
-    jamMulaiIstirahat: "",
-    jamSelesaiIstirahat: "",
     idDepartemen: null as number | null,
   })
 
@@ -56,8 +54,6 @@ export default function ShiftsPage() {
       namaShift: "",
       jamMulai: "",
       jamSelesai: "",
-      jamMulaiIstirahat: "",
-      jamSelesaiIstirahat: "",
       idDepartemen: isSPV ? (user?.idDepartemen ?? null) : null,
     })
     setIsModalOpen(true)
@@ -72,8 +68,6 @@ export default function ShiftsPage() {
         jamMulai: newShift.jamMulai,
         jamSelesai: newShift.jamSelesai,
         idDepartemen: isSPV ? user?.idDepartemen : newShift.idDepartemen,
-        ...(newShift.jamMulaiIstirahat ? { jamMulaiIstirahat: newShift.jamMulaiIstirahat } : {}),
-        ...(newShift.jamSelesaiIstirahat ? { jamSelesaiIstirahat: newShift.jamSelesaiIstirahat } : {}),
       }
       await api.post("shift", payload)
       setIsModalOpen(false)
@@ -110,8 +104,6 @@ export default function ShiftsPage() {
         jamMulai: editingShift.jamMulai.substring(0, 5),
         jamSelesai: editingShift.jamSelesai.substring(0, 5),
         idDepartemen: isSPV ? user?.idDepartemen : (editingShift.idDepartemen || null),
-        jamMulaiIstirahat: editingShift.jamMulaiIstirahat ? editingShift.jamMulaiIstirahat.substring(0, 5) : null,
-        jamSelesaiIstirahat: editingShift.jamSelesaiIstirahat ? editingShift.jamSelesaiIstirahat.substring(0, 5) : null,
       })
       setIsEditModalOpen(false)
       setEditingShift(null)
@@ -125,19 +117,40 @@ export default function ShiftsPage() {
 
   const formatTime = (t?: string | null) => t ? t.substring(0, 5) : "—"
 
-  // Check if current user can edit a given shift
-  const canManageShift = (shift: Shift) => {
-    if (isAdminOrHrd) return true
-    if (isSPV && user?.idDepartemen && shift.idDepartemen === user.idDepartemen) {
-      const deptName = shift.departemen?.namaDepartemen?.toLowerCase().replace(/[\s\-_]/g, "")
-      return deptName !== "backoffice"
-    }
-    return false
+  const isDeptManagedByAdminOrHrd = (dept?: Departemen | null) => {
+    if (!dept) return false
+    const managers = Array.isArray(dept.pengelola)
+      ? dept.pengelola
+      : dept.pengelola
+      ? [dept.pengelola]
+      : []
+    const hasAdminOrHrd = managers.some((m: any) => m.role === "Admin" || m.role === "HRD")
+    const isBackoffice = dept.namaDepartemen?.toLowerCase().replace(/[\s\-_]/g, "") === "backoffice"
+    return hasAdminOrHrd || isBackoffice
+  }
+
+  // Only SPV-managed departments have shifts
+  const spvDepartments = useMemo(() => {
+    return departments.filter(d => !isDeptManagedByAdminOrHrd(d))
+  }, [departments])
+
+  // Only Admin and HRD can manage (create, edit, delete) master shifts. Supervisor only views shifts & arranges schedules.
+  const canManageShift = (_shift: Shift) => {
+    return isAdminOrHrd
   }
 
   // Filtered shifts
   const filteredShifts = useMemo(() => {
     return shifts.filter((s) => {
+      // Exclude shifts of Admin/HRD managed departments
+      if (s.departemen && isDeptManagedByAdminOrHrd(s.departemen)) {
+        return false
+      }
+      if (s.idDepartemen) {
+        const d = departments.find(dep => dep.idDepartemen === s.idDepartemen)
+        if (d && isDeptManagedByAdminOrHrd(d)) return false
+      }
+
       // Dept filter
       if (selectedDeptFilter === "general" && s.idDepartemen !== null && s.idDepartemen !== undefined) {
         return false
@@ -156,7 +169,7 @@ export default function ShiftsPage() {
 
       return true
     })
-  }, [shifts, selectedDeptFilter, searchQuery])
+  }, [shifts, selectedDeptFilter, searchQuery, departments])
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--text-muted)" }} /></div>
@@ -169,17 +182,19 @@ export default function ShiftsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Daftar Shift</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             {isSPV
-              ? `Shift Departemen ${departments.find(d => d.idDepartemen === user?.idDepartemen)?.namaDepartemen || ""} & Shift Umum`
-              : "Daftar shift kerja terstruktur per departemen (Backoffice dikelola oleh HRD & Admin)"}
+              ? `Daftar shift operasional departemen ${departments.find(d => d.idDepartemen === user?.idDepartemen)?.namaDepartemen || ""} (Dikelola oleh HRD & Admin)`
+              : "Daftar shift kerja operasional untuk departemen yang dikelola oleh Supervisor (SPV)"}
           </p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-sm bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]"
-        >
-          <Plus className="w-4 h-4" />
-          Tambah Shift
-        </button>
+        {isAdminOrHrd && (
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-sm bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]"
+          >
+            <Plus className="w-4 h-4" />
+            Tambah Shift
+          </button>
+        )}
       </div>
 
       {/* Add Modal */}
@@ -220,8 +235,8 @@ export default function ShiftsPage() {
                     onChange={e => setNewShift({ ...newShift, idDepartemen: e.target.value ? Number(e.target.value) : null })}
                     className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
                   >
-                    <option value="">Umum (Semua Departemen)</option>
-                    {departments.map((d) => (
+                    <option value="">Umum (Semua Departemen SPV)</option>
+                    {spvDepartments.map((d) => (
                       <option key={d.idDepartemen} value={d.idDepartemen}>
                         {d.namaDepartemen}
                       </option>
@@ -238,22 +253,6 @@ export default function ShiftsPage() {
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Jam Selesai Kerja</label>
                   <input required type="time" value={newShift.jamSelesai} onChange={e => setNewShift({...newShift, jamSelesai: e.target.value})} className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]" />
-                </div>
-              </div>
-              <div className="border-t border-[var(--border-default)] pt-3">
-                <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold text-[var(--text-primary)]">
-                  <Coffee className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Jadwal Istirahat (Opsional)</span>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs text-[var(--text-muted)]">Mulai Istirahat</label>
-                    <input type="time" value={newShift.jamMulaiIstirahat} onChange={e => setNewShift({...newShift, jamMulaiIstirahat: e.target.value})} className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-[var(--text-muted)]">Selesai Istirahat</label>
-                    <input type="time" value={newShift.jamSelesaiIstirahat} onChange={e => setNewShift({...newShift, jamSelesaiIstirahat: e.target.value})} className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]" />
-                  </div>
                 </div>
               </div>
               <div className="pt-4 flex justify-end gap-2">
@@ -295,8 +294,8 @@ export default function ShiftsPage() {
                     onChange={e => setEditingShift({ ...editingShift, idDepartemen: e.target.value ? Number(e.target.value) : null })}
                     className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
                   >
-                    <option value="">Umum (Semua Departemen)</option>
-                    {departments.map((d) => (
+                    <option value="">Umum (Semua Departemen SPV)</option>
+                    {spvDepartments.map((d) => (
                       <option key={d.idDepartemen} value={d.idDepartemen}>
                         {d.namaDepartemen}
                       </option>
@@ -313,22 +312,6 @@ export default function ShiftsPage() {
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Jam Selesai Kerja</label>
                   <input required type="time" value={editingShift.jamSelesai.substring(0, 5)} onChange={e => setEditingShift({...editingShift, jamSelesai: e.target.value})} className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]" />
-                </div>
-              </div>
-              <div className="border-t border-[var(--border-default)] pt-3">
-                <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold text-[var(--text-primary)]">
-                  <Coffee className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Jadwal Istirahat (Opsional)</span>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs text-[var(--text-muted)]">Mulai Istirahat</label>
-                    <input type="time" value={editingShift.jamMulaiIstirahat ? editingShift.jamMulaiIstirahat.substring(0, 5) : ""} onChange={e => setEditingShift({...editingShift, jamMulaiIstirahat: e.target.value})} className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs text-[var(--text-muted)]">Selesai Istirahat</label>
-                    <input type="time" value={editingShift.jamSelesaiIstirahat ? editingShift.jamSelesaiIstirahat.substring(0, 5) : ""} onChange={e => setEditingShift({...editingShift, jamSelesaiIstirahat: e.target.value})} className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]" />
-                  </div>
                 </div>
               </div>
               <div className="pt-4 flex justify-end gap-2">
@@ -363,9 +346,9 @@ export default function ShiftsPage() {
                   onChange={e => setSelectedDeptFilter(e.target.value)}
                   className="bg-transparent text-xs text-[var(--text-primary)] outline-none"
                 >
-                  <option value="all">Semua Departemen ({shifts.length})</option>
+                  <option value="all">Semua Departemen ({filteredShifts.length})</option>
                   <option value="general">Umum (Lintas Dept)</option>
-                  {departments.map(d => (
+                  {spvDepartments.map(d => (
                     <option key={d.idDepartemen} value={String(d.idDepartemen)}>
                       {d.namaDepartemen}
                     </option>
@@ -375,7 +358,7 @@ export default function ShiftsPage() {
             )}
           </div>
           <span className="text-xs text-[var(--text-muted)]">
-            Menampilkan {filteredShifts.length} dari {shifts.length} shift
+            Menampilkan {filteredShifts.length} shift
           </span>
         </CardHeader>
         <CardContent className="p-0">
@@ -385,22 +368,18 @@ export default function ShiftsPage() {
                 <TableHead>Shift</TableHead>
                 <TableHead>Departemen</TableHead>
                 <TableHead>Jam Kerja</TableHead>
-                <TableHead>Jam Istirahat</TableHead>
-                <TableHead className="w-20 text-right">Aksi</TableHead>
+                {isAdminOrHrd && <TableHead className="w-20 text-right">Aksi</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredShifts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-[var(--text-muted)]">
+                  <TableCell colSpan={isAdminOrHrd ? 4 : 3} className="text-center py-8 text-[var(--text-muted)]">
                     Tidak ada shift yang cocok
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredShifts.map((shift) => {
-                  const editable = canManageShift(shift)
-                  const isBackoffice = shift.departemen?.namaDepartemen?.toLowerCase().replace(/[\s\-_]/g, "") === "backoffice"
-
                   return (
                     <TableRow key={shift.idShift}>
                       <TableCell>
@@ -415,13 +394,7 @@ export default function ShiftsPage() {
                       </TableCell>
                       <TableCell>
                         {shift.departemen ? (
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
-                              isBackoffice
-                                ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800"
-                                : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
-                            }`}
-                          >
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800">
                             <Building2 className="w-3 h-3" />
                             {shift.departemen.namaDepartemen}
                           </span>
@@ -434,18 +407,8 @@ export default function ShiftsPage() {
                       <TableCell className="text-sm font-mono text-[var(--text-secondary)]">
                         {formatTime(shift.jamMulai)} - {formatTime(shift.jamSelesai)}
                       </TableCell>
-                      <TableCell className="text-sm font-mono text-[var(--text-secondary)]">
-                        {shift.jamMulaiIstirahat && shift.jamSelesaiIstirahat ? (
-                          <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
-                            <Coffee className="w-3.5 h-3.5 inline" />
-                            {formatTime(shift.jamMulaiIstirahat)} - {formatTime(shift.jamSelesaiIstirahat)}
-                          </span>
-                        ) : (
-                          <span className="text-[var(--text-muted)]">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {editable ? (
+                      {isAdminOrHrd && (
+                        <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => openEditModal(shift)}
@@ -462,10 +425,8 @@ export default function ShiftsPage() {
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                        ) : (
-                          <span className="text-[11px] text-[var(--text-muted)] italic">Hanya Lihat</span>
-                        )}
-                      </TableCell>
+                        </TableCell>
+                      )}
                     </TableRow>
                   )
                 })

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+import 'package:skeletonizer/skeletonizer.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../controllers/schedule_controller.dart';
 
@@ -12,38 +14,53 @@ class ScheduleView extends GetView<ScheduleController> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Jadwal Kerja',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Tap tanggal untuk melihat detail shift',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.slateLight,
-                        ),
-                  ),
-                ],
+        child: Obx(() {
+          final loading = controller.isLoading.value;
+          return Skeletonizer(
+            enabled: loading,
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await controller.fetchMonthlySchedule(
+                  controller.focusedDay.value.year,
+                  controller.focusedDay.value.month,
+                );
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Jadwal Kerja',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tap tanggal untuk melihat detail shift',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: AppColors.slateLight),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // -- Calendar --
+                    Obx(() => _buildCalendar(context)),
+                    const SizedBox(height: 16),
+                    // -- Detail Card --
+                    Obx(() => _buildSelectedDayDetail(context)),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 12),
-            // -- Calendar --
-            Obx(() => _buildCalendar(context)),
-            const SizedBox(height: 8),
-            // -- Detail Card --
-            Expanded(
-              child: Obx(() => _buildSelectedDayDetail(context)),
-            ),
-          ],
-        ),
+          );
+        }),
       ),
     );
   }
@@ -66,28 +83,42 @@ class ScheduleView extends GetView<ScheduleController> {
         onPageChanged: controller.onPageChanged,
         calendarFormat: CalendarFormat.month,
         startingDayOfWeek: StartingDayOfWeek.monday,
-        headerStyle: HeaderStyle(
+        rowHeight: 44,
+        daysOfWeekHeight: 24,
+        headerStyle: const HeaderStyle(
           formatButtonVisible: false,
           titleCentered: true,
-          titleTextStyle: const TextStyle(
+          titleTextStyle: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 16,
             color: AppColors.slateDark,
           ),
-          leftChevronIcon: const Icon(Icons.chevron_left,
-              color: AppColors.redPrimary, size: 28),
-          rightChevronIcon: const Icon(Icons.chevron_right,
-              color: AppColors.redPrimary, size: 28),
+          leftChevronIcon: Icon(
+            Icons.chevron_left,
+            color: AppColors.redPrimary,
+            size: 28,
+          ),
+          rightChevronIcon: Icon(
+            Icons.chevron_right,
+            color: AppColors.redPrimary,
+            size: 28,
+          ),
         ),
         daysOfWeekStyle: const DaysOfWeekStyle(
-          weekdayStyle:
-              TextStyle(color: AppColors.slateLight, fontSize: 12, fontWeight: FontWeight.w600),
-          weekendStyle:
-              TextStyle(color: AppColors.redPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+          weekdayStyle: TextStyle(
+            color: AppColors.slateLight,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+          weekendStyle: TextStyle(
+            color: AppColors.redPrimary,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         calendarStyle: CalendarStyle(
           outsideDaysVisible: false,
-          todayDecoration: BoxDecoration(
+          todayDecoration: const BoxDecoration(
             color: AppColors.redContainer,
             shape: BoxShape.circle,
           ),
@@ -103,7 +134,9 @@ class ScheduleView extends GetView<ScheduleController> {
             color: AppColors.white,
             fontWeight: FontWeight.bold,
           ),
-          weekendTextStyle: TextStyle(color: AppColors.redPrimary.withValues(alpha: 0.7)),
+          weekendTextStyle: TextStyle(
+            color: AppColors.redPrimary.withValues(alpha: 0.7),
+          ),
           defaultTextStyle: const TextStyle(color: AppColors.slateDark),
         ),
         calendarBuilders: CalendarBuilders(
@@ -113,16 +146,19 @@ class ScheduleView extends GetView<ScheduleController> {
 
             final isDayOff = schedule['is_day_off'] == true;
             final isCuti = schedule['is_cuti'] == true;
+            final isLibur = schedule['is_libur'] == true;
 
             Color dotColor = AppColors.success;
             if (isCuti) {
               dotColor = AppColors.info;
+            } else if (isLibur) {
+              dotColor = AppColors.redPrimary;
             } else if (isDayOff) {
               dotColor = AppColors.slateLight;
             }
 
             return Positioned(
-              bottom: 1,
+              bottom: 2,
               child: Container(
                 width: 6,
                 height: 6,
@@ -139,32 +175,35 @@ class ScheduleView extends GetView<ScheduleController> {
   }
 
   Widget _buildSelectedDayDetail(BuildContext context) {
-    if (controller.isLoading.value) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
+    final loading = controller.isLoading.value;
     final selected = controller.selectedDay.value;
-    if (selected == null) {
-      return const Center(
-        child: Text(
-          'Pilih tanggal untuk melihat jadwal',
-          style: TextStyle(color: AppColors.slateLight),
+
+    if (!loading && selected == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: Text(
+            'Pilih tanggal untuk melihat jadwal',
+            style: TextStyle(color: AppColors.slateLight),
+          ),
         ),
       );
     }
 
-    final schedule = controller.getScheduleForDay(selected);
+    final schedule = loading
+        ? <String, dynamic>{'shift_name': 'Shift Pagi', 'day_name': 'Loading'}
+        : controller.getScheduleForDay(selected ?? DateTime.now());
 
-    if (schedule == null) {
+    if (!loading && schedule == null) {
       return Padding(
-        padding: const EdgeInsets.all(20),
-        child: _buildEmptyCard(context, selected),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: _buildEmptyCard(context, selected ?? DateTime.now()),
       );
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: _buildDetailCard(context, schedule),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: _buildDetailCard(context, schedule ?? <String, dynamic>{}),
     );
   }
 
@@ -180,7 +219,11 @@ class ScheduleView extends GetView<ScheduleController> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.event_busy, size: 48, color: AppColors.slateLight.withValues(alpha: 0.5)),
+          Icon(
+            Icons.event_busy,
+            size: 48,
+            color: AppColors.slateLight.withValues(alpha: 0.5),
+          ),
           const SizedBox(height: 12),
           const Text(
             'Tidak ada jadwal',
@@ -209,7 +252,7 @@ class ScheduleView extends GetView<ScheduleController> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: isDayOff
             ? null
@@ -240,10 +283,14 @@ class ScheduleView extends GetView<ScheduleController> {
                 child: Icon(
                   isCuti
                       ? Icons.beach_access
-                      : isDayOff
-                          ? Icons.weekend
-                          : Icons.work_outline,
-                  color: isDayOff ? AppColors.slateLight : AppColors.white,
+                      : (schedule['is_libur'] == true
+                            ? Icons.celebration_outlined
+                            : (isDayOff ? Icons.weekend : Icons.work_outline)),
+                  color: isDayOff
+                      ? (schedule['is_libur'] == true
+                            ? AppColors.redPrimary
+                            : AppColors.slateLight)
+                      : AppColors.white,
                   size: 24,
                 ),
               ),
@@ -254,15 +301,19 @@ class ScheduleView extends GetView<ScheduleController> {
                   children: [
                     Text(
                       schedule['shift_name'] ?? '-',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 18,
+                        fontSize: 16,
                         color: isDayOff ? AppColors.slateDark : AppColors.white,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       schedule['day_name'] ?? '-',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 13,
                         color: isDayOff
@@ -273,9 +324,13 @@ class ScheduleView extends GetView<ScheduleController> {
                   ],
                 ),
               ),
-              if (!isDayOff)
+              if (!isDayOff) ...[
+                const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -289,10 +344,11 @@ class ScheduleView extends GetView<ScheduleController> {
                     ),
                   ),
                 ),
+              ],
             ],
           ),
           if (!isDayOff) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             // Time slots
             Row(
               children: [
@@ -313,26 +369,18 @@ class ScheduleView extends GetView<ScheduleController> {
                 ),
               ],
             ),
-            if (schedule['break_start'] != null) ...[
+            if (schedule['location'] != null) ...[
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Expanded(
-                    child: _buildTimeSlot(
-                      icon: Icons.restaurant,
-                      label: 'Istirahat',
-                      time:
-                          '${_formatShiftTime(schedule['break_start'])} - ${_formatShiftTime(schedule['break_end'])}',
+                  if (schedule['location'] != null)
+                    Expanded(
+                      child: _buildTimeSlot(
+                        icon: Icons.location_on_outlined,
+                        label: 'Lokasi',
+                        time: schedule['location'] ?? '-',
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildTimeSlot(
-                      icon: Icons.location_on_outlined,
-                      label: 'Lokasi',
-                      time: schedule['location'] ?? '-',
-                    ),
-                  ),
                 ],
               ),
             ],
@@ -348,7 +396,7 @@ class ScheduleView extends GetView<ScheduleController> {
     required String time,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: AppColors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
@@ -356,21 +404,31 @@ class ScheduleView extends GetView<ScheduleController> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: AppColors.white, size: 16),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: AppColors.white.withValues(alpha: 0.7),
-              fontSize: 11,
-            ),
+          Row(
+            children: [
+              Icon(icon, color: AppColors.white, size: 15),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.white.withValues(alpha: 0.7),
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 5),
           Text(
             time,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.white,
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
           ),

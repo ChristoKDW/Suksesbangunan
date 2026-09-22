@@ -30,15 +30,23 @@ export class JadwalKerja {
 
   @ApiProperty({ description: 'ID Shift' })
   @Column({ name: 'id_shift', type: 'int', nullable: true })
-  idShift: number;
+  idShift: number | null;
 
-  @ManyToOne(() => Shift, { eager: true, nullable: true })
+  @ManyToOne(() => Shift, { eager: true, nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'id_shift' })
   shift: Shift;
 
   @ApiProperty({ description: 'Penanda Cuti (True jika karyawan cuti di tanggal ini)' })
   @Column({ name: 'is_cuti', type: 'boolean', default: false })
   isCuti: boolean;
+
+  @ApiProperty({ description: 'Penanda Hari Libur / Hari Penting', default: false })
+  @Column({ name: 'is_libur', type: 'boolean', default: false })
+  isLibur: boolean;
+
+  @ApiProperty({ description: 'Keterangan Hari Libur / Hari Penting', required: false })
+  @Column({ name: 'keterangan', type: 'varchar', nullable: true })
+  keterangan: string | null;
 
   @ApiProperty({ description: 'ID User (SPV pembuat jadwal)' })
   @Column({ name: 'id_user', type: 'int', nullable: true })

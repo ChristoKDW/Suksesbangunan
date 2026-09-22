@@ -22,6 +22,11 @@ export class CreateJadwalKerjaDto {
   @IsDateString()
   tanggal: string;
 
+  @ApiPropertyOptional({ description: 'Keterangan jadwal/libur', example: 'Libur Rutin Mingguan' })
+  @IsOptional()
+  @IsString()
+  keterangan?: string;
+
   @ApiPropertyOptional({ description: 'Sumber upload', example: 'manual' })
   @IsOptional()
   @IsString()

@@ -1,15 +1,20 @@
-import { IsNotEmpty, IsString, IsIn, IsOptional } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString, IsIn, IsBoolean } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ApprovalPengajuanIzinDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Keputusan: disetujui atau ditolak',
     enum: ['disetujui', 'ditolak'],
     example: 'disetujui',
   })
-  @IsNotEmpty()
+  @IsOptional()
   @IsIn(['disetujui', 'ditolak'])
-  status: string;
+  status?: string;
+
+  @ApiPropertyOptional({ description: 'Flag persetujuan boolean' })
+  @IsOptional()
+  @IsBoolean()
+  setuju?: boolean;
 
   @ApiPropertyOptional({
     description: 'Catatan dari SPV/HRD',
@@ -18,4 +23,9 @@ export class ApprovalPengajuanIzinDto {
   @IsOptional()
   @IsString()
   catatanApproval?: string;
+
+  @ApiPropertyOptional({ description: 'Catatan persetujuan / penolakan' })
+  @IsOptional()
+  @IsString()
+  catatan?: string;
 }

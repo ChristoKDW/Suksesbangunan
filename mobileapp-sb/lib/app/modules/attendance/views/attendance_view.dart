@@ -11,78 +11,79 @@ class AttendanceView extends GetView<AttendanceController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Absensi Kehadiran'),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              controller.checkTodaySchedule();
-              controller.loadTodayAttendanceAndBreak();
-            },
+      appBar: AppBar(title: const Text('Absensi Kehadiran'), elevation: 0),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            controller.checkTodaySchedule(),
+            controller.loadTodayAttendanceAndBreak(),
+          ]);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              // Real-Time Clock
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 28),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.borderGrey),
+                ),
+                child: Column(
+                  children: [
+                    Obx(
+                      () => Text(
+                        controller.currentTime.value,
+                        style: const TextStyle(
+                          fontSize: 44,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.slateDark,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Obx(
+                      () => Text(
+                        controller.currentDate.value,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: AppColors.slateLight,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Today's Status Card (Clock In, Break, Clock Out)
+              Obx(() => _buildTodayStatusCard()),
+
+              const SizedBox(height: 16),
+
+              // Schedule & Break Info Banner
+              Obx(() => _buildScheduleBanner()),
+
+              const SizedBox(height: 16),
+
+              // GPS Location Info
+              _buildLocationCard(),
+
+              const SizedBox(height: 16),
+
+              // Geofence Status Badge
+              Obx(() => _buildGeofenceBadge()),
+
+              const SizedBox(height: 24),
+
+              // Dynamic Action Area (Absen Masuk / Istirahat / Absen Pulang)
+              Obx(() => _buildActionArea()),
+            ],
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            // Real-Time Clock
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 28),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.borderGrey),
-              ),
-              child: Column(
-                children: [
-                  Obx(() => Text(
-                    controller.currentTime.value,
-                    style: const TextStyle(
-                      fontSize: 44,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.slateDark,
-                    ),
-                  )),
-                  const SizedBox(height: 6),
-                  Obx(() => Text(
-                    controller.currentDate.value,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: AppColors.slateLight,
-                    ),
-                  )),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Today's Status Card (Clock In, Break, Clock Out)
-            Obx(() => _buildTodayStatusCard()),
-
-            const SizedBox(height: 16),
-
-            // Schedule & Break Info Banner
-            Obx(() => _buildScheduleBanner()),
-
-            const SizedBox(height: 16),
-
-            // GPS Location Info
-            _buildLocationCard(),
-
-            const SizedBox(height: 16),
-
-            // Geofence Status Badge
-            Obx(() => _buildGeofenceBadge()),
-
-            const SizedBox(height: 24),
-
-            // Dynamic Action Area (Absen Masuk / Istirahat / Absen Pulang)
-            Obx(() => _buildActionArea()),
-          ],
         ),
       ),
     );
@@ -116,23 +117,44 @@ class AttendanceView extends GetView<AttendanceController> {
               ),
               if (onBreak)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.15),
+                    color:
+                        (controller.isActiveBreakLate
+                                ? Colors.redAccent
+                                : Colors.amber)
+                            .withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.amber.shade700),
+                    border: Border.all(
+                      color: controller.isActiveBreakLate
+                          ? Colors.redAccent
+                          : Colors.amber.shade700,
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.coffee, size: 14, color: Colors.amber.shade800),
+                      Icon(
+                        Icons.coffee,
+                        size: 14,
+                        color: controller.isActiveBreakLate
+                            ? Colors.redAccent
+                            : Colors.amber.shade800,
+                      ),
                       const SizedBox(width: 4),
                       Text(
-                        'Sedang Istirahat',
+                        controller.isActiveBreakLate
+                            ? 'Terlambat +${controller.activeBreakExcessMinutes} mnt'
+                            : 'Istirahat ${controller.activeBreakMinutes} mnt',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: Colors.amber.shade900,
+                          color: controller.isActiveBreakLate
+                              ? Colors.redAccent
+                              : Colors.amber.shade900,
                         ),
                       ),
                     ],
@@ -156,16 +178,18 @@ class AttendanceView extends GetView<AttendanceController> {
                 child: _buildStatusColumn(
                   label: 'Istirahat',
                   value: onBreak
-                      ? 'Aktif'
+                      ? '${controller.activeBreakMinutes} mnt'
                       : (controller.totalBreakMinutes > 0
-                          ? '${controller.totalBreakMinutes} mnt'
-                          : '--:--'),
+                            ? '${controller.totalBreakMinutes} mnt'
+                            : '--:--'),
                   icon: Icons.restaurant,
                   color: onBreak
-                      ? Colors.amber.shade800
+                      ? (controller.isActiveBreakLate
+                            ? Colors.redAccent
+                            : Colors.amber.shade800)
                       : (controller.totalBreakMinutes > 0
-                          ? AppColors.info
-                          : AppColors.slateLight),
+                            ? AppColors.info
+                            : AppColors.slateLight),
                 ),
               ),
               Container(width: 1, height: 40, color: AppColors.borderGrey),
@@ -246,7 +270,11 @@ class AttendanceView extends GetView<AttendanceController> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 24),
+            const Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.error,
+              size: 24,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -287,8 +315,11 @@ class AttendanceView extends GetView<AttendanceController> {
         ),
         child: Row(
           children: [
-            Icon(state == 'cuti' ? Icons.beach_access : Icons.weekend,
-                color: Colors.amber[800], size: 24),
+            Icon(
+              state == 'cuti' ? Icons.beach_access : Icons.weekend,
+              color: Colors.amber[800],
+              size: 24,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -322,7 +353,10 @@ class AttendanceView extends GetView<AttendanceController> {
                 const SizedBox(width: 8),
                 Text(
                   'Shift: ${controller.shiftName.value}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
                 const Spacer(),
                 Text(
@@ -335,30 +369,6 @@ class AttendanceView extends GetView<AttendanceController> {
                 ),
               ],
             ),
-            if (controller.shiftBreakHours.value.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              const Divider(height: 1, color: AppColors.borderGrey),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  const Icon(Icons.coffee, color: Colors.amber, size: 18),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Jadwal Istirahat:',
-                    style: TextStyle(fontSize: 12, color: AppColors.slateLight),
-                  ),
-                  const Spacer(),
-                  Text(
-                    controller.shiftBreakHours.value,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.amber[800],
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
       );
@@ -383,12 +393,14 @@ class AttendanceView extends GetView<AttendanceController> {
               color: AppColors.redContainer,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Obx(() => Icon(
-              controller.isLocationReady.value
-                  ? Icons.location_on
-                  : Icons.location_searching,
-              color: AppColors.redPrimary,
-            )),
+            child: Obx(
+              () => Icon(
+                controller.isLocationReady.value
+                    ? Icons.location_on
+                    : Icons.location_searching,
+                color: AppColors.redPrimary,
+              ),
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -403,13 +415,15 @@ class AttendanceView extends GetView<AttendanceController> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Obx(() => Text(
-                  controller.locationText.value,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.slateLight,
+                Obx(
+                  () => Text(
+                    controller.locationText.value,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.slateLight,
+                    ),
                   ),
-                )),
+                ),
               ],
             ),
           ),
@@ -479,7 +493,8 @@ class AttendanceView extends GetView<AttendanceController> {
   }
 
   Widget _buildActionArea() {
-    final bool canScan = controller.isLocationReady.value &&
+    final bool canScan =
+        controller.isLocationReady.value &&
         controller.canProceed.value &&
         !controller.scheduleLoading.value;
 
@@ -560,11 +575,18 @@ class AttendanceView extends GetView<AttendanceController> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: onBreak
-                ? Colors.amber.withValues(alpha: 0.12)
+                ? (controller.isActiveBreakLate
+                          ? Colors.redAccent
+                          : Colors.amber)
+                      .withValues(alpha: 0.12)
                 : AppColors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: onBreak ? Colors.amber.shade700 : AppColors.borderGrey,
+              color: onBreak
+                  ? (controller.isActiveBreakLate
+                        ? Colors.redAccent
+                        : Colors.amber.shade700)
+                  : AppColors.borderGrey,
             ),
           ),
           child: Column(
@@ -574,7 +596,11 @@ class AttendanceView extends GetView<AttendanceController> {
                 children: [
                   Icon(
                     Icons.restaurant,
-                    color: onBreak ? Colors.amber.shade800 : AppColors.slateDark,
+                    color: onBreak
+                        ? (controller.isActiveBreakLate
+                              ? Colors.redAccent
+                              : Colors.amber.shade800)
+                        : AppColors.slateDark,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -583,7 +609,11 @@ class AttendanceView extends GetView<AttendanceController> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: onBreak ? Colors.amber.shade900 : AppColors.slateDark,
+                      color: onBreak
+                          ? (controller.isActiveBreakLate
+                                ? Colors.redAccent
+                                : Colors.amber.shade900)
+                          : AppColors.slateDark,
                     ),
                   ),
                 ],
@@ -591,16 +621,32 @@ class AttendanceView extends GetView<AttendanceController> {
               const SizedBox(height: 6),
               Text(
                 onBreak
-                    ? 'Anda saat ini sedang dalam waktu istirahat. Klik tombol di bawah jika sudah kembali bekerja.'
-                    : 'Gunakan tombol ini saat Anda keluar untuk makan/istirahat, agar durasi tercatat.',
-                style: const TextStyle(fontSize: 12, color: AppColors.slateLight),
+                    ? controller.isActiveBreakLate
+                          ? 'Istirahat aktif ${controller.activeBreakMinutes} menit, melebihi batas normal ${controller.activeBreakExcessMinutes} menit. Kembali sekarang; keterlambatan tetap dicatat.'
+                          : 'Istirahat aktif ${controller.activeBreakMinutes} menit dari batas normal maksimal 60 menit.'
+                    : controller.hasLateBreak
+                    ? 'Waktu istirahat fleksibel, maksimal normal 60 menit. Hari ini ada keterlambatan kembali.'
+                    : 'Waktu istirahat fleksibel dengan batas normal maksimal 60 menit.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: controller.isActiveBreakLate
+                      ? Colors.redAccent
+                      : AppColors.slateLight,
+                  fontWeight: controller.isActiveBreakLate
+                      ? FontWeight.w600
+                      : FontWeight.normal,
+                ),
               ),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: onBreak ? Colors.amber.shade800 : const Color(0xFFC02627),
+                    backgroundColor: onBreak
+                        ? (controller.isActiveBreakLate
+                              ? Colors.redAccent
+                              : Colors.amber.shade800)
+                        : const Color(0xFFC02627),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
@@ -619,12 +665,17 @@ class AttendanceView extends GetView<AttendanceController> {
                             color: Colors.white,
                           ),
                         )
-                      : Icon(onBreak ? Icons.check_circle : Icons.restaurant_menu),
+                      : Icon(
+                          onBreak ? Icons.check_circle : Icons.restaurant_menu,
+                        ),
                   label: Text(
                     onBreak
                         ? 'Selesai Istirahat (Kembali Bekerja)'
                         : 'Mulai Istirahat (Keluar Makan)',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),

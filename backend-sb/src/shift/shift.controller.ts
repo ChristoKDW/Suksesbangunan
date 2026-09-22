@@ -26,7 +26,7 @@ export class ShiftController {
   constructor(private readonly shiftService: ShiftService) {}
 
   @Post()
-  @Roles('Admin', 'HRD', 'SPV')
+  @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Buat shift baru' })
   create(@Body() dto: CreateShiftDto, @Req() req: any) {
     return this.shiftService.create(dto, req.user);
@@ -47,7 +47,7 @@ export class ShiftController {
   }
 
   @Patch(':id')
-  @Roles('Admin', 'HRD', 'SPV')
+  @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Update shift' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -58,7 +58,7 @@ export class ShiftController {
   }
 
   @Delete(':id')
-  @Roles('Admin', 'HRD', 'SPV')
+  @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Hapus shift' })
   remove(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
     return this.shiftService.remove(id, req.user);

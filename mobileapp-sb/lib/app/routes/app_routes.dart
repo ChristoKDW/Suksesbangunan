@@ -15,9 +15,13 @@ abstract class Routes {
   static const ATTENDANCE = _Paths.ATTENDANCE;
   static const FACE_RECOGNITION = _Paths.FACE_RECOGNITION;
   static const LEAVE_FORM = _Paths.LEAVE_FORM;
+  static const EXCHANGE_FORM = _Paths.EXCHANGE_FORM;
   static const FACE_REGISTRATION = _Paths.FACE_REGISTRATION;
   static const SETTINGS = _Paths.SETTINGS;
   static const OTP = _Paths.OTP;
+  static const SLIP_GAJI = _Paths.SLIP_GAJI;
+  static const REGULAR_OFF = _Paths.REGULAR_OFF;
+  static const FORGOT_PASSWORD = _Paths.FORGOT_PASSWORD;
 }
 
 abstract class _Paths {
@@ -34,7 +38,11 @@ abstract class _Paths {
   static const ATTENDANCE = '/attendance';
   static const FACE_RECOGNITION = '/face-recognition';
   static const LEAVE_FORM = '/leave-form';
+  static const EXCHANGE_FORM = '/exchange-form';
   static const FACE_REGISTRATION = '/face-registration';
   static const SETTINGS = '/settings';
   static const OTP = '/otp';
+  static const SLIP_GAJI = '/slip-gaji';
+  static const REGULAR_OFF = '/regular-off';
+  static const FORGOT_PASSWORD = '/forgot-password';
 }

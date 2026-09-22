@@ -37,6 +37,14 @@ export class CreateKaryawanDto {
   tanggalMasuk?: string;
 
   @ApiPropertyOptional({
+    description: 'Jenis kelamin',
+    enum: ['Laki-laki', 'Perempuan'],
+  })
+  @IsOptional()
+  @IsIn(['Laki-laki', 'Perempuan'])
+  jenisKelamin?: string;
+
+  @ApiPropertyOptional({
     description: 'Status aktif',
     enum: ['aktif', 'resign', 'cuti'],
   })
@@ -71,6 +79,31 @@ export class CreateKaryawanDto {
   @IsNumber()
   gajiPokok?: number;
 
+  @ApiPropertyOptional({ description: 'Tunjangan konsumsi per hari', example: 20000 })
+  @IsOptional()
+  @IsNumber()
+  tunjanganKonsumsiHari?: number;
+
+  @ApiPropertyOptional({ description: 'Tunjangan transportasi bulanan', example: 200000 })
+  @IsOptional()
+  @IsNumber()
+  tunjanganTransportasi?: number;
+
+  @ApiPropertyOptional({ description: 'Tunjangan komunikasi bulanan', example: 150000 })
+  @IsOptional()
+  @IsNumber()
+  tunjanganKomunikasi?: number;
+
+  @ApiPropertyOptional({ description: 'Tunjangan jabatan bulanan', example: 255000 })
+  @IsOptional()
+  @IsNumber()
+  tunjanganJabatan?: number;
+
+  @ApiPropertyOptional({ description: 'Potongan BPJS Ketenagakerjaan bulanan', example: 0 })
+  @IsOptional()
+  @IsNumber()
+  potonganBpjs?: number;
+
   @ApiPropertyOptional({ description: 'Hak cuti berbayar' })
   @IsOptional()
   hakCuti?: boolean;
@@ -85,4 +118,9 @@ export class CreateKaryawanDto {
   @IsOptional()
   @IsString()
   hariLibur?: string;
+
+  @ApiPropertyOptional({ description: 'Status lupa password (none, pending, approved)' })
+  @IsOptional()
+  @IsString()
+  resetPasswordStatus?: string;
 }

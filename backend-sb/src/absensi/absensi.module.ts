@@ -6,6 +6,7 @@ import { AbsensiController } from './absensi.controller.js';
 import { PengaturanKantorModule } from '../pengaturan-kantor/pengaturan-kantor.module.js';
 import { KaryawanModule } from '../karyawan/karyawan.module.js';
 import { JadwalKerjaModule } from '../jadwal-kerja/jadwal-kerja.module.js';
+import { RegularOffModule } from '../regular-off/regular-off.module.js';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { JadwalKerjaModule } from '../jadwal-kerja/jadwal-kerja.module.js';
     PengaturanKantorModule,
     KaryawanModule,
     JadwalKerjaModule,
+    RegularOffModule,
   ],
   controllers: [AbsensiController],
   providers: [AbsensiService],

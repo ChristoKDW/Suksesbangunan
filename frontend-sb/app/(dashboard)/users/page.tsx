@@ -63,7 +63,7 @@ export default function UsersPage() {
 
   const openEditModal = (u: User) => {
     const id = u.idUser
-    setEditingUser({ idUser: id, nama: u.nama, username: u.username, role: u.role, fotoProfil: u.fotoProfil, idDepartemen: u.idDepartemen })
+    setEditingUser({ idUser: id, nama: u.nama, username: u.username, role: u.role, fotoProfil: u.fotoProfil })
     setIsEditModalOpen(true)
   }
 
@@ -72,7 +72,7 @@ export default function UsersPage() {
     if (!editingUser) return
     setSubmitting(true)
     try {
-      const { idUser, ...updates } = editingUser
+      const { idUser, idDepartemen, ...updates } = editingUser as any
       if (idUser) {
         await userApi.update(idUser, updates)
       }
@@ -148,16 +148,10 @@ export default function UsersPage() {
                   <option value="HRD">HRD</option>
                   <option value="SPV">SPV</option>
                 </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Departemen yang dikelola oleh akun ini diatur langsung melalui menu Departemen.
+                </p>
               </div>
-              {newUser.role === 'SPV' && (
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Departemen (Khusus SPV)</label>
-                  <select value={newUser.idDepartemen || 0} onChange={e => setNewUser({...newUser, idDepartemen: Number(e.target.value)})} className="w-full bg-slate-50 dark:bg-[#0B0F17] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500">
-                    <option value={0}>Pilih departemen</option>
-                    {departments.map(d => <option key={d.idDepartemen} value={d.idDepartemen}>{d.namaDepartemen}</option>)}
-                  </select>
-                </div>
-              )}
               <div className="pt-4 flex justify-end gap-2">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-md text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent">Batal</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-500 disabled:opacity-60">
@@ -218,16 +212,10 @@ export default function UsersPage() {
                   <option value="HRD">HRD</option>
                   <option value="SPV">SPV</option>
                 </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Departemen yang dikelola oleh akun ini diatur langsung melalui menu Departemen.
+                </p>
               </div>
-              {editingUser.role === 'SPV' && (
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Departemen (Khusus SPV)</label>
-                  <select value={editingUser.idDepartemen || 0} onChange={e => setEditingUser({...editingUser, idDepartemen: Number(e.target.value)})} className="w-full bg-slate-50 dark:bg-[#0B0F17] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500">
-                    <option value={0}>Pilih departemen</option>
-                    {departments.map(d => <option key={d.idDepartemen} value={d.idDepartemen}>{d.namaDepartemen}</option>)}
-                  </select>
-                </div>
-              )}
               <div className="pt-4 flex justify-end gap-2">
                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 rounded-md text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent">Batal</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-500 disabled:opacity-60">
@@ -255,6 +243,7 @@ export default function UsersPage() {
                 <TableHead className="text-slate-500 dark:text-slate-400">Pengguna</TableHead>
                 <TableHead className="text-slate-500 dark:text-slate-400">Role</TableHead>
                 <TableHead className="text-slate-500 dark:text-slate-400">Username</TableHead>
+                <TableHead className="text-slate-500 dark:text-slate-400">Departemen Dikelola</TableHead>
                 <TableHead className="w-12 text-slate-500 dark:text-slate-400"></TableHead>
               </TableRow>
             </TableHeader>
@@ -297,6 +286,15 @@ export default function UsersPage() {
                       <span className="text-sm text-slate-500 dark:text-slate-400 font-mono">
                         {(u as any).username || '-'}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      {u.departemen?.namaDepartemen ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">
+                          {u.departemen.namaDepartemen}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-2">

@@ -15,6 +15,7 @@ async function bootstrap() {
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginOpenerPolicy: false,
       contentSecurityPolicy: false, // Allows Swagger UI and local development assets
     }),
   );
@@ -34,10 +35,21 @@ async function bootstrap() {
     }),
   );
 
-  // CORS
+  // CORS: Reflect request origin dynamically so credentials: true works with modern browsers (Safari/Chrome)
   app.enableCors({
-    origin: '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: (requestOrigin, callback) => {
+      // Allow any origin or requests without origin (e.g. mobile apps, curl)
+      callback(null, requestOrigin || true);
+    },
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'X-Requested-With',
+      'Origin',
+    ],
+    exposedHeaders: ['Content-Disposition'],
     credentials: true,
   });
 

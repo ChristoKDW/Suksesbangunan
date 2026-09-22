@@ -72,6 +72,13 @@ export class KaryawanController {
     return this.karyawanService.remove(id);
   }
 
+  @Patch(':id/approve-reset')
+  @Roles('HRD')
+  @ApiOperation({ summary: 'Approve request lupa password dari karyawan' })
+  approveReset(@Param('id', ParseIntPipe) id: number) {
+    return this.karyawanService.update(id, { resetPasswordStatus: 'approved' });
+  }
+
   @Post(':id/foto-wajah')
   @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Upload foto wajah referensi karyawan' })

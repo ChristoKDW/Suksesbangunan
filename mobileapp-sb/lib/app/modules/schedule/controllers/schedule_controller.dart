@@ -11,7 +11,13 @@ class ScheduleController extends GetxController {
   final focusedDay = DateTime.now().obs;
 
   static const _dayNames = [
-    'Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu',
+    'Minggu',
+    'Senin',
+    'Selasa',
+    'Rabu',
+    'Kamis',
+    'Jumat',
+    'Sabtu',
   ];
 
   @override
@@ -37,8 +43,11 @@ class ScheduleController extends GetxController {
       }
       monthlySchedules.assignAll(mapped);
     } catch (e) {
-      Get.snackbar('Error', 'Gagal memuat jadwal: $e',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Error',
+        'Gagal memuat jadwal: $e',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } finally {
       isLoading.value = false;
     }
@@ -72,18 +81,29 @@ class ScheduleController extends GetxController {
     final tanggal = DateTime.tryParse(item['tanggal']?.toString() ?? '');
     final shift = item['shift'] as Map<String, dynamic>?;
     final isCuti = item['isCuti'] == true;
-    final isDayOff = isCuti || shift == null;
+    final isLibur = item['isLibur'] == true;
+    final keterangan = item['keterangan']?.toString();
+    final isDayOff = isCuti || isLibur || shift == null;
+
+    String shiftName = 'Libur';
+    if (isCuti) {
+      shiftName = 'Cuti';
+    } else if (isLibur && keterangan != null && keterangan.isNotEmpty) {
+      shiftName = keterangan;
+    } else if (shift != null) {
+      shiftName = shift['namaShift'] ?? 'Kerja';
+    }
 
     return {
       'date': item['tanggal'],
       'day_name': tanggal != null ? _dayNames[tanggal.weekday % 7] : '-',
-      'shift_name': isCuti ? 'Cuti' : (shift?['namaShift'] ?? 'Libur'),
+      'shift_name': shiftName,
       'time_in': shift?['jamMulai'],
       'time_out': shift?['jamSelesai'],
-      'break_start': shift?['jamMulaiIstirahat'],
-      'break_end': shift?['jamSelesaiIstirahat'],
       'is_day_off': isDayOff,
       'is_cuti': isCuti,
+      'is_libur': isLibur,
+      'keterangan': keterangan,
       'location': 'Kantor Pusat',
     };
   }

@@ -4,6 +4,8 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
@@ -33,6 +35,10 @@ export class User {
   @ApiProperty({ description: 'ID Departemen (Khusus SPV)', required: false })
   @Column({ name: 'id_departemen', type: 'int', nullable: true })
   idDepartemen: number;
+
+  @ManyToOne('Departemen', { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'id_departemen' })
+  departemen: any;
 
   @Exclude()
   @Column({ name: 'password', type: 'varchar' })

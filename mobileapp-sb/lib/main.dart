@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:skeletonizer/skeletonizer.dart';
+
 
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -31,12 +33,21 @@ void main() async {
   await Get.putAsync(() => CameraService().init());
 
   runApp(
-    GetMaterialApp(
-      title: "Company Attendance",
-      initialRoute: AppPages.INITIAL,
-      getPages: AppPages.routes,
-      theme: AppTheme.lightTheme,
-      debugShowCheckedModeBanner: false,
+    SkeletonizerConfig(
+      data: SkeletonizerConfigData(
+        effect: ShimmerEffect(
+          baseColor: Colors.grey.shade300,
+          highlightColor: Colors.grey.shade100,
+          duration: const Duration(seconds: 2),
+        ),
+      ),
+      child: GetMaterialApp(
+        title: "Company Attendance",
+        initialRoute: AppPages.INITIAL,
+        getPages: AppPages.routes,
+        theme: AppTheme.lightTheme,
+        debugShowCheckedModeBanner: false,
+      ),
     ),
   );
 }

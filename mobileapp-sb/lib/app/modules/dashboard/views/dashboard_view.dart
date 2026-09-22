@@ -46,7 +46,7 @@ class DashboardView extends GetView<DashboardController> {
             NavigationDestination(
               icon: Icon(Icons.assignment_outlined),
               selectedIcon: Icon(Icons.assignment, color: AppColors.redPrimary),
-              label: 'Izin',
+              label: 'Pengajuan',
             ),
             NavigationDestination(
               icon: Icon(Icons.history_outlined),

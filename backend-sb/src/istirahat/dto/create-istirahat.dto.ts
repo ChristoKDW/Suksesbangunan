@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsIn, IsNumber, IsOptional } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateIstirahatDto {
   @ApiPropertyOptional({ description: 'ID Absensi', example: 1 })
@@ -7,7 +7,13 @@ export class CreateIstirahatDto {
   @IsNumber()
   idAbsensi?: number;
 
-  @ApiPropertyOptional({ description: 'Tipe: keluar atau masuk', example: 'keluar' })
+  @ApiPropertyOptional({
+    description: 'Tipe: keluar atau masuk',
+    example: 'keluar',
+  })
   @IsOptional()
-  tipe?: string;
+  @IsIn(['keluar', 'masuk'], {
+    message: 'Tipe istirahat harus keluar atau masuk',
+  })
+  tipe?: 'keluar' | 'masuk';
 }

@@ -32,8 +32,8 @@ async function request<T>(
     ...(options.headers as Record<string, string> || {}),
   }
 
-  // Only set Content-Type for non-FormData bodies
-  if (!(options.body instanceof FormData)) {
+  // Only set Content-Type if body is present and not FormData
+  if (options.body && !(options.body instanceof FormData)) {
     headers["Content-Type"] = "application/json"
   }
 
@@ -43,10 +43,20 @@ async function request<T>(
 
   const cleanBaseUrl = BASE_URL.replace(/\/+$/, "")
   const cleanEndpoint = endpoint.replace(/^\/+/, "")
-  const response = await fetch(`${cleanBaseUrl}/${cleanEndpoint}`, {
-    ...options,
-    headers,
-  })
+  let response: Response
+  try {
+    response = await fetch(`${cleanBaseUrl}/${cleanEndpoint}`, {
+      ...options,
+      headers,
+    })
+  } catch (err) {
+    console.error(`Network fetch failed for ${endpoint}:`, err)
+    throw new ApiError(
+      0,
+      `Gagal terhubung ke server backend (${cleanBaseUrl}). Pastikan koneksi internet atau server backend aktif.`,
+      err
+    )
+  }
 
   // Handle 401 — token expired or invalid
   if (response.status === 401) {
@@ -96,20 +106,30 @@ async function request<T>(
 
 export const api = {
   get<T>(endpoint: string): Promise<T> {
-    return request<T>(endpoint, { method: "GET" })
+    return request<T>(endpoint, { method: "GET", cache: "no-store" })
   },
 
   post<T>(endpoint: string, body?: unknown): Promise<T> {
     return request<T>(endpoint, {
       method: "POST",
-      body: body instanceof FormData ? body : JSON.stringify(body),
+      body:
+        body !== undefined
+          ? body instanceof FormData
+            ? body
+            : JSON.stringify(body)
+          : undefined,
     })
   },
 
   patch<T>(endpoint: string, body?: unknown): Promise<T> {
     return request<T>(endpoint, {
       method: "PATCH",
-      body: body instanceof FormData ? body : JSON.stringify(body),
+      body:
+        body !== undefined
+          ? body instanceof FormData
+            ? body
+            : JSON.stringify(body)
+          : undefined,
     })
   },
 

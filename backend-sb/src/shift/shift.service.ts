@@ -2,9 +2,10 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Shift } from './entities/shift.entity.js';
 import { Departemen } from '../departemen/entities/departemen.entity.js';
 import { CreateShiftDto } from './dto/create-shift.dto.js';
@@ -19,28 +20,41 @@ export class ShiftService {
     private readonly deptRepo: Repository<Departemen>,
   ) {}
 
-  private isBackoffice(name?: string): boolean {
-    if (!name) return false;
-    const clean = name.toLowerCase().replace(/[\s\-_]/g, '');
-    return clean === 'backoffice';
+  private isManagedByAdminOrHrd(dept?: Departemen | null): boolean {
+    if (!dept) return false;
+    const managers = Array.isArray(dept.pengelola)
+      ? dept.pengelola
+      : dept.pengelola
+      ? [dept.pengelola]
+      : [];
+    const hasAdminOrHrd = managers.some(
+      (m: any) => m.role === 'Admin' || m.role === 'HRD',
+    );
+    const isBackoffice =
+      dept.namaDepartemen?.toLowerCase().replace(/[\s\-_]/g, '') ===
+      'backoffice';
+    return hasAdminOrHrd || isBackoffice;
   }
 
-  async create(dto: CreateShiftDto, user?: { role: string; idDepartemen?: number }): Promise<Shift> {
+  async create(
+    dto: CreateShiftDto,
+    user?: { role: string; idDepartemen?: number },
+  ): Promise<Shift> {
     if (user?.role === 'SPV') {
-      if (!user.idDepartemen) {
-        throw new ForbiddenException('SPV tidak memiliki departemen yang terdaftar');
-      }
-      dto.idDepartemen = user.idDepartemen;
+      throw new ForbiddenException(
+        'Hanya Admin dan HRD yang dapat menambah daftar shift. Supervisor hanya mengatur jadwal shift.',
+      );
+    }
 
-      const dept = await this.deptRepo.findOne({ where: { idDepartemen: user.idDepartemen } });
-      if (dept && this.isBackoffice(dept.namaDepartemen)) {
-        throw new ForbiddenException('Shift Backoffice hanya dapat diatur oleh HRD dan Admin');
-      }
-    } else if (dto.idDepartemen) {
-      // Check if target dept is backoffice and user is not admin/hrd
-      const dept = await this.deptRepo.findOne({ where: { idDepartemen: dto.idDepartemen } });
-      if (dept && this.isBackoffice(dept.namaDepartemen) && user?.role !== 'Admin' && user?.role !== 'HRD') {
-        throw new ForbiddenException('Shift Backoffice hanya dapat diatur oleh HRD dan Admin');
+    if (dto.idDepartemen) {
+      const dept = await this.deptRepo.findOne({
+        where: { idDepartemen: dto.idDepartemen },
+        relations: { pengelola: true },
+      });
+      if (dept && this.isManagedByAdminOrHrd(dept)) {
+        throw new BadRequestException(
+          'Departemen yang dikelola oleh Admin & HRD memiliki jadwal kerja tetap kantor (08:45 - 17:00, Minggu Libur) dan tidak menggunakan daftar shift.',
+        );
       }
     }
 
@@ -49,32 +63,33 @@ export class ShiftService {
   }
 
   async findAll(userRole?: string, idDepartemen?: number): Promise<Shift[]> {
-    if (userRole === 'SPV') {
-      if (!idDepartemen) return [];
-      // SPV only sees shifts for their own department or general shifts
-      const allShifts = await this.shiftRepo.find({
-        relations: { departemen: true },
-        order: { idShift: 'ASC' },
-      });
-      return allShifts.filter((s) => {
-        if (s.departemen && this.isBackoffice(s.departemen.namaDepartemen)) {
-          return false;
-        }
-        return s.idDepartemen === idDepartemen || s.idDepartemen === null || s.idDepartemen === undefined;
-      });
-    }
-
-    // Admin & HRD can see all shifts
-    return this.shiftRepo.find({
-      relations: { departemen: true },
+    const allShifts = await this.shiftRepo.find({
+      relations: { departemen: { pengelola: true } },
       order: { idShift: 'ASC' },
     });
+
+    // Departemen yang dikelola Admin & HRD tidak memiliki daftar shift
+    const nonAdminHrdShifts = allShifts.filter(
+      (s) => !this.isManagedByAdminOrHrd(s.departemen),
+    );
+
+    if (userRole === 'SPV') {
+      if (!idDepartemen) return [];
+      return nonAdminHrdShifts.filter(
+        (s) =>
+          s.idDepartemen === idDepartemen ||
+          s.idDepartemen === null ||
+          s.idDepartemen === undefined,
+      );
+    }
+
+    return nonAdminHrdShifts;
   }
 
   async findOne(id: number): Promise<Shift> {
     const shift = await this.shiftRepo.findOne({
       where: { idShift: id },
-      relations: { departemen: true },
+      relations: { departemen: { pengelola: true } },
     });
     if (!shift) {
       throw new NotFoundException(`Shift dengan ID ${id} tidak ditemukan`);
@@ -87,16 +102,24 @@ export class ShiftService {
     dto: UpdateShiftDto,
     user?: { role: string; idDepartemen?: number },
   ): Promise<Shift> {
+    if (user?.role === 'SPV') {
+      throw new ForbiddenException(
+        'Hanya Admin dan HRD yang dapat mengubah daftar shift. Supervisor hanya mengatur jadwal shift.',
+      );
+    }
+
     const shift = await this.findOne(id);
 
-    if (user?.role === 'SPV') {
-      if (!user.idDepartemen || shift.idDepartemen !== user.idDepartemen) {
-        throw new ForbiddenException('Anda hanya dapat mengubah shift untuk departemen Anda sendiri');
+    if (dto.idDepartemen) {
+      const dept = await this.deptRepo.findOne({
+        where: { idDepartemen: dto.idDepartemen },
+        relations: { pengelola: true },
+      });
+      if (dept && this.isManagedByAdminOrHrd(dept)) {
+        throw new BadRequestException(
+          'Departemen yang dikelola oleh Admin & HRD memiliki jadwal kerja tetap kantor (08:45 - 17:00, Minggu Libur) dan tidak menggunakan daftar shift.',
+        );
       }
-      if (shift.departemen && this.isBackoffice(shift.departemen.namaDepartemen)) {
-        throw new ForbiddenException('Shift Backoffice hanya dapat diatur oleh HRD dan Admin');
-      }
-      dto.idDepartemen = user.idDepartemen;
     }
 
     Object.assign(shift, dto);
@@ -107,17 +130,13 @@ export class ShiftService {
     id: number,
     user?: { role: string; idDepartemen?: number },
   ): Promise<void> {
-    const shift = await this.findOne(id);
-
     if (user?.role === 'SPV') {
-      if (!user.idDepartemen || shift.idDepartemen !== user.idDepartemen) {
-        throw new ForbiddenException('Anda hanya dapat menghapus shift untuk departemen Anda sendiri');
-      }
-      if (shift.departemen && this.isBackoffice(shift.departemen.namaDepartemen)) {
-        throw new ForbiddenException('Shift Backoffice hanya dapat diatur oleh HRD dan Admin');
-      }
+      throw new ForbiddenException(
+        'Hanya Admin dan HRD yang dapat menghapus daftar shift. Supervisor hanya mengatur jadwal shift.',
+      );
     }
 
+    const shift = await this.findOne(id);
     await this.shiftRepo.remove(shift);
   }
 }

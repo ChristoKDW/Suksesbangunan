@@ -50,7 +50,7 @@ class LoginView extends GetView<LoginController> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: () => Get.toNamed('/forgot-password'),
                   child: const Text(
                     'Lupa Password?',
                     style: TextStyle(color: AppColors.slateLight),

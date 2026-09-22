@@ -25,7 +25,7 @@ export class DepartemenController {
   constructor(private readonly departemenService: DepartemenService) {}
 
   @Post()
-  @Roles('Admin')
+  @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Buat departemen baru' })
   create(@Body() dto: CreateDepartemenDto) {
     return this.departemenService.create(dto);
@@ -46,7 +46,7 @@ export class DepartemenController {
   }
 
   @Patch(':id')
-  @Roles('Admin')
+  @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Update departemen' })
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -56,7 +56,7 @@ export class DepartemenController {
   }
 
   @Delete(':id')
-  @Roles('Admin')
+  @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Hapus departemen' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.departemenService.remove(id);

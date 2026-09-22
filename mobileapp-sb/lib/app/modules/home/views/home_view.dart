@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'package:skeletonizer/skeletonizer.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/home_controller.dart';
@@ -13,16 +14,12 @@ class HomeView extends GetView<HomeController> {
     return Scaffold(
       body: SafeArea(
         child: Obx(() {
-          if (controller.isLoading.value) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.redPrimary),
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: controller.fetchData,
-            color: AppColors.redPrimary,
-            child: SingleChildScrollView(
+          return Skeletonizer(
+            enabled: controller.isLoading.value,
+            child: RefreshIndicator(
+              onRefresh: controller.fetchData,
+              color: AppColors.redPrimary,
+              child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -41,13 +38,16 @@ class HomeView extends GetView<HomeController> {
                           color: AppColors.slateLight,
                         ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   _buildAttendanceCard(context),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
+                  _buildFeatureSection(context),
+                  const SizedBox(height: 20),
                   _buildActionButton(),
                 ],
               ),
             ),
+          ),
           );
         }),
       ),
@@ -324,6 +324,270 @@ class HomeView extends GetView<HomeController> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Kartu Logo Slip Gaji (Untuk semua karyawan: kantor & operasional)
+        _buildSlipGajiLogoCard(context),
+
+        // Khusus Karyawan Operasional: Regular Off & Tukar Shift
+        Obx(() {
+          if (!controller.isOperasional.value) {
+            return const SizedBox.shrink();
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+              const Text(
+                'Layanan Operasional',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: AppColors.slateDark,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildOperationalItem(
+                      icon: Icons.beach_access_rounded,
+                      title: 'Regular Off',
+                      subtitle: 'Hak libur RO',
+                      color: const Color(0xFF059669),
+                      bgColor: const Color(0xFFECFDF5),
+                      onTap: () => Get.toNamed(Routes.REGULAR_OFF),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildOperationalItem(
+                      icon: Icons.swap_horiz_rounded,
+                      title: 'Tukar Shift',
+                      subtitle: 'Tukar jadwal',
+                      color: const Color(0xFF4F46E5),
+                      bgColor: const Color(0xFFEEF2FF),
+                      onTap: () => Get.toNamed(Routes.EXCHANGE_FORM),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildSlipGajiLogoCard(BuildContext context) {
+    return Obx(() {
+      final bool isLate = controller.isTodayLate;
+
+      return InkWell(
+        onTap: () => Get.toNamed(Routes.SLIP_GAJI),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isLate ? const Color(0xFFF87171) : AppColors.borderGrey,
+              width: isLate ? 1.5 : 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isLate
+                    ? const Color(0xFFEF4444).withValues(alpha: 0.12)
+                    : Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  // Logo Besar Slip Gaji
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isLate
+                            ? [const Color(0xFFDC2626), const Color(0xFF991B1B)]
+                            : [AppColors.redPrimary, const Color(0xFF991B1B)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isLate ? const Color(0xFFDC2626) : AppColors.redPrimary)
+                              .withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.receipt_long_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Slip Gaji Harian',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: AppColors.slateDark,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: const Color(0xFFBFDBFE)),
+                              ),
+                              child: const Text(
+                                'Real-Time',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2563EB),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        const Text(
+                          'Lihat rincian gaji, estimasi kehadiran & denda',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.slateLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: AppColors.slateLight),
+                ],
+              ),
+              if (isLate) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFFECACA)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.error_outline, size: 16, color: Color(0xFFDC2626)),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Hari ini tercatat terlambat. Terdapat potongan denda harian.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFB91C1C),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildOperationalItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required Color bgColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.borderGrey),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.slateDark,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.slateLight,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

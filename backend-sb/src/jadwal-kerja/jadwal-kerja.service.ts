@@ -10,6 +10,8 @@ import * as ExcelJS from 'exceljs';
 import { JadwalKerja } from './entities/jadwal-kerja.entity.js';
 import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
 import { Departemen } from '../departemen/entities/departemen.entity.js';
+import { HariLibur } from '../hari-libur/entities/hari-libur.entity.js';
+import { Shift } from '../shift/entities/shift.entity.js';
 import { CreateJadwalKerjaDto } from './dto/create-jadwal-kerja.dto.js';
 import { UpdateJadwalKerjaDto } from './dto/update-jadwal-kerja.dto.js';
 import { BulkJadwalKerjaItemDto } from './dto/bulk-jadwal-kerja.dto.js';
@@ -23,12 +25,54 @@ export class JadwalKerjaService {
     private readonly karyawanRepo: Repository<Karyawan>,
     @InjectRepository(Departemen)
     private readonly deptRepo: Repository<Departemen>,
+    @InjectRepository(HariLibur)
+    private readonly hariLiburRepo: Repository<HariLibur>,
+    @InjectRepository(Shift)
+    private readonly shiftRepo: Repository<Shift>,
   ) {}
 
   private isBackoffice(name?: string): boolean {
     if (!name) return false;
     const clean = name.toLowerCase().replace(/[\s\-_]/g, '');
     return clean === 'backoffice';
+  }
+
+  isManagedByAdminOrHrd(dept?: Departemen | null): boolean {
+    if (!dept) return true;
+    if (this.isBackoffice(dept.namaDepartemen)) return true;
+    if (!dept.pengelola || dept.pengelola.length === 0) return true;
+    return dept.pengelola.some((u) => u.role === 'Admin' || u.role === 'HRD');
+  }
+
+  async getOrCreateDefaultAdminShift(): Promise<Shift> {
+    let shift = await this.shiftRepo.findOne({
+      where: { jamMulai: '08:45:00', jamSelesai: '17:00:00' },
+    });
+    if (!shift) {
+      shift = await this.shiftRepo.findOne({
+        where: { namaShift: 'Reguler Pagi (Default)' },
+      });
+    }
+    const officeDept = await this.deptRepo.findOne({
+      where: [
+        { namaDepartemen: 'Office' },
+        { namaDepartemen: 'Kantor' },
+        { namaDepartemen: 'Backoffice' },
+      ],
+    });
+    if (!shift) {
+      shift = this.shiftRepo.create({
+        namaShift: 'Reguler Pagi (Default)',
+        jamMulai: '08:45:00',
+        jamSelesai: '17:00:00',
+        idDepartemen: officeDept?.idDepartemen || null,
+      });
+      shift = await this.shiftRepo.save(shift);
+    } else if (officeDept && !shift.idDepartemen) {
+      shift.idDepartemen = officeDept.idDepartemen;
+      await this.shiftRepo.save(shift);
+    }
+    return shift;
   }
 
   private async validateKaryawanAccess(
@@ -39,27 +83,30 @@ export class JadwalKerjaService {
 
     const karyawanList = await this.karyawanRepo.find({
       where: { idKaryawan: In(karyawanIds) },
-      relations: { departemen: true },
+      relations: { departemen: { pengelola: true } },
     });
 
     for (const emp of karyawanList) {
-      const isEmpBackoffice = this.isBackoffice(emp.departemen?.namaDepartemen);
+      const isManagedByAdminOrHrd = this.isManagedByAdminOrHrd(emp.departemen);
 
-      if (user.role === 'SPV') {
+      // Karyawan di departemen yang dikelola Admin & HRD memiliki jadwal tetap otomatis (08:45–17:00, Minggu & Libur Nasional Libur) dan TIDAK PERLU / TIDAK BISA diubah manual
+      if (isManagedByAdminOrHrd) {
+        throw new BadRequestException(
+          `Jadwal kerja karyawan "${emp.nama}" di departemen "${emp.departemen?.namaDepartemen || 'Office'}" sudah default permanen (08:45 - 17:00, Minggu & Libur Nasional Libur) dan tidak bisa diubah manual.`,
+        );
+      }
+
+      // Karyawan di departemen SPV hanya bisa diatur oleh SPV bersangkutan, Admin dan HRD tidak bisa mengubahnya
+      if (user.role === 'Admin' || user.role === 'HRD') {
+        throw new ForbiddenException(
+          `Admin dan HRD tidak dapat mengubah jadwal karyawan "${emp.nama}" pada departemen "${emp.departemen?.namaDepartemen || '-'}" karena jadwal departemen ini diatur secara mandiri oleh Supervisor. Anda hanya memiliki hak akses melihat (read-only).`,
+        );
+      } else if (user.role === 'SPV') {
         if (!user.idDepartemen || emp.idDepartemen !== user.idDepartemen) {
           throw new ForbiddenException(
             `Supervisor hanya dapat mengatur jadwal karyawan di departemennya sendiri (${emp.nama} bukan di departemen Anda)`,
           );
         }
-        if (isEmpBackoffice) {
-          throw new ForbiddenException(
-            'Jadwal kerja karyawan Backoffice hanya dapat diatur oleh HRD dan Admin',
-          );
-        }
-      } else if (isEmpBackoffice && user.role !== 'Admin' && user.role !== 'HRD') {
-        throw new ForbiddenException(
-          'Jadwal kerja karyawan Backoffice hanya dapat diatur oleh HRD dan Admin',
-        );
       }
     }
   }
@@ -69,6 +116,12 @@ export class JadwalKerjaService {
     user: { idUser: number; role: string; idDepartemen?: number },
   ): Promise<JadwalKerja> {
     await this.validateKaryawanAccess([dto.idKaryawan], user);
+
+    const holiday = await this.hariLiburRepo.findOne({
+      where: { tanggal: dto.tanggal, isLibur: true },
+    });
+
+    const isLiburExplicit = dto.idShift ? false : !dto.isCuti;
 
     const existing = await this.jadwalRepo.findOne({
       where: {
@@ -80,6 +133,8 @@ export class JadwalKerjaService {
     if (existing) {
       Object.assign(existing, {
         ...dto,
+        isLibur: isLiburExplicit,
+        keterangan: holiday ? holiday.nama : dto.keterangan || null,
         idUser: user.idUser,
         sumberUpload: dto.sumberUpload || 'manual',
       });
@@ -89,6 +144,8 @@ export class JadwalKerjaService {
     const jadwal = new JadwalKerja();
     Object.assign(jadwal, {
       ...dto,
+      isLibur: isLiburExplicit,
+      keterangan: holiday ? holiday.nama : dto.keterangan || null,
       idUser: user.idUser,
       sumberUpload: dto.sumberUpload || 'manual',
     });
@@ -106,6 +163,12 @@ export class JadwalKerjaService {
 
     const results: JadwalKerja[] = [];
     for (const item of items) {
+      const holiday = await this.hariLiburRepo.findOne({
+        where: { tanggal: item.tanggal, isLibur: true },
+      });
+
+      const isLiburExplicit = item.idShift ? false : !item.isCuti;
+
       const existing = await this.jadwalRepo.findOne({
         where: {
           idKaryawan: item.idKaryawan,
@@ -114,16 +177,21 @@ export class JadwalKerjaService {
       });
 
       if (existing) {
-        existing.idShift = item.idShift || null as any;
+        existing.idShift = item.idShift || (null as any);
         existing.isCuti = item.isCuti || false;
+        existing.isLibur = isLiburExplicit;
+        existing.keterangan =
+          item.keterangan || (holiday ? holiday.nama : null);
         existing.idUser = user.idUser;
         existing.sumberUpload = 'manual';
         results.push(await this.jadwalRepo.save(existing));
       } else {
         const created = this.jadwalRepo.create({
           idKaryawan: item.idKaryawan,
-          idShift: item.idShift || null as any,
+          idShift: item.idShift || (null as any),
           isCuti: item.isCuti || false,
+          isLibur: isLiburExplicit,
+          keterangan: item.keterangan || (holiday ? holiday.nama : null),
           tanggal: item.tanggal as any,
           idUser: user.idUser,
           sumberUpload: 'manual',
@@ -175,13 +243,18 @@ export class JadwalKerjaService {
     });
 
     if (items.length === 0) {
-      throw new BadRequestException('Tidak ada data valid ditemukan di file Excel');
+      throw new BadRequestException(
+        'Tidak ada data valid ditemukan di file Excel',
+      );
     }
 
     return this.createBulk(items, user);
   }
 
-  async findAll(user?: { role: string; idDepartemen?: number }): Promise<JadwalKerja[]> {
+  async findAll(user?: {
+    role: string;
+    idDepartemen?: number;
+  }): Promise<JadwalKerja[]> {
     const query = this.jadwalRepo
       .createQueryBuilder('j')
       .leftJoinAndSelect('j.karyawan', 'karyawan')
@@ -216,7 +289,9 @@ export class JadwalKerjaService {
       relations: { karyawan: true, shift: true, user: true },
     });
     if (!jadwal) {
-      throw new NotFoundException(`Jadwal kerja dengan ID ${id} tidak ditemukan`);
+      throw new NotFoundException(
+        `Jadwal kerja dengan ID ${id} tidak ditemukan`,
+      );
     }
     return jadwal;
   }
@@ -229,6 +304,76 @@ export class JadwalKerjaService {
       tanggal instanceof Date
         ? `${tanggal.getFullYear()}-${String(tanggal.getMonth() + 1).padStart(2, '0')}-${String(tanggal.getDate()).padStart(2, '0')}`
         : tanggal;
+
+    // Cek apakah karyawan dikelola oleh Admin & HRD
+    const emp = await this.karyawanRepo.findOne({
+      where: { idKaryawan },
+      relations: { departemen: { pengelola: true } },
+    });
+
+    if (emp && this.isManagedByAdminOrHrd(emp.departemen)) {
+      // 1. Cek apakah ada Hari Penting / Hari Libur di DB
+      const dbHoliday = await this.hariLiburRepo.findOne({
+        where: { tanggal: tanggalStr as any },
+      });
+      if (dbHoliday && dbHoliday.isLibur) {
+        const libur = new JadwalKerja();
+        libur.idKaryawan = idKaryawan;
+        libur.tanggal = tanggalStr as any;
+        libur.isCuti = false;
+        libur.isLibur = true;
+        libur.keterangan = dbHoliday.nama;
+        libur.shift = null as any;
+        return libur;
+      }
+
+      // 2. Cek apakah Hari Libur Nasional atau Cuti Bersama resmi Indonesia
+      const { checkIndonesianHoliday } =
+        await import('../hari-libur/indonesia-holidays.util.js');
+      const officialHoliday = checkIndonesianHoliday(tanggalStr);
+      if (officialHoliday) {
+        const libur = new JadwalKerja();
+        libur.idKaryawan = idKaryawan;
+        libur.tanggal = tanggalStr as any;
+        libur.isCuti = false;
+        libur.isLibur = true;
+        libur.keterangan = officialHoliday.isCollectiveLeave
+          ? `Cuti Bersama: ${officialHoliday.localName}`
+          : `Libur Nasional: ${officialHoliday.localName}`;
+        libur.shift = null as any;
+        return libur;
+      }
+
+      // 3. Libur Hari Minggu
+      const parts = String(tanggalStr).split('-');
+      const dateObj = new Date(
+        Number(parts[0]),
+        Number(parts[1]) - 1,
+        Number(parts[2]),
+      );
+      const dayOfWeek = dateObj.getDay();
+
+      if (dayOfWeek === 0) {
+        const liburMinggu = new JadwalKerja();
+        liburMinggu.idKaryawan = idKaryawan;
+        liburMinggu.tanggal = tanggalStr as any;
+        liburMinggu.isCuti = false;
+        liburMinggu.isLibur = true;
+        liburMinggu.keterangan = 'Libur Hari Minggu';
+        liburMinggu.shift = null as any;
+        return liburMinggu;
+      } else {
+        const defaultShift = await this.getOrCreateDefaultAdminShift();
+        const jadwalDefault = new JadwalKerja();
+        jadwalDefault.idKaryawan = idKaryawan;
+        jadwalDefault.tanggal = tanggalStr as any;
+        jadwalDefault.isCuti = false;
+        jadwalDefault.isLibur = false;
+        jadwalDefault.idShift = defaultShift.idShift;
+        jadwalDefault.shift = defaultShift;
+        return jadwalDefault;
+      }
+    }
 
     return this.jadwalRepo
       .createQueryBuilder('j')
@@ -255,7 +400,17 @@ export class JadwalKerjaService {
         hasJadwal: true,
         isCuti: true,
         isLibur: false,
+        keterangan: jadwal.keterangan || null,
         message: 'Hari ini Anda sedang cuti',
+      };
+    }
+    if (jadwal.isLibur) {
+      return {
+        hasJadwal: true,
+        isCuti: false,
+        isLibur: true,
+        keterangan: jadwal.keterangan || 'Hari Libur Resmi / Hari Penting',
+        message: `Hari ini libur: ${jadwal.keterangan || 'Hari Libur Resmi / Hari Penting'}`,
       };
     }
     if (!jadwal.shift) {
@@ -263,6 +418,7 @@ export class JadwalKerjaService {
         hasJadwal: true,
         isCuti: false,
         isLibur: true,
+        keterangan: jadwal.keterangan || 'Hari Libur Anda',
         message: 'Hari ini adalah hari libur Anda',
       };
     }
@@ -270,14 +426,13 @@ export class JadwalKerjaService {
       hasJadwal: true,
       isCuti: false,
       isLibur: false,
-      idJadwal: jadwal.idJadwal,
+      keterangan: jadwal.keterangan || null,
+      idJadwal: jadwal.idJadwal || 0,
       shift: {
         idShift: jadwal.shift.idShift,
         namaShift: jadwal.shift.namaShift,
         jamMulai: jadwal.shift.jamMulai,
         jamSelesai: jadwal.shift.jamSelesai,
-        jamMulaiIstirahat: jadwal.shift.jamMulaiIstirahat,
-        jamSelesaiIstirahat: jadwal.shift.jamSelesaiIstirahat,
       },
     };
   }
@@ -287,8 +442,50 @@ export class JadwalKerjaService {
    */
   async findWeeklyByKaryawan(idKaryawan: number): Promise<JadwalKerja[]> {
     const now = new Date();
-    const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const endOfWeek = new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const emp = await this.karyawanRepo.findOne({
+      where: { idKaryawan },
+      relations: { departemen: { pengelola: true } },
+    });
+
+    if (emp && this.isManagedByAdminOrHrd(emp.departemen)) {
+      const defaultShift = await this.getOrCreateDefaultAdminShift();
+      const { checkIndonesianHoliday } =
+        await import('../hari-libur/indonesia-holidays.util.js');
+      const list: JadwalKerja[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(startOfWeek.getTime() + i * 24 * 60 * 60 * 1000);
+        const dStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const item = new JadwalKerja();
+        item.idKaryawan = idKaryawan;
+        item.tanggal = dStr as any;
+        item.isCuti = false;
+        const officialHoliday = checkIndonesianHoliday(dStr);
+        if (officialHoliday) {
+          item.isLibur = true;
+          item.keterangan = officialHoliday.isCollectiveLeave
+            ? `Cuti Bersama: ${officialHoliday.localName}`
+            : `Libur Nasional: ${officialHoliday.localName}`;
+          item.shift = null as any;
+        } else if (d.getDay() === 0) {
+          item.isLibur = true;
+          item.keterangan = 'Libur Hari Minggu';
+          item.shift = null as any;
+        } else {
+          item.isLibur = false;
+          item.idShift = defaultShift.idShift;
+          item.shift = defaultShift;
+        }
+        list.push(item);
+      }
+      return list;
+    }
 
     return this.jadwalRepo.find({
       where: {
@@ -309,7 +506,46 @@ export class JadwalKerjaService {
     month: number,
   ): Promise<JadwalKerja[]> {
     const startOfMonth = new Date(year, month - 1, 1);
-    const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+    const totalDays = new Date(year, month, 0).getDate();
+    const endOfMonth = new Date(year, month - 1, totalDays, 23, 59, 59);
+
+    const emp = await this.karyawanRepo.findOne({
+      where: { idKaryawan },
+      relations: { departemen: { pengelola: true } },
+    });
+
+    if (emp && this.isManagedByAdminOrHrd(emp.departemen)) {
+      const defaultShift = await this.getOrCreateDefaultAdminShift();
+      const { checkIndonesianHoliday } =
+        await import('../hari-libur/indonesia-holidays.util.js');
+      const list: JadwalKerja[] = [];
+      for (let d = 1; d <= totalDays; d++) {
+        const dateObj = new Date(year, month - 1, d);
+        const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const item = new JadwalKerja();
+        item.idKaryawan = idKaryawan;
+        item.tanggal = dStr as any;
+        item.isCuti = false;
+        const officialHoliday = checkIndonesianHoliday(dStr);
+        if (officialHoliday) {
+          item.isLibur = true;
+          item.keterangan = officialHoliday.isCollectiveLeave
+            ? `Cuti Bersama: ${officialHoliday.localName}`
+            : `Libur Nasional: ${officialHoliday.localName}`;
+          item.shift = null as any;
+        } else if (dateObj.getDay() === 0) {
+          item.isLibur = true;
+          item.keterangan = 'Libur Hari Minggu';
+          item.shift = null as any;
+        } else {
+          item.isLibur = false;
+          item.idShift = defaultShift.idShift;
+          item.shift = defaultShift;
+        }
+        list.push(item);
+      }
+      return list;
+    }
 
     return this.jadwalRepo.find({
       where: {
@@ -323,15 +559,29 @@ export class JadwalKerjaService {
 
   async findCutiByKaryawanAndPeriode(
     idKaryawan: number,
-    periodeAwal: Date,
-    periodeAkhir: Date,
+    periodeAwal: string,
+    periodeAkhir: string,
   ): Promise<JadwalKerja[]> {
     return this.jadwalRepo.find({
       where: {
         idKaryawan,
         isCuti: true,
-        tanggal: Between(periodeAwal, periodeAkhir),
+        tanggal: Between(periodeAwal as any, periodeAkhir as any),
       },
+    });
+  }
+
+  async findByKaryawanAndPeriode(
+    idKaryawan: number,
+    periodeAwal: string,
+    periodeAkhir: string,
+  ): Promise<JadwalKerja[]> {
+    return this.jadwalRepo.find({
+      where: {
+        idKaryawan,
+        tanggal: Between(periodeAwal as any, periodeAkhir as any),
+      },
+      relations: { shift: true },
     });
   }
 

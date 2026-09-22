@@ -1,3 +1,5 @@
+import 'package:skeletonizer/skeletonizer.dart';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -32,26 +34,68 @@ class HistoryView extends GetView<HistoryController> {
               _buildDateFilter(context),
               const SizedBox(height: 16),
               Expanded(
-                child: Obx(() {
-                  if (controller.isLoading.value) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (controller.attendanceHistory.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'Belum ada riwayat absensi',
-                        style: TextStyle(color: AppColors.slateLight),
+                child: RefreshIndicator(
+                  onRefresh: () => controller.fetchHistory(isRefresh: true),
+                  color: AppColors.redPrimary,
+                  backgroundColor: AppColors.white,
+                  child: Obx(() {
+                    final loading = controller.isLoading.value;
+                    final List<Map<String, dynamic>> list = loading 
+                        ? List.filled(5, <String, dynamic>{'status_code': 'ontime', 'tanggal': '2026-09-01', 'jamMasukAktual': '08:00:00', 'jamKeluarAktual': '17:00:00', 'totalJam': 9}) 
+                        : controller.attendanceHistory.toList();
+
+                    if (!loading && list.isEmpty) {
+                      return LayoutBuilder(
+                        builder: (context, constraints) {
+                          return SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.history_toggle_off_rounded,
+                                      size: 52,
+                                      color: AppColors.slateLight.withValues(alpha: 0.5),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'Belum ada riwayat absensi',
+                                      style: TextStyle(
+                                        color: AppColors.slateDark,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Tarik ke bawah untuk memuat ulang',
+                                      style: TextStyle(color: AppColors.slateLight, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }
+                    return Skeletonizer(
+                      enabled: loading,
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                        padding: const EdgeInsets.only(bottom: 24),
+                        itemCount: list.length,
+                        itemBuilder: (context, index) {
+                          final history = list[index];
+                          return _buildHistoryCard(history);
+                        },
                       ),
                     );
-                  }
-                  return ListView.builder(
-                    itemCount: controller.attendanceHistory.length,
-                    itemBuilder: (context, index) {
-                      final history = controller.attendanceHistory[index];
-                      return _buildHistoryCard(history);
-                    },
-                  );
-                }),
+                  }),
+                ),
               ),
             ],
           ),

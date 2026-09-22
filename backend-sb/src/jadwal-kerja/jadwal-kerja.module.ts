@@ -3,11 +3,21 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JadwalKerja } from './entities/jadwal-kerja.entity.js';
 import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
 import { Departemen } from '../departemen/entities/departemen.entity.js';
+import { HariLibur } from '../hari-libur/entities/hari-libur.entity.js';
+import { Shift } from '../shift/entities/shift.entity.js';
 import { JadwalKerjaService } from './jadwal-kerja.service.js';
 import { JadwalKerjaController } from './jadwal-kerja.controller.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([JadwalKerja, Karyawan, Departemen])],
+  imports: [
+    TypeOrmModule.forFeature([
+      JadwalKerja,
+      Karyawan,
+      Departemen,
+      HariLibur,
+      Shift,
+    ]),
+  ],
   controllers: [JadwalKerjaController],
   providers: [JadwalKerjaService],
   exports: [JadwalKerjaService],

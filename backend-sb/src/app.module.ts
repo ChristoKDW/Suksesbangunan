@@ -26,6 +26,9 @@ import { PenggajianModule } from './penggajian/penggajian.module.js';
 import { ReportsModule } from './reports/reports.module.js';
 import { NotificationModule } from './notification/notification.module.js';
 import { FaceModule } from './face/face.module.js';
+import { HariLiburModule } from './hari-libur/hari-libur.module.js';
+import { PertukaranJadwalModule } from './pertukaran-jadwal/pertukaran-jadwal.module.js';
+import { RegularOffModule } from './regular-off/regular-off.module.js';
 
 @Module({
   imports: [
@@ -85,6 +88,9 @@ import { FaceModule } from './face/face.module.js';
     PenggajianModule,
     ReportsModule,
     NotificationModule,
+    HariLiburModule,
+    PertukaranJadwalModule,
+    RegularOffModule,
   ],
   providers: [
     {

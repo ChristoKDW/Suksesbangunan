@@ -76,6 +76,20 @@ export class MobileAuthService {
       );
     }
 
+    // Validasi Keamanan: 1 Akun 1 Wajah (Anti-Duplikasi Wajah)
+    // Cek apakah wajah yang di-scan sudah terdaftar pada akun karyawan lain
+    const duplicate = await this.karyawanService.findDuplicateFace(
+      result.embedding,
+      idKaryawan,
+      0.4,
+    );
+
+    if (duplicate) {
+      throw new BadRequestException(
+        `Wajah ini sudah terdaftar pada akun karyawan lain (${duplicate.nama} - NIK: ${duplicate.nik}). Satu wajah hanya dapat digunakan untuk satu akun dan tidak dapat didaftarkan berulang.`,
+      );
+    }
+
     karyawan.faceEmbedding = result.embedding;
     await this.karyawanService.saveEntity(karyawan);
 
@@ -337,8 +351,40 @@ export class MobileAuthService {
         nik: karyawan.nik,
         nama: karyawan.nama,
         email: karyawan.email,
+        jenisKelamin: karyawan.jenisKelamin ?? null,
       },
     };
+  }
+
+  // 👱‍♀️ PONYTAIL: Isolasi fitur Lupa Password tanpa OTP, hanya ganti status flag.
+  async forgotPasswordRequest(username: string) {
+    if (!username) throw new BadRequestException('Username harus diisi');
+    const karyawan = await this.karyawanService.findByUsername(username);
+    if (!karyawan) {
+      // Return ok to prevent username enumeration
+      return { message: 'Jika username terdaftar, permintaan telah dikirim ke HRD' };
+    }
+
+    await this.karyawanService.update(karyawan.idKaryawan, { resetPasswordStatus: 'pending' });
+    return { message: 'Permintaan reset password berhasil dikirim ke HRD' };
+  }
+
+  async forgotPasswordClaim(username: string, newPassword: string) {
+    if (!username || !newPassword) throw new BadRequestException('Username dan password baru harus diisi');
+    
+    const karyawan = await this.karyawanService.findByUsername(username);
+    if (!karyawan) throw new UnauthorizedException('Username tidak valid');
+
+    if (karyawan.resetPasswordStatus !== 'approved') {
+      throw new UnauthorizedException('Permintaan reset password Anda belum disetujui oleh HRD');
+    }
+
+    await this.karyawanService.update(karyawan.idKaryawan, {
+      password: newPassword,
+      resetPasswordStatus: 'none',
+    });
+
+    return { message: 'Password berhasil diubah. Silakan login dengan password baru.' };
   }
 
   /**
@@ -352,13 +398,13 @@ export class MobileAuthService {
       nama: k.nama,
       email: k.email,
       nomorTelepon: k.nomorTelepon,
+      jenisKelamin: k.jenisKelamin ?? null,
       departemen: k.departemen?.namaDepartemen ?? null,
       jabatan: k.jabatan?.namaJabatan ?? null,
       statusAktif: k.statusAktif,
       tanggalMasuk: k.tanggalMasuk,
       gajiPokok: k.gajiPokok,
       hakCuti: k.hakCuti,
-      hariLibur: k.hariLibur,
       fotoProfil: k.fotoProfil
         ? `/uploads/foto-profil/${k.fotoProfil.split(/[\\/]/).pop()}`
         : null,

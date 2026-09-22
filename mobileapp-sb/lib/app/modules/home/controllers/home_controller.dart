@@ -3,12 +3,17 @@ import 'package:get/get.dart';
 import '../../../core/config/app_config.dart';
 import '../../../data/services/api_service.dart';
 import '../../../data/services/session_service.dart';
+import '../../../data/services/regular_off_service.dart';
 
 class HomeController extends GetxController {
   final ApiService _api = Get.find<ApiService>();
   final SessionService _session = Get.find<SessionService>();
+  final RegularOffService _roService = Get.isRegistered<RegularOffService>()
+      ? Get.find<RegularOffService>()
+      : Get.put(RegularOffService());
 
   final isLoading = true.obs;
+  final isOperasional = false.obs;
   final userProfile = <String, dynamic>{}.obs;
   final todayAttendance = Rxn<Map<String, dynamic>>();
   final todayBreak = Rxn<Map<String, dynamic>>();
@@ -26,17 +31,21 @@ class HomeController extends GetxController {
         _api.getMyProfile(),
         _api.getTodayAttendance(),
         _api.getTodayBreakStatus(),
+        _roService.checkEligibility(),
       ]);
 
       userProfile.value = results[0] as Map<String, dynamic>;
       todayAttendance.value = results[1];
       todayBreak.value = results[2];
+      final elig = results[3] as Map<String, dynamic>;
+      isOperasional.value = elig['isOperasional'] == true;
     } catch (e) {
       // Fallback ke session data jika API gagal
       userProfile.value = {
         'nama': _session.nama.value ?? 'Karyawan',
         'nik': _session.nik.value ?? '-',
       };
+      isOperasional.value = false;
     } finally {
       isLoading.value = false;
     }
@@ -45,6 +54,9 @@ class HomeController extends GetxController {
   bool get isClockedIn => todayAttendance.value?['jamMasukAktual'] != null;
   bool get isClockedOut => todayAttendance.value?['jamKeluarAktual'] != null;
   bool get isOnBreak => todayBreak.value?['sedangIstirahat'] == true;
+  bool get isTodayLate =>
+      todayAttendance.value?['statusKehadiran']?.toString().toLowerCase() ==
+      'telat';
   int get totalBreakMinutes =>
       (todayBreak.value?['totalDurasiMenit'] as num?)?.toInt() ?? 0;
 

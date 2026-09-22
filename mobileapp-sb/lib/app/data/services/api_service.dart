@@ -169,17 +169,16 @@ class ApiService extends GetConnect {
     return _handle(res);
   }
 
-
   /// GET /absensi/geofence-status → cek apakah koordinat GPS berada dalam
   /// radius salah satu kantor terdaftar.
   Future<Map<String, dynamic>> checkGeofenceStatus({
     required double lat,
     required double lng,
   }) async {
-    final res = await get('/absensi/geofence-status', query: {
-      'lat': lat.toString(),
-      'lng': lng.toString(),
-    });
+    final res = await get(
+      '/absensi/geofence-status',
+      query: {'lat': lat.toString(), 'lng': lng.toString()},
+    );
     return _handle(res);
   }
 
@@ -218,10 +217,10 @@ class ApiService extends GetConnect {
 
   /// GET /jadwal-kerja/me/monthly?year=&month= → jadwal satu bulan penuh.
   Future<List<dynamic>> getMonthlySchedule(int year, int month) async {
-    final res = await get('/jadwal-kerja/me/monthly', query: {
-      'year': year.toString(),
-      'month': month.toString(),
-    });
+    final res = await get(
+      '/jadwal-kerja/me/monthly',
+      query: {'year': year.toString(), 'month': month.toString()},
+    );
     return _handleDynamic(res) ?? [];
   }
 
@@ -241,16 +240,68 @@ class ApiService extends GetConnect {
     return _handleDynamic(res) ?? [];
   }
 
-  /// POST /pengajuan-izin → submit izin baru.
+  /// POST /pengajuan-izin → submit izin baru (JSON atau multipart jika ada file pendukung).
   Future<Map<String, dynamic>> submitLeaveRequest({
     required int idKaryawan,
     required String jenisIzin,
     required String tanggalMulai,
     required String tanggalSelesai,
     required String alasan,
+    String? filePath,
+    List<int>? fileBytes,
+    String? fileName,
     double? lokasiLat,
     double? lokasiLng,
   }) async {
+    List<int>? uploadBytes = fileBytes;
+    String? uploadFileName = fileName;
+
+    if (uploadBytes == null && filePath != null && filePath.isNotEmpty) {
+      final file = File(filePath);
+      if (await file.exists()) {
+        uploadBytes = await file.readAsBytes();
+        uploadFileName = filePath.split(RegExp(r'[\\/]')).last;
+      }
+    }
+
+    if (uploadBytes != null &&
+        uploadFileName != null &&
+        uploadFileName.isNotEmpty) {
+      final ext = uploadFileName.contains('.')
+          ? uploadFileName.split('.').last.toLowerCase()
+          : '';
+      String mime = 'application/octet-stream';
+      if (ext == 'pdf') {
+        mime = 'application/pdf';
+      } else if (ext == 'png') {
+        mime = 'image/png';
+      } else if (ext == 'jpg' || ext == 'jpeg') {
+        mime = 'image/jpeg';
+      } else if (ext == 'doc') {
+        mime = 'application/msword';
+      } else if (ext == 'docx') {
+        mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      }
+
+      final formMap = <String, dynamic>{
+        'idKaryawan': idKaryawan.toString(),
+        'jenisIzin': jenisIzin,
+        'tanggalMulai': tanggalMulai,
+        'tanggalSelesai': tanggalSelesai,
+        'alasan': alasan,
+        'filePendukung': MultipartFile(
+          uploadBytes,
+          filename: uploadFileName,
+          contentType: mime,
+        ),
+      };
+      if (lokasiLat != null) formMap['lokasiLat'] = lokasiLat.toString();
+      if (lokasiLng != null) formMap['lokasiLng'] = lokasiLng.toString();
+
+      final res = await post('/pengajuan-izin', FormData(formMap));
+      return _handle(res);
+    }
+
     final body = <String, dynamic>{
       'idKaryawan': idKaryawan,
       'jenisIzin': jenisIzin,
@@ -315,21 +366,183 @@ class ApiService extends GetConnect {
     final file = File(filePath);
     final bytes = await file.readAsBytes();
     final fileName = filePath.split(RegExp(r'[\\/]')).last;
-    final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
+    final ext = fileName.contains('.')
+        ? fileName.split('.').last.toLowerCase()
+        : 'jpg';
     final mime = ext == 'png'
         ? 'image/png'
         : ext == 'webp'
-            ? 'image/webp'
-            : 'image/jpeg';
+        ? 'image/webp'
+        : 'image/jpeg';
 
     final form = FormData({
-      'foto': MultipartFile(
-        bytes,
-        filename: fileName,
-        contentType: mime,
-      ),
+      'foto': MultipartFile(bytes, filename: fileName, contentType: mime),
     });
     final res = await patch('/auth/mobile/profile-photo', form);
+    return _handle(res);
+  }
+
+  // ---------- Alur Pertukaran Jadwal (Shift & Off) ----------
+
+  /// Ambil daftar shift yang tersedia
+  Future<List<dynamic>> getShifts() async {
+    final res = await get('/pengajuan-pertukaran/shifts');
+    if (!res.isOk) {
+      throw ApiException(
+        res.body?['message'] ?? 'Gagal mengambil data shift',
+        res.statusCode,
+      );
+    }
+    if (res.body is List) {
+      return res.body as List<dynamic>;
+    }
+    return [];
+  }
+
+  /// Cari rekan sebidang yang memiliki shift/off yang cocok pada tanggalTarget
+  Future<List<dynamic>> getAvailablePeers({
+    required String tanggalTarget,
+    required String jenisPertukaran,
+    int? idShiftTarget,
+  }) async {
+    final query = {
+      'tanggalTarget': tanggalTarget,
+      'jenisPertukaran': jenisPertukaran,
+      if (idShiftTarget != null) 'idShiftTarget': idShiftTarget.toString(),
+    };
+    final res = await get(
+      '/pengajuan-pertukaran/available-peers',
+      query: query,
+    );
+    if (!res.isOk) {
+      throw ApiException(
+        res.body?['message'] ?? 'Gagal mencari rekan kerja yang cocok',
+        res.statusCode,
+      );
+    }
+    if (res.body is List) {
+      return res.body as List<dynamic>;
+    }
+    return [];
+  }
+
+  /// Submit pengajuan pertukaran shift / off
+  Future<Map<String, dynamic>> createPertukaran({
+    required int idKaryawanTarget,
+    required String jenisPertukaran,
+    required String tanggalPemohon,
+    int? idShiftPemohon,
+    required String tanggalTarget,
+    int? idShiftTarget,
+    String? alasan,
+  }) async {
+    final body = {
+      'idKaryawanTarget': idKaryawanTarget,
+      'jenisPertukaran': jenisPertukaran,
+      'tanggalPemohon': tanggalPemohon,
+      if (idShiftPemohon != null) 'idShiftPemohon': idShiftPemohon,
+      'tanggalTarget': tanggalTarget,
+      if (idShiftTarget != null) 'idShiftTarget': idShiftTarget,
+      if (alasan != null && alasan.isNotEmpty) 'alasan': alasan,
+    };
+    final res = await post('/pengajuan-pertukaran', body);
+    return _handle(res);
+  }
+
+  /// Ambil semua pengajuan pertukaran saya
+  Future<List<dynamic>> getMyPertukaran() async {
+    final res = await get('/pengajuan-pertukaran/my');
+    if (!res.isOk) {
+      throw ApiException(
+        res.body?['message'] ?? 'Gagal memuat pengajuan pertukaran',
+        res.statusCode,
+      );
+    }
+    if (res.body is List) {
+      return res.body as List<dynamic>;
+    }
+    return [];
+  }
+
+  /// Ambil permintaan pertukaran masuk dari rekan (butuh konfirmasi)
+  Future<List<dynamic>> getIncomingPertukaran() async {
+    final res = await get('/pengajuan-pertukaran/incoming');
+    if (!res.isOk) {
+      throw ApiException(
+        res.body?['message'] ?? 'Gagal memuat permintaan masuk',
+        res.statusCode,
+      );
+    }
+    if (res.body is List) {
+      return res.body as List<dynamic>;
+    }
+    return [];
+  }
+
+  /// Tanggapi permintaan pertukaran dari rekan (Setujui / Tolak)
+  Future<Map<String, dynamic>> respondPeerPertukaran(
+    int idPertukaran, {
+    required bool setuju,
+    String? catatan,
+  }) async {
+    final body = {
+      'setuju': setuju,
+      'status': setuju ? 'disetujui' : 'ditolak',
+      if (catatan != null && catatan.isNotEmpty) 'catatan': catatan,
+    };
+    final res = await patch(
+      '/pengajuan-pertukaran/$idPertukaran/respond-peer',
+      body,
+    );
+    return _handle(res);
+  }
+
+  /// Cek apakah karyawan berhak mengajukan pertukaran (khusus operasional/SPV)
+  Future<Map<String, dynamic>> checkExchangeEligibility() async {
+    final res = await get('/pengajuan-pertukaran/eligibility');
+    return _handle(res);
+  }
+
+  // ---------- Regular Off (Mobile) ----------
+
+  Future<Map<String, dynamic>> checkRegularOffEligibility() async {
+    return _handle(await get('/regular-off/eligibility'));
+  }
+
+  Future<Map<String, dynamic>> getRegularOffBalance() async {
+    return _handle(await get('/regular-off/saldo'));
+  }
+
+  Future<Map<String, dynamic>> submitRegularOff({
+    required List<String> tanggalDipilih,
+    String? alasan,
+  }) async {
+    return _handle(
+      await post('/regular-off/pengajuan', {
+        'tanggalDipilih': tanggalDipilih,
+        if (alasan != null && alasan.isNotEmpty) 'alasan': alasan,
+      }),
+    );
+  }
+
+  Future<List<dynamic>> getMyRegularOffRequests() async {
+    final response = await get('/regular-off/pengajuan/my');
+    return (_handleDynamic(response) as List?) ?? [];
+  }
+
+  Future<Map<String, dynamic>> cancelRegularOff(int idPengajuan) async {
+    return _handle(
+      await patch('/regular-off/pengajuan/$idPengajuan/cancel', {}),
+    );
+  }
+
+  /// Ambil snapshot slip resmi exact-period atau pratinjau berjalan.
+  Future<Map<String, dynamic>> getMySlip({String? tanggal}) async {
+    final query = <String, String>{};
+    if (tanggal != null && tanggal.isNotEmpty) {
+      query['tanggal'] = tanggal;
+    }
+    final res = await get('/penggajian/me/slip', query: query);
     return _handle(res);
   }
 }
@@ -342,4 +555,3 @@ class ApiException implements Exception {
   @override
   String toString() => message;
 }
-

@@ -77,7 +77,7 @@ export default function BreaksPage() {
 
   // Stats
   const activeBreaks = enrichedBreaks.filter(b => !b.jamMasukIstirahat).length
-  const overtimeBreaks = enrichedBreaks.filter(b => b.durasiMenit !== null && b.durasiMenit > 60).length
+  const overtimeBreaks = enrichedBreaks.filter(b => b.terlambatKembali).length
   const onTimeBreaks = enrichedBreaks.filter(b => b.durasiMenit !== null && b.durasiMenit <= 60).length
 
   if (loading) {
@@ -111,7 +111,7 @@ export default function BreaksPage() {
             </div>
           </div>
           <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{overtimeBreaks}</div>
-          <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Melebihi 60 Menit</div>
+          <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Terlambat Kembali</div>
         </div>
         <div className="stat-card">
           <div className="flex items-center gap-3 mb-2">
@@ -141,6 +141,7 @@ export default function BreaksPage() {
                 <TableHead>Keluar</TableHead>
                 <TableHead>Kembali</TableHead>
                 <TableHead>Durasi</TableHead>
+                <TableHead>Kelebihan</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -148,14 +149,14 @@ export default function BreaksPage() {
             <TableBody>
               {filteredData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>
+                  <TableCell colSpan={8} className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>
                     Belum ada data istirahat
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredData.map((record) => {
                   const isActive = !record.jamMasukIstirahat
-                  const isOvertime = record.durasiMenit !== null && record.durasiMenit > 60
+                  const isOvertime = record.terlambatKembali || record.terlambatAktif
                   return (
                     <TableRow key={record.idIstirahat}>
                       <TableCell>
@@ -170,13 +171,18 @@ export default function BreaksPage() {
                       <TableCell className="text-sm font-mono" style={{ color: "var(--text-secondary)" }}>{formatTime(record.jamKeluarIstirahat)}</TableCell>
                       <TableCell className="text-sm font-mono" style={{ color: "var(--text-secondary)" }}>{formatTime(record.jamMasukIstirahat)}</TableCell>
                       <TableCell className="text-sm font-mono" style={{ color: "var(--text-secondary)" }}>
-                        {record.durasiMenit !== null ? `${record.durasiMenit} min` : "—"}
+                        {record.durasiMenit !== null
+                          ? `${record.durasiMenit} min`
+                          : `${record.durasiAktifMenit || 0} min (aktif)`}
+                      </TableCell>
+                      <TableCell className="text-sm font-mono" style={{ color: isOvertime ? "#dc2626" : "var(--text-secondary)" }}>
+                        {record.kelebihanMenit > 0 ? `+${record.kelebihanMenit} min` : "—"}
                       </TableCell>
                       <TableCell>
                         {isActive ? (
                           <Badge variant="warning">Istirahat</Badge>
                         ) : isOvertime ? (
-                          <Badge variant="destructive">Overtime</Badge>
+                          <Badge variant="destructive">{isActive ? "Terlambat Aktif" : "Terlambat Kembali"}</Badge>
                         ) : (
                           <Badge variant="success">OK</Badge>
                         )}

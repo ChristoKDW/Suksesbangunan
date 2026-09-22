@@ -74,6 +74,21 @@ export class MobileAuthController {
     return this.mobileAuthService.login(dto.username, dto.password);
   }
 
+  @Post('forgot-password/request')
+  @ApiOperation({ summary: 'Request lupa password (butuh approval HRD)' })
+  forgotPasswordRequest(@Body('username') username: string) {
+    return this.mobileAuthService.forgotPasswordRequest(username);
+  }
+
+  @Post('forgot-password/claim')
+  @ApiOperation({ summary: 'Claim password baru setelah di-approve HRD' })
+  forgotPasswordClaim(
+    @Body('username') username: string,
+    @Body('newPassword') newPassword: string,
+  ) {
+    return this.mobileAuthService.forgotPasswordClaim(username, newPassword);
+  }
+
   @Post('register-face')
   @UseGuards(JwtMobileGuard)
   @ApiBearerAuth()

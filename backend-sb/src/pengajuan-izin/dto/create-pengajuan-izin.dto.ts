@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsDateString,
   IsIn,
+  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -29,6 +30,9 @@ export class CreatePengajuanIzinDto {
   })
   @IsNotEmpty()
   @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'Tanggal mulai harus berformat YYYY-MM-DD',
+  })
   tanggalMulai: string;
 
   @ApiProperty({
@@ -37,6 +41,9 @@ export class CreatePengajuanIzinDto {
   })
   @IsNotEmpty()
   @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'Tanggal selesai harus berformat YYYY-MM-DD',
+  })
   tanggalSelesai: string;
 
   @ApiProperty({ description: 'Alasan izin', example: 'Demam tinggi' })

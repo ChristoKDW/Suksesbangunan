@@ -54,12 +54,22 @@ export class KaryawanService {
     }
     const list = await this.karyawanRepo.find({
       where,
-      relations: { departemen: true, jabatan: true },
+      relations: { departemen: { pengelola: true }, jabatan: true },
     });
     if (userRole === 'SPV') {
       return list.filter((k) => {
-        const deptName = k.departemen?.namaDepartemen?.toLowerCase().replace(/[\s\-_]/g, '');
-        return deptName !== 'backoffice';
+        const managers = Array.isArray(k.departemen?.pengelola)
+          ? k.departemen.pengelola
+          : k.departemen?.pengelola
+          ? [k.departemen.pengelola]
+          : [];
+        const isManagedByAdminOrHrd = managers.some(
+          (m: any) => m.role === 'Admin' || m.role === 'HRD',
+        );
+        const deptName = k.departemen?.namaDepartemen
+          ?.toLowerCase()
+          .replace(/[\s\-_]/g, '');
+        return !isManagedByAdminOrHrd && deptName !== 'backoffice';
       });
     }
     return list;
@@ -68,7 +78,7 @@ export class KaryawanService {
   async findOne(id: number): Promise<Karyawan> {
     const karyawan = await this.karyawanRepo.findOne({
       where: { idKaryawan: id },
-      relations: { departemen: true, jabatan: true },
+      relations: { departemen: { pengelola: true }, jabatan: true },
     });
     if (!karyawan) {
       throw new NotFoundException(
@@ -152,5 +162,82 @@ export class KaryawanService {
 
   async saveEntity(karyawan: Karyawan): Promise<Karyawan> {
     return this.karyawanRepo.save(karyawan);
+  }
+
+  /**
+   * Cek apakah embedding wajah yang di-scan sudah terdaftar pada akun karyawan lain.
+   * Menggunakan operator cosine distance pgvector (<=>).
+   * Nilai cosine similarity = 1 - (face_embedding <=> new_embedding).
+   */
+  async findDuplicateFace(
+    embedding: number[],
+    excludeIdKaryawan: number,
+    threshold: number = 0.4,
+  ): Promise<{
+    idKaryawan: number;
+    nama: string;
+    nik: string;
+    similarity: number;
+  } | null> {
+    try {
+      const vectorStr = `[${embedding.join(',')}]`;
+      const result = await this.dataSource.query(
+        `SELECT id_karyawan AS "idKaryawan", 
+                nama, 
+                nik, 
+                round((1 - (face_embedding <=> $1::vector))::numeric, 4) AS similarity
+         FROM karyawan
+         WHERE face_embedding IS NOT NULL
+           AND id_karyawan != $2
+           AND (1 - (face_embedding <=> $1::vector)) >= $3
+         ORDER BY (1 - (face_embedding <=> $1::vector)) DESC
+         LIMIT 1`,
+        [vectorStr, excludeIdKaryawan, threshold],
+      );
+
+      if (result && result.length > 0) {
+        return {
+          idKaryawan: Number(result[0].idKaryawan),
+          nama: result[0].nama,
+          nik: result[0].nik,
+          similarity: Number(result[0].similarity),
+        };
+      }
+      return null;
+    } catch (err) {
+      // Fallback in-memory jika query native mengalami kendala
+      const allKaryawan = await this.karyawanRepo.find({
+        where: {},
+        select: {
+          idKaryawan: true,
+          nama: true,
+          nik: true,
+          faceEmbedding: true,
+        },
+      });
+
+      for (const k of allKaryawan) {
+        if (
+          k.idKaryawan === excludeIdKaryawan ||
+          !k.faceEmbedding ||
+          !Array.isArray(k.faceEmbedding)
+        ) {
+          continue;
+        }
+        let dot = 0;
+        for (let i = 0; i < embedding.length; i++) {
+          dot += embedding[i] * k.faceEmbedding[i];
+        }
+        if (dot >= threshold) {
+          return {
+            idKaryawan: k.idKaryawan,
+            nama: k.nama,
+            nik: k.nik,
+            similarity: Number(dot.toFixed(4)),
+          };
+        }
+      }
+      return null;
+    }
   }
 }

@@ -38,8 +38,7 @@ export class CreateUserDto {
   @IsString()
   fotoProfil?: string;
 
-  @ApiProperty({ description: 'ID Departemen', required: false })
+  @ApiProperty({ description: 'ID Departemen (diatur dari modul Departemen)', required: false })
   @IsOptional()
-  @IsNumber()
   idDepartemen?: number;
 }

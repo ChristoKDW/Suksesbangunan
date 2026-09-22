@@ -84,13 +84,37 @@ export class PengajuanIzin {
   @Column({ name: 'status', type: 'varchar', default: 'menunggu' })
   status: string;
 
-  @ApiProperty({ description: 'ID User yang memproses (SPV/HRD)' })
+  @ApiProperty({ description: 'ID User yang memproses (kompatibilitas)' })
   @Column({ name: 'id_user_approval', type: 'int', nullable: true })
   idUserApproval: number;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'id_user_approval' })
   userApproval: User;
+
+  @ApiProperty({ description: 'ID User SPV yang menyetujui' })
+  @Column({ name: 'id_user_spv', type: 'int', nullable: true })
+  idUserSpv: number;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'id_user_spv' })
+  userSpv: User;
+
+  @ApiProperty({ description: 'Catatan approval SPV' })
+  @Column({ name: 'catatan_spv', type: 'text', nullable: true })
+  catatanSpv: string | null;
+
+  @ApiProperty({ description: 'ID User HRD yang menyetujui' })
+  @Column({ name: 'id_user_hrd', type: 'int', nullable: true })
+  idUserHrd: number;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'id_user_hrd' })
+  userHrd: User;
+
+  @ApiProperty({ description: 'Catatan approval HRD' })
+  @Column({ name: 'catatan_hrd', type: 'text', nullable: true })
+  catatanHrd: string | null;
 
   @ApiProperty({ description: 'Tanggal pengajuan' })
   @Column({ name: 'tanggal_pengajuan', type: 'timestamp' })
@@ -100,9 +124,9 @@ export class PengajuanIzin {
   @Column({ name: 'tanggal_diproses', type: 'timestamp', nullable: true })
   tanggalDiproses: Date;
 
-  @ApiProperty({ description: 'Catatan approval dari SPV/HRD' })
+  @ApiProperty({ description: 'Catatan approval umum' })
   @Column({ name: 'catatan_approval', type: 'varchar', nullable: true })
-  catatanApproval: string;
+  catatanApproval: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

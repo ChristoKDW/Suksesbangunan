@@ -70,8 +70,10 @@ class HistoryController extends GetxController {
     fetchHistory();
   }
 
-  Future<void> fetchHistory() async {
-    isLoading.value = true;
+  Future<void> fetchHistory({bool isRefresh = false}) async {
+    if (!isRefresh) {
+      isLoading.value = true;
+    }
     try {
       final data = await _api.getAttendanceHistory(
         startDate: startDate.value != null

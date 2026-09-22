@@ -130,13 +130,30 @@ export class ReportsService {
 
     worksheet.columns = [
       { header: 'ID Gaji', key: 'id', width: 10 },
+      { header: 'NIK', key: 'nik', width: 15 },
       { header: 'Nama Karyawan', key: 'nama', width: 25 },
-      { header: 'Periode Awal', key: 'awal', width: 15 },
-      { header: 'Periode Akhir', key: 'akhir', width: 15 },
-      { header: 'Total Jam', key: 'jam', width: 15 },
+      { header: 'Departemen', key: 'dept', width: 20 },
+      { header: 'Jabatan', key: 'jabatan', width: 20 },
+      { header: 'Periode Awal', key: 'awal', width: 14 },
+      { header: 'Periode Akhir', key: 'akhir', width: 14 },
+      { header: 'Hari Standar', key: 'hariKerja', width: 12 },
+      { header: 'Hari Hadir', key: 'hariHadir', width: 12 },
       { header: 'Gaji Pokok', key: 'pokok', width: 15 },
-      { header: 'Potongan', key: 'potongan', width: 15 },
-      { header: 'Total Bersih', key: 'total', width: 15 },
+      { header: 'Gaji Sesuai Hari', key: 'pokokSesuai', width: 16 },
+      { header: 'Tarif Konsumsi', key: 'tarifKonsumsi', width: 14 },
+      { header: 'Tunjangan Konsumsi', key: 'tunjanganKonsumsi', width: 18 },
+      { header: 'Tunjangan Transport', key: 'tunjanganTransport', width: 18 },
+      { header: 'Tunjangan Komunikasi', key: 'tunjanganKomunikasi', width: 18 },
+      { header: 'Tunjangan Jabatan', key: 'tunjanganJabatan', width: 16 },
+      { header: 'Lembur', key: 'lembur', width: 14 },
+      { header: 'Total Penghasilan', key: 'totalPenghasilan', width: 18 },
+      { header: 'Potongan BPJS', key: 'bpjs', width: 15 },
+      { header: 'Potongan Terlambat', key: 'terlambat', width: 16 },
+      { header: 'Potongan Pinjaman', key: 'pinjaman', width: 16 },
+      { header: 'Potongan Lainnya', key: 'lainnya', width: 16 },
+      { header: 'Sisa Pinjaman', key: 'sisaPinjaman', width: 15 },
+      { header: 'Total Potongan', key: 'totalPotongan', width: 15 },
+      { header: 'Total Diterima (THP)', key: 'totalDiterima', width: 20 },
     ];
 
     // Filter by periode (format YYYY-MM)
@@ -148,7 +165,7 @@ export class ReportsService {
 
     const records = await this.penggajianRepo.find({
       where: query,
-      relations: { karyawan: true },
+      relations: { karyawan: { departemen: true, jabatan: true } },
       order: {
         idGaji: 'DESC',
       },
@@ -157,13 +174,30 @@ export class ReportsService {
     records.forEach((r) => {
       worksheet.addRow({
         id: r.idGaji,
+        nik: r.karyawan?.nik || '-',
         nama: r.karyawan?.nama || '-',
+        dept: r.karyawan?.departemen?.namaDepartemen || '-',
+        jabatan: r.karyawan?.jabatan?.namaJabatan || '-',
         awal: r.periodeAwal,
         akhir: r.periodeAkhir,
-        jam: r.totalJamKerja || 0,
-        pokok: r.gajiPokok,
-        potongan: r.potongan,
-        total: r.totalGaji,
+        hariKerja: r.totalHariKerja || 26,
+        hariHadir: r.totalHariHadir || 0,
+        pokok: Number(r.gajiPokok || 0),
+        pokokSesuai: Number(r.gajiPokokSesuaiHari || r.gajiPokok || 0),
+        tarifKonsumsi: Number(r.tarifKonsumsiPerHari || 20000),
+        tunjanganKonsumsi: Number(r.tunjanganKonsumsi || 0),
+        tunjanganTransport: Number(r.tunjanganTransportasi || 0),
+        tunjanganKomunikasi: Number(r.tunjanganKomunikasi || 0),
+        tunjanganJabatan: Number(r.tunjanganJabatan || 0),
+        lembur: Number(r.lembur || 0),
+        totalPenghasilan: Number(r.totalPenghasilan || r.gajiPokok || 0),
+        bpjs: Number(r.potonganBpjs || 0),
+        terlambat: Number(r.potonganTerlambat || 0),
+        pinjaman: Number(r.potonganPinjaman || 0),
+        lainnya: Number(r.potonganLainnya || 0),
+        sisaPinjaman: Number(r.sisaPinjaman || 0),
+        totalPotongan: Number(r.potongan || 0),
+        totalDiterima: Number(r.totalGaji || 0),
       });
     });
 

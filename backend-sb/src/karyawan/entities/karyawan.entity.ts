@@ -46,6 +46,10 @@ export class Karyawan {
   @Column({ name: 'tanggal_masuk', type: 'date', nullable: true })
   tanggalMasuk: Date;
 
+  @ApiProperty({ description: 'Jenis kelamin (Laki-laki / Perempuan)', required: false })
+  @Column({ name: 'jenis_kelamin', type: 'varchar', length: 20, nullable: true })
+  jenisKelamin: string;
+
   @ApiProperty({ description: 'Status aktif: aktif, resign, cuti' })
   @Column({
     name: 'status_aktif',
@@ -120,6 +124,61 @@ export class Karyawan {
   })
   gajiPokok: number;
 
+  @ApiProperty({ description: 'Tunjangan konsumsi per hari', required: false })
+  @Column({
+    name: 'tunjangan_konsumsi_hari',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 20000,
+    nullable: true,
+  })
+  tunjanganKonsumsiHari: number;
+
+  @ApiProperty({ description: 'Tunjangan transportasi bulanan', required: false })
+  @Column({
+    name: 'tunjangan_transportasi',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 0,
+    nullable: true,
+  })
+  tunjanganTransportasi: number;
+
+  @ApiProperty({ description: 'Tunjangan komunikasi bulanan', required: false })
+  @Column({
+    name: 'tunjangan_komunikasi',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 0,
+    nullable: true,
+  })
+  tunjanganKomunikasi: number;
+
+  @ApiProperty({ description: 'Tunjangan jabatan bulanan', required: false })
+  @Column({
+    name: 'tunjangan_jabatan',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 0,
+    nullable: true,
+  })
+  tunjanganJabatan: number;
+
+  @ApiProperty({ description: 'Potongan BPJS Ketenagakerjaan bulanan', required: false })
+  @Column({
+    name: 'potongan_bpjs',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 0,
+    nullable: true,
+  })
+  potonganBpjs: number;
+
   @ApiProperty({ description: 'Hak Cuti (Apakah digaji saat cuti)' })
   @Column({
     name: 'hak_cuti',
@@ -149,4 +208,13 @@ export class Karyawan {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @ApiProperty({ description: 'Status request lupa password', enum: ['none', 'pending', 'approved'] })
+  @Column({ 
+    type: 'enum', 
+    enum: ['none', 'pending', 'approved'], 
+    default: 'none',
+    name: 'reset_password_status'
+  })
+  resetPasswordStatus: string;
 }

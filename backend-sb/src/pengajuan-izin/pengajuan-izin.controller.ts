@@ -34,9 +34,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 @ApiTags('Pengajuan Izin')
 @Controller('pengajuan-izin')
 export class PengajuanIzinController {
-  constructor(
-    private readonly pengajuanIzinService: PengajuanIzinService,
-  ) {}
+  constructor(private readonly pengajuanIzinService: PengajuanIzinService) {}
 
   @Post()
   @UseGuards(JwtMobileGuard)
@@ -61,27 +59,59 @@ export class PengajuanIzinController {
   )
   async submitIzin(
     @Body() dto: CreatePengajuanIzinDto,
+    @CurrentUser('idKaryawan') idKaryawan: number,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     return this.pengajuanIzinService.submitIzin(
-      dto,
+      { ...dto, idKaryawan },
       file?.path || undefined,
     );
   }
 
-  @Patch(':id/approval')
+  @Patch(':id/approval-spv')
   @UseGuards(JwtWebGuard, RolesGuard)
-  @Roles('SPV', 'HRD')
+  @Roles('SPV', 'Admin')
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Approve/reject pengajuan izin (SPV/HRD only)',
+    summary: 'Approve/reject pengajuan izin oleh SPV',
   })
-  processApproval(
+  processApprovalSpv(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ApprovalPengajuanIzinDto,
+    @CurrentUser()
+    user: { idUser: number; role?: string; idDepartemen?: number },
+  ) {
+    return this.pengajuanIzinService.processApprovalSpv(id, dto, user);
+  }
+
+  @Patch(':id/approval-hrd')
+  @UseGuards(JwtWebGuard, RolesGuard)
+  @Roles('HRD', 'Admin')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Approve/reject pengajuan izin oleh HRD (Final)',
+  })
+  processApprovalHrd(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ApprovalPengajuanIzinDto,
     @CurrentUser('idUser') idUser: number,
   ) {
-    return this.pengajuanIzinService.processApproval(id, dto, idUser);
+    return this.pengajuanIzinService.processApprovalHrd(id, dto, idUser);
+  }
+
+  @Patch(':id/approval')
+  @UseGuards(JwtWebGuard, RolesGuard)
+  @Roles('SPV', 'HRD', 'Admin')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Approve/reject pengajuan izin (Umum)',
+  })
+  processApproval(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ApprovalPengajuanIzinDto,
+    @CurrentUser() user: { idUser: number; role?: string },
+  ) {
+    return this.pengajuanIzinService.processApproval(id, dto, user);
   }
 
   @Get('me')
@@ -106,11 +136,14 @@ export class PengajuanIzinController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Ambil semua pengajuan izin' })
   @ApiQuery({ name: 'status', required: false })
-  findAll(@Query('status') status?: string) {
+  findAll(
+    @CurrentUser() user: { role?: string; idDepartemen?: number },
+    @Query('status') status?: string,
+  ) {
     if (status) {
-      return this.pengajuanIzinService.findByStatus(status);
+      return this.pengajuanIzinService.findByStatus(status, user);
     }
-    return this.pengajuanIzinService.findAll();
+    return this.pengajuanIzinService.findAll(user);
   }
 
   @Get(':id')

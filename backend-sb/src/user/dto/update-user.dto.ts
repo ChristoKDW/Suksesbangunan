@@ -10,4 +10,10 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsOptional()
   @IsInt()
   idUser?: number;
+
+  @ApiPropertyOptional({
+    description: 'ID Departemen; diabaikan karena dikelola dari Departemen',
+  })
+  @IsOptional()
+  idDepartemen?: number;
 }

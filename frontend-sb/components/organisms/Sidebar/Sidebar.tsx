@@ -12,6 +12,7 @@ import {
   Briefcase,
   Clock,
   CalendarDays,
+  CalendarCheck,
   ClipboardCheck,
   Coffee,
   FileText,
@@ -60,6 +61,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/shifts", label: "Daftar Shift", icon: Clock, roles: ["Admin", "HRD", "SPV"] },
       { href: "/schedule", label: "Jadwal Kerja", icon: CalendarDays, roles: ["Admin", "HRD", "SPV"] },
+      { href: "/holidays", label: "Hari Penting", icon: CalendarCheck, roles: ["Admin", "HRD"] },
     ],
   },
   {
@@ -72,7 +74,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Pengajuan",
     items: [
-      { href: "/leave-requests", label: "Pengajuan Izin", icon: FileText, roles: ["Admin", "HRD", "SPV"] },
+      { href: "/leave-requests", label: "Pengajuan", icon: FileText, roles: ["Admin", "HRD", "SPV"] },
     ],
   },
   {

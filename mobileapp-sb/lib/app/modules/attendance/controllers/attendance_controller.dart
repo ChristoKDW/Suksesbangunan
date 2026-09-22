@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
@@ -28,11 +29,11 @@ class AttendanceController extends GetxController {
 
   // Status jadwal kerja
   final scheduleLoading = true.obs;
-  final scheduleState = 'loading'.obs; // 'loading', 'no_schedule', 'cuti', 'libur', 'active', 'error'
+  final scheduleState = 'loading'
+      .obs; // 'loading', 'no_schedule', 'cuti', 'libur', 'active', 'error'
   final scheduleMessage = ''.obs;
   final shiftName = ''.obs;
   final shiftHours = ''.obs;
-  final shiftBreakHours = ''.obs;
   final canProceed = false.obs;
 
   // Status absensi hari ini & istirahat
@@ -47,11 +48,41 @@ class AttendanceController extends GetxController {
   bool get isClockedIn => todayAttendance.value?['jamMasukAktual'] != null;
   bool get isClockedOut => todayAttendance.value?['jamKeluarAktual'] != null;
   bool get isOnBreak => todayBreak.value?['sedangIstirahat'] == true;
-  int get totalBreakMinutes => (todayBreak.value?['totalDurasiMenit'] as num?)?.toInt() ?? 0;
-  List<dynamic> get breakHistory => (todayBreak.value?['riwayat'] as List?) ?? [];
+  int get totalBreakMinutes =>
+      (todayBreak.value?['totalDurasiMenit'] as num?)?.toInt() ?? 0;
+  int get activeBreakSeconds {
+    final start = todayBreak.value?['aktifIstirahat']?['jamKeluarIstirahat'];
+    final parsed = start == null ? null : DateTime.tryParse(start.toString());
+    return parsed == null
+        ? 0
+        : DateTime.now()
+              .difference(parsed.toLocal())
+              .inSeconds
+              .clamp(0, 6000000)
+              .toInt();
+  }
 
-  String? get clockInTimeText => _formatIsoTime(todayAttendance.value?['jamMasukAktual']);
-  String? get clockOutTimeText => _formatIsoTime(todayAttendance.value?['jamKeluarAktual']);
+  int get activeBreakMinutes {
+    if (activeBreakSeconds == 0) {
+      return (todayBreak.value?['durasiAktifMenit'] as num?)?.toInt() ?? 0;
+    }
+    return (activeBreakSeconds / 60).ceil();
+  }
+
+  int get activeBreakExcessMinutes =>
+      (activeBreakMinutes - 60).clamp(0, 100000).toInt();
+  bool get isActiveBreakLate =>
+      todayBreak.value?['terlambatAktif'] == true || activeBreakSeconds > 3600;
+  bool get hasLateBreak => breakHistory.any(
+    (item) => item is Map && item['terlambatKembali'] == true,
+  );
+  List<dynamic> get breakHistory =>
+      (todayBreak.value?['riwayat'] as List?) ?? [];
+
+  String? get clockInTimeText =>
+      _formatIsoTime(todayAttendance.value?['jamMasukAktual']);
+  String? get clockOutTimeText =>
+      _formatIsoTime(todayAttendance.value?['jamKeluarAktual']);
 
   String? _formatIsoTime(dynamic iso) {
     if (iso == null) return null;
@@ -74,7 +105,10 @@ class AttendanceController extends GetxController {
 
   void _startClock() {
     _updateTime();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTime());
+    _clockTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _updateTime(),
+    );
   }
 
   void _updateTime() {
@@ -84,10 +118,29 @@ class AttendanceController extends GetxController {
     final second = now.second.toString().padLeft(2, '0');
     currentTime.value = '$hour:$minute:$second';
 
-    final days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    final days = [
+      'Minggu',
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+    ];
     final months = [
-      '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      '',
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
     ];
     currentDate.value =
         '${days[now.weekday % 7]}, ${now.day.toString().padLeft(2, '0')} ${months[now.month]} ${now.year}';
@@ -132,15 +185,20 @@ class AttendanceController extends GetxController {
           final p = placemarks.first;
           final parts = <String>[
             if (p.street != null && p.street!.isNotEmpty) p.street!,
-            if (p.subLocality != null && p.subLocality!.isNotEmpty) p.subLocality!,
+            if (p.subLocality != null && p.subLocality!.isNotEmpty)
+              p.subLocality!,
             if (p.locality != null && p.locality!.isNotEmpty) p.locality!,
           ];
-          locationText.value = parts.isNotEmpty ? parts.join(', ') : '${position.latitude}, ${position.longitude}';
+          locationText.value = parts.isNotEmpty
+              ? parts.join(', ')
+              : '${position.latitude}, ${position.longitude}';
         } else {
-          locationText.value = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+          locationText.value =
+              '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
         }
       } catch (_) {
-        locationText.value = '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+        locationText.value =
+            '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
       }
 
       locationStatus.value = 'ready';
@@ -175,7 +233,8 @@ class AttendanceController extends GetxController {
       final res = await _api.getTodaySchedule();
       if (res['hasJadwal'] == false) {
         scheduleState.value = 'no_schedule';
-        scheduleMessage.value = res['message']?.toString() ??
+        scheduleMessage.value =
+            res['message']?.toString() ??
             'Anda belum punya jadwal kerja, hubungi supervisor';
         canProceed.value = false;
       } else if (res['isCuti'] == true) {
@@ -192,23 +251,15 @@ class AttendanceController extends GetxController {
         scheduleState.value = 'active';
         final shift = res['shift'] as Map<String, dynamic>?;
         shiftName.value = shift?['namaShift']?.toString() ?? 'Reguler';
-        final mulai =
-            (shift?['jamMulai']?.toString() ?? '08:00').substring(0, 5);
-        final selesai =
-            (shift?['jamSelesai']?.toString() ?? '17:00').substring(0, 5);
+        final mulai = (shift?['jamMulai']?.toString() ?? '08:00').substring(
+          0,
+          5,
+        );
+        final selesai = (shift?['jamSelesai']?.toString() ?? '17:00').substring(
+          0,
+          5,
+        );
         shiftHours.value = '$mulai - $selesai';
-
-        final istMulai = shift?['jamMulaiIstirahat']?.toString();
-        final istSelesai = shift?['jamSelesaiIstirahat']?.toString();
-        if (istMulai != null &&
-            istSelesai != null &&
-            istMulai.isNotEmpty &&
-            istSelesai.isNotEmpty) {
-          shiftBreakHours.value =
-              '${istMulai.substring(0, 5)} - ${istSelesai.substring(0, 5)}';
-        } else {
-          shiftBreakHours.value = '';
-        }
 
         canProceed.value = true;
       }
@@ -237,7 +288,26 @@ class AttendanceController extends GetxController {
     }
   }
 
+  // ponytail: Helper validasi radius untuk izin dan absensi (DRY, clean floating alert)
+  bool _checkRadiusValid() {
+    if (!isWithinOfficeRadius.value) {
+      Get.snackbar(
+        'Di Luar Radius Kantor',
+        'Anda harus berada di area kantor untuk melakukan proses ini.',
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 8,
+        backgroundColor: Colors.redAccent,
+        colorText: Colors.white,
+      );
+      return false;
+    }
+    return true;
+  }
+
   Future<void> toggleBreak() async {
+    if (!_checkRadiusValid()) return;
+
     if (!isClockedIn) {
       Get.snackbar(
         'Perhatian',
@@ -261,8 +331,9 @@ class AttendanceController extends GetxController {
     }
 
     final tipe = isOnBreak ? 'masuk' : 'keluar';
-    final actionLabel =
-        tipe == 'keluar' ? 'Mulai Istirahat / Keluar Makan' : 'Selesai Istirahat';
+    final actionLabel = tipe == 'keluar'
+        ? 'Mulai Istirahat / Keluar Makan'
+        : 'Selesai Istirahat';
 
     final confirm = await Get.dialog<bool>(
       AlertDialog(
@@ -277,14 +348,19 @@ class AttendanceController extends GetxController {
             Expanded(
               child: Text(
                 actionLabel,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
         ),
         content: Text(
           tipe == 'keluar'
-              ? 'Apakah Anda yakin ingin memulai waktu istirahat / keluar makan sekarang?'
+              ? 'Mulai istirahat fleksibel sekarang? Batas normal istirahat adalah 60 menit.'
+              : isActiveBreakLate
+              ? 'Istirahat sudah melebihi 60 menit (+$activeBreakExcessMinutes menit) dan akan dicatat terlambat. Kembali bekerja sekarang?'
               : 'Apakah Anda sudah selesai istirahat dan siap melanjutkan jam kerja?',
           style: const TextStyle(fontSize: 14),
         ),
@@ -334,6 +410,8 @@ class AttendanceController extends GetxController {
   }
 
   void proceedToFaceScan(String tipe) {
+    if (!_checkRadiusValid()) return;
+
     if (tipe == 'keluar' && isOnBreak) {
       Get.snackbar(
         'Peringatan Absen Pulang',

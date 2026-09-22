@@ -21,4 +21,13 @@ export class BulkJadwalKerjaItemDto {
   @IsOptional()
   @IsBoolean()
   isCuti?: boolean;
+
+  @ApiProperty({ description: 'Status Libur Rutin', example: true, required: false })
+  @IsOptional()
+  @IsBoolean()
+  isLibur?: boolean;
+
+  @ApiProperty({ description: 'Keterangan', example: 'Libur Rutin', required: false })
+  @IsOptional()
+  keterangan?: string;
 }

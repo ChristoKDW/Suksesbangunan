@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'package:skeletonizer/skeletonizer.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/profile_controller.dart';
@@ -26,15 +27,17 @@ class ProfileView extends GetView<ProfileController> {
         elevation: 0,
       ),
       body: Obx(() {
-        if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
+        final loading = controller.isLoading.value;
         final user = controller.userProfile;
         final nama = user['nama']?.toString() ?? 'Karyawan Aktif';
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+        return Skeletonizer(
+          enabled: loading,
+          child: RefreshIndicator(
+          onRefresh: () async => await controller.fetchProfile(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
           child: Column(
             children: [
               // -- Avatar with photo upload --
@@ -54,6 +57,10 @@ class ProfileView extends GetView<ProfileController> {
               // -- Info Items --
               _buildInfoTile(Icons.badge_outlined, 'NIK',
                   user['nik']?.toString() ?? '-'),
+              _buildInfoTile(Icons.wc_outlined, 'Jenis Kelamin',
+                  user['jenisKelamin']?.toString() ?? '-'),
+              _buildInfoTile(Icons.calendar_today_outlined, 'Tanggal Masuk',
+                  _formatDate(user['tanggalMasuk']?.toString())),
               _buildInfoTile(Icons.apartment_outlined, 'Departemen',
                   user['departemen']?.toString() ?? '-'),
               _buildInfoTile(Icons.email_outlined, 'Email',
@@ -105,6 +112,8 @@ class ProfileView extends GetView<ProfileController> {
               ),
             ],
           ),
+        ),
+        ),
         );
       }),
     );
@@ -240,5 +249,37 @@ class ProfileView extends GetView<ProfileController> {
         ],
       ),
     );
+  }
+
+  String _formatDate(String? raw) {
+    if (raw == null || raw.isEmpty) return '-';
+    try {
+      final clean = raw.contains('T') ? raw.split('T')[0] : raw;
+      final parts = clean.split('-');
+      if (parts.length == 3) {
+        final year = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final day = int.parse(parts[2]);
+        const months = [
+          '',
+          'Januari',
+          'Februari',
+          'Maret',
+          'April',
+          'Mei',
+          'Juni',
+          'Juli',
+          'Agustus',
+          'September',
+          'Oktober',
+          'November',
+          'Desember'
+        ];
+        return '$day ${months[month]} $year';
+      }
+      return clean;
+    } catch (_) {
+      return raw;
+    }
   }
 }

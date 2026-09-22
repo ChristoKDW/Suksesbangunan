@@ -15,6 +15,7 @@ import { JadwalKerjaService } from '../jadwal-kerja/jadwal-kerja.service.js';
 import { FaceRecognitionService } from '../face/face-recognition.service.js';
 import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
 import { PengaturanKantor } from '../pengaturan-kantor/entities/pengaturan-kantor.entity.js';
+import { RegularOffService } from '../regular-off/regular-off.service.js';
 
 /** Ambang cosine similarity; di atas nilai ini dianggap orang yang sama. */
 const FACE_MATCH_THRESHOLD = 0.4;
@@ -29,6 +30,7 @@ export class AbsensiService {
     private readonly karyawanService: KaryawanService,
     private readonly jadwalKerjaService: JadwalKerjaService,
     private readonly faceService: FaceRecognitionService,
+    private readonly regularOffService: RegularOffService,
   ) {}
 
   /** Cocokkan foto absen dengan wajah terdaftar memakai model AI. */
@@ -99,7 +101,12 @@ export class AbsensiService {
   async checkGeofenceStatus(lat: number, lng: number) {
     const hasil = await this.cariKantorDalamRadius(lat, lng);
     if (!hasil) {
-      return { dalamRadius: false, idKantor: null, namaKantor: null, jarakMeter: null };
+      return {
+        dalamRadius: false,
+        idKantor: null,
+        namaKantor: null,
+        jarakMeter: null,
+      };
     }
     return {
       dalamRadius: true,
@@ -149,6 +156,12 @@ export class AbsensiService {
       );
     }
 
+    if (jadwal.isLibur) {
+      throw new BadRequestException(
+        `Hari ini adalah hari libur/hari penting resmi: "${jadwal.keterangan || 'Hari Penting'}", tidak perlu melakukan absensi`,
+      );
+    }
+
     if (!jadwal.shift) {
       throw new BadRequestException(
         'Hari ini adalah hari libur Anda, tidak ada jadwal kerja',
@@ -188,9 +201,7 @@ export class AbsensiService {
       });
 
       if (!absensiHariIni) {
-        throw new BadRequestException(
-          'Tidak ditemukan absensi masuk hari ini',
-        );
+        throw new BadRequestException('Tidak ditemukan absensi masuk hari ini');
       }
 
       if (absensiHariIni.jamKeluarAktual) {
@@ -251,9 +262,7 @@ export class AbsensiService {
     const semuaKantor = await this.pengaturanKantorService.findAll();
 
     if (semuaKantor.length === 0) {
-      throw new BadRequestException(
-        'Pengaturan kantor belum dikonfigurasi',
-      );
+      throw new BadRequestException('Pengaturan kantor belum dikonfigurasi');
     }
 
     const hasilKantor = await this.cariKantorDalamRadius(
@@ -291,7 +300,20 @@ export class AbsensiService {
       metodeAbsen: dto.metodeAbsen,
     });
 
-    return this.absensiRepo.save(absensi);
+    const savedAbsensi = await this.absensiRepo.save(absensi);
+
+    // Jika karyawan operasional masuk di hari libur nasional (bukan hari Minggu), berikan 1 saldo RO
+    try {
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      await this.regularOffService.createSaldoRoIfEligible(
+        dto.idKaryawan,
+        todayStr,
+      );
+    } catch (err) {
+      console.error('Error generating RO on attendance submit:', err);
+    }
+
+    return savedAbsensi;
   }
 
   async findAll(): Promise<Absensi[]> {
@@ -306,9 +328,7 @@ export class AbsensiService {
       relations: { karyawan: true, jadwalKerja: true, pengajuanIzin: true },
     });
     if (!absensi) {
-      throw new NotFoundException(
-        `Absensi dengan ID ${id} tidak ditemukan`,
-      );
+      throw new NotFoundException(`Absensi dengan ID ${id} tidak ditemukan`);
     }
     return absensi;
   }
@@ -323,7 +343,7 @@ export class AbsensiService {
         idKaryawan,
         jamMasukAktual: Between(periodeAwal, periodeAkhir),
       },
-      relations: { jadwalKerja: true },
+      relations: { jadwalKerja: true, istirahat: true },
     });
   }
 
@@ -332,7 +352,11 @@ export class AbsensiService {
    */
   async findTodayByKaryawan(idKaryawan: number): Promise<Absensi | null> {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
 
     return this.absensiRepo.findOne({
@@ -380,7 +404,11 @@ export class AbsensiService {
       where: {
         idKaryawan,
         jamMasukAktual: Between(
-          new Date(tanggal.getFullYear(), tanggal.getMonth(), tanggal.getDate()),
+          new Date(
+            tanggal.getFullYear(),
+            tanggal.getMonth(),
+            tanggal.getDate(),
+          ),
           new Date(
             tanggal.getFullYear(),
             tanggal.getMonth(),
@@ -409,7 +437,10 @@ export class AbsensiService {
 
   async remove(id: number): Promise<void> {
     const absensi = await this.findOne(id);
-    await this.absensiRepo.query(`DELETE FROM istirahat WHERE id_absensi = $1`, [id]);
+    await this.absensiRepo.query(
+      `DELETE FROM istirahat WHERE id_absensi = $1`,
+      [id],
+    );
     await this.absensiRepo.remove(absensi);
   }
 

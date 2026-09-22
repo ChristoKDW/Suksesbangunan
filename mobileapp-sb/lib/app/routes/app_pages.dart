@@ -1,4 +1,7 @@
 import 'package:get/get.dart';
+import '../modules/forgot_password/bindings/forgot_password_binding.dart';
+import '../modules/forgot_password/views/forgot_password_view.dart';
+
 
 import '../modules/attendance/bindings/attendance_binding.dart';
 import '../modules/attendance/views/attendance_view.dart';
@@ -16,6 +19,8 @@ import '../modules/leave/bindings/leave_binding.dart';
 import '../modules/leave/views/leave_view.dart';
 import '../modules/leave_form/bindings/leave_form_binding.dart';
 import '../modules/leave_form/views/leave_form_view.dart';
+import '../modules/exchange_form/bindings/exchange_form_binding.dart';
+import '../modules/exchange_form/views/exchange_form_view.dart';
 import '../modules/login/bindings/login_binding.dart';
 import '../modules/login/views/login_view.dart';
 import '../modules/otp/bindings/otp_binding.dart';
@@ -28,6 +33,10 @@ import '../modules/schedule/bindings/schedule_binding.dart';
 import '../modules/schedule/views/schedule_view.dart';
 import '../modules/settings/bindings/settings_binding.dart';
 import '../modules/settings/views/settings_view.dart';
+import '../modules/slip_gaji/bindings/slip_gaji_binding.dart';
+import '../modules/slip_gaji/views/slip_gaji_view.dart';
+import '../modules/regular_off/bindings/regular_off_binding.dart';
+import '../modules/regular_off/views/regular_off_view.dart';
 import '../modules/splash/bindings/splash_binding.dart';
 import '../modules/splash/views/splash_view.dart';
 
@@ -100,6 +109,11 @@ class AppPages {
       binding: LeaveFormBinding(),
     ),
     GetPage(
+      name: _Paths.EXCHANGE_FORM,
+      page: () => const ExchangeFormView(),
+      binding: ExchangeFormBinding(),
+    ),
+    GetPage(
       name: _Paths.FACE_REGISTRATION,
       page: () => const FaceRegistrationView(),
       binding: FaceRegistrationBinding(),
@@ -113,6 +127,21 @@ class AppPages {
       name: _Paths.OTP,
       page: () => const OtpView(),
       binding: OtpBinding(),
+    ),
+    GetPage(
+      name: _Paths.SLIP_GAJI,
+      page: () => const SlipGajiView(),
+      binding: SlipGajiBinding(),
+    ),
+    GetPage(
+      name: _Paths.REGULAR_OFF,
+      page: () => const RegularOffView(),
+      binding: RegularOffBinding(),
+    ),
+    GetPage(
+      name: _Paths.FORGOT_PASSWORD,
+      page: () => const ForgotPasswordView(),
+      binding: ForgotPasswordBinding(),
     ),
   ];
 }

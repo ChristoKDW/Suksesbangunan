@@ -33,7 +33,7 @@ export class UserController {
   }
 
   @Get()
-  @Roles('Admin')
+  @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Ambil semua user' })
   findAll() {
     return this.userService.findAll();
@@ -48,7 +48,7 @@ export class UserController {
   }
 
   @Get(':id')
-  @Roles('Admin')
+  @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Ambil user berdasarkan ID' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.userService.findOne(id);

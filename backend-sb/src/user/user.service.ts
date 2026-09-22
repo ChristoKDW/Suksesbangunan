@@ -26,12 +26,13 @@ export class UserService {
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const { idDepartemen: _deptId, ...data } = dto;
     const user = this.userRepo.create({
-      ...dto,
+      ...data,
       password: hashedPassword,
     });
     const saved = await this.userRepo.save(user);
-    const { password: _, ...result } = saved;
+    const { password: _pwd, ...result } = saved;
     return result as User;
   }
 
@@ -47,12 +48,21 @@ export class UserService {
         createdAt: true,
         updatedAt: true,
       },
+      relations: {
+        departemen: true,
+      },
+      order: {
+        idUser: 'ASC',
+      },
     });
   }
 
   async findOne(id: number): Promise<User> {
     const user = await this.userRepo.findOne({
       where: { idUser: id },
+      relations: {
+        departemen: true,
+      },
     });
     if (!user) {
       throw new NotFoundException(`User dengan ID ${id} tidak ditemukan`);
@@ -66,7 +76,7 @@ export class UserService {
 
   async update(id: number, dto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
-    const { idUser: _, ...updates } = dto;
+    const { idUser: _, idDepartemen: __, ...updates } = dto;
     if (updates.password) {
       updates.password = await bcrypt.hash(updates.password, 10);
     }
