@@ -1,0 +1,1 @@
+sed -i '' -e 's/import '"'"'dart:io'"'"';/import '"'"'dart:io'"'"';\nimport '"'"'..\/..\/core\/services\/camera_image_ext.dart'"'"';/g' mobileapp-sb/lib/app/modules/face_recognition/controllers/face_recognition_controller.dart

@@ -1,0 +1,2 @@
+sed -i '' -e 's/import '"'"'..\/..\/core\/services\/camera_image_ext.dart'"'"';/import '"'"'package:comp_attendance_mobile\/app\/core\/services\/camera_image_ext.dart'"'"';/g' mobileapp-sb/lib/app/modules/face_recognition/controllers/face_recognition_controller.dart
+sed -i '' -e 's/import '"'"'..\/..\/core\/services\/camera_image_ext.dart'"'"';/import '"'"'package:comp_attendance_mobile\/app\/core\/services\/camera_image_ext.dart'"'"';/g' mobileapp-sb/lib/app/modules/face_registration/controllers/face_registration_controller.dart
