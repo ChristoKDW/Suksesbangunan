@@ -371,7 +371,7 @@ export default function SchedulePage() {
 
       // Simpan hariLibur ke database karyawan jika berubah
       if (emp.hariLibur !== config.offDay) {
-        api.patch(`karyawan/${emp.idKaryawan}`, { hariLibur: config.offDay }).catch(console.error)
+        api.patch(`karyawan/${emp.idKaryawan}/hari-libur`, { hariLibur: config.offDay }).catch(console.error)
       }
     }
 

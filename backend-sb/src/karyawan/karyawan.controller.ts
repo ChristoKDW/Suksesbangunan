@@ -55,6 +55,16 @@ export class KaryawanController {
     return this.karyawanService.findOne(id);
   }
 
+  @Patch(':id/hari-libur')
+  @Roles('Admin', 'HRD', 'SPV')
+  @ApiOperation({ summary: 'Update preferensi hari libur karyawan' })
+  updateHariLibur(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('hariLibur') hariLibur: number,
+  ) {
+    return this.karyawanService.update(id, { hariLibur });
+  }
+
   @Patch(':id')
   @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Update data karyawan' })
