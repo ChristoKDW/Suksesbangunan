@@ -60,7 +60,7 @@ export class KaryawanController {
   @ApiOperation({ summary: 'Update preferensi hari libur karyawan' })
   updateHariLibur(
     @Param('id', ParseIntPipe) id: number,
-    @Body('hariLibur') hariLibur: number,
+    @Body('hariLibur') hariLibur: string,
   ) {
     return this.karyawanService.update(id, { hariLibur });
   }
