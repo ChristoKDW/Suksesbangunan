@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
+import { LatticeLoader } from "@/components/atoms"
 import { Search, Plus, Edit2, Trash2, X, Clock, Building2, Loader2, ShieldCheck, Filter } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -257,7 +258,13 @@ export default function ShiftsPage() {
               </div>
               <div className="pt-4 flex justify-end gap-2">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-md text-sm font-medium text-[var(--text-secondary)]">Batal</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60">{submitting ? "Menyimpan..." : "Simpan"}</button>
+                <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60">
+                  {submitting ? (
+                    <LatticeLoader status="working" label="Menyimpan..." showTimer={false} cellSize={4} gap={2} fontSize={13} color="#ffffff" />
+                  ) : (
+                    "Simpan"
+                  )}
+                </button>
               </div>
             </form>
           </div>
@@ -316,7 +323,13 @@ export default function ShiftsPage() {
               </div>
               <div className="pt-4 flex justify-end gap-2">
                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 rounded-md text-sm font-medium text-[var(--text-secondary)]">Batal</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60">{submitting ? "Menyimpan..." : "Simpan"}</button>
+                <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60">
+                  {submitting ? (
+                    <LatticeLoader status="working" label="Menyimpan..." showTimer={false} cellSize={4} gap={2} fontSize={13} color="#ffffff" />
+                  ) : (
+                    "Simpan"
+                  )}
+                </button>
               </div>
             </form>
           </div>

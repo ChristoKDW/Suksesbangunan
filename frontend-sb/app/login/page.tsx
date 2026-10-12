@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { Building2, User, Lock, Check, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
+import { LatticeLoader } from "@/components/atoms"
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -129,7 +130,19 @@ export default function LoginPage() {
             disabled={isSubmitting}
             className="mt-4 w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] text-white font-semibold text-sm py-3.5 rounded-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Signing in..." : "Secure Login"}
+            {isSubmitting ? (
+              <LatticeLoader
+                status="working"
+                label="Signing in..."
+                showTimer={false}
+                cellSize={4}
+                gap={2}
+                fontSize={13}
+                color="#ffffff"
+              />
+            ) : (
+              "Secure Login"
+            )}
           </button>
         </form>
 

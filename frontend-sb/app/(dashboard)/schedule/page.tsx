@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect, useMemo, Fragment } from "react"
 import { Card, CardContent, CardHeader, Pagination } from "@/components/molecules"
+import { LatticeLoader } from "@/components/atoms"
 import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Save, Filter, Building2, UserCheck, CalendarRange, Sparkles, AlertCircle, Shuffle, RotateCw, CheckCircle2, X, Info } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -680,8 +681,14 @@ export default function SchedulePage() {
               disabled={saving}
               className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-sm bg-green-600 hover:bg-green-700 disabled:opacity-60"
             >
-              <Save className="w-4 h-4" />
-              {saving ? "Menyimpan..." : "Simpan Perubahan"}
+              {saving ? (
+                <LatticeLoader status="working" label="Menyimpan..." showTimer={false} cellSize={4} gap={2} fontSize={13} color="#ffffff" />
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Simpan Perubahan</span>
+                </>
+              )}
             </button>
           )}
         </div>
@@ -1291,8 +1298,14 @@ export default function SchedulePage() {
                   onClick={() => handleApplyRolling(true)}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-xs font-bold text-white transition-all shadow-sm disabled:opacity-60 cursor-pointer"
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {saving ? "Menyimpan Jadwal..." : "🚀 Terapkan & Simpan Otomatis"}
+                  {saving ? (
+                    <LatticeLoader status="working" label="Menyimpan Jadwal..." showTimer={false} cellSize={4} gap={2} fontSize={12} color="#ffffff" />
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>🚀 Terapkan & Simpan Otomatis</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

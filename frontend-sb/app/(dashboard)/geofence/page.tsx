@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
+import { LatticeLoader } from "@/components/atoms"
 import { Search, Plus, X, Trash2, Edit2, MapPin, ExternalLink, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { PengaturanKantor, Departemen } from "@/lib/types"
@@ -156,7 +157,11 @@ export default function OfficeLocationsPage() {
               <div className="pt-4 flex justify-end gap-2">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-md text-sm font-medium text-[var(--text-secondary)]">Batal</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60">
-                  {submitting ? "Menyimpan..." : "Simpan"}
+                  {submitting ? (
+                    <LatticeLoader status="working" label="Menyimpan..." showTimer={false} cellSize={4} gap={2} fontSize={13} color="#ffffff" />
+                  ) : (
+                    "Simpan"
+                  )}
                 </button>
               </div>
             </form>

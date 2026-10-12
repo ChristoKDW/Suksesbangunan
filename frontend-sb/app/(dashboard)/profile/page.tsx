@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { userApi, User } from "@/lib/api"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
+import { LatticeLoader } from "@/components/atoms"
 import {
   User as UserIcon,
   Shield,
@@ -434,10 +435,15 @@ export default function ProfilePage() {
                   className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-500 disabled:opacity-60 shadow-sm transition-colors"
                 >
                   {submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Menyimpan...</span>
-                    </>
+                    <LatticeLoader
+                      status="working"
+                      label="Menyimpan..."
+                      showTimer={false}
+                      cellSize={4}
+                      gap={2}
+                      fontSize={13}
+                      color="#ffffff"
+                    />
                   ) : (
                     <>
                       <Save className="w-4 h-4" />

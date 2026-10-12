@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
+import { LatticeLoader } from "@/components/atoms"
 import { Search, Plus, X, UserCog, Edit2, Trash2, Loader2, Shield, Eye, EyeOff } from "lucide-react"
 import { userApi, User } from "@/lib/api"
 import { api } from "@/lib/api"
@@ -217,7 +218,11 @@ export default function UsersPage() {
               <div className="pt-4 flex justify-end gap-2">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-md text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent">Batal</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-500 disabled:opacity-60">
-                  {submitting ? "Menyimpan..." : "Simpan Pengguna"}
+                  {submitting ? (
+                    <LatticeLoader status="working" label="Menyimpan..." showTimer={false} cellSize={4} gap={2} fontSize={13} color="#ffffff" />
+                  ) : (
+                    "Simpan Pengguna"
+                  )}
                 </button>
               </div>
             </form>
@@ -291,7 +296,11 @@ export default function UsersPage() {
               <div className="pt-4 flex justify-end gap-2">
                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 rounded-md text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent">Batal</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-500 disabled:opacity-60">
-                  {submitting ? "Menyimpan..." : "Simpan Perubahan"}
+                  {submitting ? (
+                    <LatticeLoader status="working" label="Menyimpan..." showTimer={false} cellSize={4} gap={2} fontSize={13} color="#ffffff" />
+                  ) : (
+                    "Simpan Perubahan"
+                  )}
                 </button>
               </div>
             </form>

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
+import { LatticeLoader } from "@/components/atoms"
 import { Search, Plus, X, CalendarCheck, Edit2, Trash2, Loader2, AlertCircle, Clock } from "lucide-react"
 import { api } from "@/lib/api"
 import type { HariLibur, Shift } from "@/lib/types"
@@ -292,7 +293,11 @@ export default function HolidaysPage() {
                   disabled={submitting}
                   className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60"
                 >
-                  {submitting ? "Menerapkan Jadwal..." : "Simpan Hari Penting"}
+                  {submitting ? (
+                    <LatticeLoader status="working" label="Menerapkan Jadwal..." showTimer={false} cellSize={4} gap={2} fontSize={13} color="#ffffff" />
+                  ) : (
+                    "Simpan Hari Penting"
+                  )}
                 </button>
               </div>
             </form>
@@ -390,7 +395,11 @@ export default function HolidaysPage() {
                   disabled={submitting}
                   className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60"
                 >
-                  {submitting ? "Menyimpan..." : "Simpan Perubahan"}
+                  {submitting ? (
+                    <LatticeLoader status="working" label="Menyimpan..." showTimer={false} cellSize={4} gap={2} fontSize={13} color="#ffffff" />
+                  ) : (
+                    "Simpan Perubahan"
+                  )}
                 </button>
               </div>
             </form>

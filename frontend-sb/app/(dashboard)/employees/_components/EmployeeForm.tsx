@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, ArrowLeft, ExternalLink } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
+import { LatticeLoader } from "@/components/atoms"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Departemen, Jabatan, Karyawan } from "@/lib/types"
@@ -511,7 +512,27 @@ export default function EmployeeForm({ id }: { id?: string }) {
 
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => router.push("/employees")} className="rounded-md px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-surface-raised)]">Batal</button>
-            <button type="submit" disabled={submitting} className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-60">{submitting ? "Menyimpan..." : id ? "Simpan Perubahan" : "Simpan Karyawan"}</button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-60"
+            >
+              {submitting ? (
+                <LatticeLoader
+                  status="working"
+                  label="Menyimpan..."
+                  showTimer={false}
+                  cellSize={4}
+                  gap={2}
+                  fontSize={13}
+                  color="#ffffff"
+                />
+              ) : id ? (
+                "Simpan Perubahan"
+              ) : (
+                "Simpan Karyawan"
+              )}
+            </button>
           </div>
         </form>
       </CardContent>

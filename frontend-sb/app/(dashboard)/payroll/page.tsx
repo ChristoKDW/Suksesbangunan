@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
+import { LatticeLoader } from "@/components/atoms"
 import {
   Download,
   Calculator,
@@ -788,7 +789,11 @@ export default function PayrollPage() {
                   disabled={generating}
                   className="px-4 py-2 rounded-md text-sm font-medium text-white disabled:opacity-60 bg-[#16a34a] hover:bg-[#15803d]"
                 >
-                  {generating ? "Mengkalkulasi..." : "Mulai Generate"}
+                  {generating ? (
+                    <LatticeLoader status="working" label="Mengkalkulasi..." showTimer={false} cellSize={4} gap={2} fontSize={13} color="#ffffff" />
+                  ) : (
+                    "Mulai Generate"
+                  )}
                 </button>
               </div>
             </form>
@@ -897,7 +902,11 @@ export default function PayrollPage() {
                   disabled={savingSettings}
                   className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60"
                 >
-                  {savingSettings ? "Menyimpan..." : "Simpan Pengaturan"}
+                  {savingSettings ? (
+                    <LatticeLoader status="working" label="Menyimpan..." showTimer={false} cellSize={4} gap={2} fontSize={13} color="#ffffff" />
+                  ) : (
+                    "Simpan Pengaturan"
+                  )}
                 </button>
               </div>
             </form>
@@ -1403,7 +1412,11 @@ export default function PayrollPage() {
                   disabled={savingEdit}
                   className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60"
                 >
-                  {savingEdit ? "Menyimpan..." : "Simpan Perubahan"}
+                  {savingEdit ? (
+                    <LatticeLoader status="working" label="Menyimpan..." showTimer={false} cellSize={4} gap={2} fontSize={13} color="#ffffff" />
+                  ) : (
+                    "Simpan Perubahan"
+                  )}
                 </button>
               </div>
             </form>
