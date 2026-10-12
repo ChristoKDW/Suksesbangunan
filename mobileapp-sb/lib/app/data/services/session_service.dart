@@ -12,6 +12,7 @@ class SessionService extends GetxService {
   static const _keyNama = 'nama';
   static const _keyNik = 'nik';
   static const _keySudahRegistrasiWajah = 'sudahRegistrasiWajah';
+  static const _keySudahLengkapData = 'sudahLengkapData';
 
   // Reactive wrappers agar UI yang sudah pakai .obs tetap jalan.
   final RxnString token = RxnString();
@@ -19,6 +20,7 @@ class SessionService extends GetxService {
   final RxnString nama = RxnString();
   final RxnString nik = RxnString();
   final RxBool sudahRegistrasiWajah = false.obs;
+  final RxBool sudahLengkapData = false.obs;
 
   bool get isLoggedIn => token.value != null && token.value!.isNotEmpty;
 
@@ -37,6 +39,8 @@ class SessionService extends GetxService {
     nik.value = _box.read<String>(_keyNik);
     sudahRegistrasiWajah.value =
         _box.read<bool>(_keySudahRegistrasiWajah) ?? false;
+    sudahLengkapData.value =
+        _box.read<bool>(_keySudahLengkapData) ?? false;
   }
 
   void saveLogin({
@@ -45,6 +49,7 @@ class SessionService extends GetxService {
     required String nama,
     required String nik,
     required bool sudahRegistrasiWajah,
+    bool sudahLengkapData = false,
   }) {
     // Simpan ke reactive
     this.token.value = token;
@@ -52,6 +57,7 @@ class SessionService extends GetxService {
     this.nama.value = nama;
     this.nik.value = nik;
     this.sudahRegistrasiWajah.value = sudahRegistrasiWajah;
+    this.sudahLengkapData.value = sudahLengkapData;
 
     // Simpan ke disk
     _box.write(_keyToken, token);
@@ -59,6 +65,12 @@ class SessionService extends GetxService {
     _box.write(_keyNama, nama);
     _box.write(_keyNik, nik);
     _box.write(_keySudahRegistrasiWajah, sudahRegistrasiWajah);
+    _box.write(_keySudahLengkapData, sudahLengkapData);
+  }
+
+  void markProfileCompleted() {
+    sudahLengkapData.value = true;
+    _box.write(_keySudahLengkapData, true);
   }
 
   void markFaceRegistered() {
@@ -72,11 +84,13 @@ class SessionService extends GetxService {
     nama.value = null;
     nik.value = null;
     sudahRegistrasiWajah.value = false;
+    sudahLengkapData.value = false;
 
     _box.remove(_keyToken);
     _box.remove(_keyIdKaryawan);
     _box.remove(_keyNama);
     _box.remove(_keyNik);
     _box.remove(_keySudahRegistrasiWajah);
+    _box.remove(_keySudahLengkapData);
   }
 }

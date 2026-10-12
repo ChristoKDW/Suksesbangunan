@@ -197,4 +197,72 @@ export class MobileAuthController {
     }
     return this.mobileAuthService.updateProfilePhoto(idKaryawan, file.path);
   }
+
+  @Patch('ktp-photo')
+  @UseGuards(JwtMobileGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload foto KTP karyawan' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('foto', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const uploadPath = './uploads/foto-ktp';
+          if (!existsSync(uploadPath)) {
+            mkdirSync(uploadPath, { recursive: true });
+          }
+          cb(null, uploadPath);
+        },
+        filename: (_req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname) || '.jpg';
+          cb(null, `ktp-${uniqueSuffix}${ext}`);
+        },
+      }),
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  async uploadKtpPhoto(
+    @CurrentUser('idKaryawan') idKaryawan: number,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('File foto KTP wajib diupload');
+    }
+    return this.mobileAuthService.updateKtpPhoto(idKaryawan, file.path);
+  }
+
+  @Patch('kk-photo')
+  @UseGuards(JwtMobileGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload foto Kartu Keluarga (KK) karyawan' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('foto', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          const uploadPath = './uploads/foto-kk';
+          if (!existsSync(uploadPath)) {
+            mkdirSync(uploadPath, { recursive: true });
+          }
+          cb(null, uploadPath);
+        },
+        filename: (_req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname) || '.jpg';
+          cb(null, `kk-${uniqueSuffix}${ext}`);
+        },
+      }),
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  async uploadKkPhoto(
+    @CurrentUser('idKaryawan') idKaryawan: number,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('File foto Kartu Keluarga wajib diupload');
+    }
+    return this.mobileAuthService.updateKkPhoto(idKaryawan, file.path);
+  }
 }

@@ -34,6 +34,7 @@ class LoginController extends GetxController {
 
       final karyawan = (res['karyawan'] as Map?) ?? {};
       final bool sudahRegistrasiWajah = res['sudahRegistrasiWajah'] == true;
+      final bool sudahLengkapData = res['sudahLengkapData'] == true;
 
       _session.saveLogin(
         token: res['accessToken']?.toString() ?? '',
@@ -41,10 +42,13 @@ class LoginController extends GetxController {
         nama: karyawan['nama']?.toString() ?? '',
         nik: karyawan['nik']?.toString() ?? '',
         sudahRegistrasiWajah: sudahRegistrasiWajah,
+        sudahLengkapData: sudahLengkapData,
       );
 
-      // Langkah 2 alur wajah: wajibkan registrasi wajah jika belum ada.
-      if (!sudahRegistrasiWajah) {
+      // Alur data karyawan: Lengkapi profil (KTP, KK, data diri) -> Registrasi Wajah -> Dashboard
+      if (!sudahLengkapData) {
+        Get.offAllNamed(Routes.COMPLETE_PROFILE);
+      } else if (!sudahRegistrasiWajah) {
         Get.offAllNamed(Routes.FACE_REGISTRATION);
       } else {
         Get.offAllNamed(Routes.DASHBOARD);

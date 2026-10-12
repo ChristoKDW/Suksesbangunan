@@ -78,6 +78,10 @@ export default function EmployeesPage() {
   )
 
   const handleDeleteEmployee = async (id: number) => {
+    if (user?.role !== "Admin") {
+      alert("Hanya Admin yang berhak menghapus data karyawan.")
+      return
+    }
     if (
       !confirm(
         "Apakah Anda yakin ingin menghapus data karyawan ini secara permanen? Data riwayat jadwal, absensi, izin, dan penggajian terkait karyawan ini juga akan ikut dibersihkan."
@@ -262,13 +266,15 @@ export default function EmployeesPage() {
                       >
                         <Edit2 className="w-4 h-4" />
                       </Link>
-                      <button
-                        onClick={() => handleDeleteEmployee(emp.idKaryawan)}
-                        title="Hapus Karyawan"
-                        className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-red-500"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {user?.role === "Admin" && (
+                        <button
+                          onClick={() => handleDeleteEmployee(emp.idKaryawan)}
+                          title="Hapus Karyawan"
+                          className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-red-500"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

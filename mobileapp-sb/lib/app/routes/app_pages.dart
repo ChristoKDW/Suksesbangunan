@@ -1,4 +1,6 @@
 import 'package:get/get.dart';
+import '../modules/complete_profile/bindings/complete_profile_binding.dart';
+import '../modules/complete_profile/views/complete_profile_view.dart';
 import '../modules/forgot_password/bindings/forgot_password_binding.dart';
 import '../modules/forgot_password/views/forgot_password_view.dart';
 
@@ -142,6 +144,11 @@ class AppPages {
       name: _Paths.FORGOT_PASSWORD,
       page: () => const ForgotPasswordView(),
       binding: ForgotPasswordBinding(),
+    ),
+    GetPage(
+      name: _Paths.COMPLETE_PROFILE,
+      page: () => const CompleteProfileView(),
+      binding: CompleteProfileBinding(),
     ),
   ];
 }

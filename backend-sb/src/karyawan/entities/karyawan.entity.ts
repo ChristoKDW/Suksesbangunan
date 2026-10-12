@@ -86,6 +86,58 @@ export class Karyawan {
   @Column({ name: 'nama_bank', type: 'varchar', length: 50, nullable: true })
   namaBank: string | null;
 
+  @ApiProperty({ description: 'Nama panggilan karyawan', required: false })
+  @Column({ name: 'nama_panggilan', type: 'varchar', length: 100, nullable: true })
+  namaPanggilan: string | null;
+
+  @ApiProperty({ description: 'Agama sesuai KTP', required: false })
+  @Column({ name: 'agama', type: 'varchar', length: 50, nullable: true })
+  agama: string | null;
+
+  @ApiProperty({ description: 'Tempat lahir sesuai KTP', required: false })
+  @Column({ name: 'tempat_lahir', type: 'varchar', length: 100, nullable: true })
+  tempatLahir: string | null;
+
+  @ApiProperty({ description: 'Tanggal lahir sesuai KTP', required: false })
+  @Column({ name: 'tanggal_lahir', type: 'varchar', length: 100, nullable: true })
+  tanggalLahir: string | null;
+
+  @ApiProperty({ description: 'Status perkawinan sesuai KTP', required: false })
+  @Column({ name: 'status_perkawinan', type: 'varchar', length: 50, nullable: true })
+  statusPerkawinan: string | null;
+
+  @ApiProperty({ description: 'Nama ibu kandung', required: false })
+  @Column({ name: 'nama_ibu_kandung', type: 'varchar', length: 150, nullable: true })
+  namaIbuKandung: string | null;
+
+  @ApiProperty({ description: 'Lokasi kota terbit KTP', required: false })
+  @Column({ name: 'kota_terbit_ktp', type: 'varchar', length: 100, nullable: true })
+  kotaTerbitKtp: string | null;
+
+  @ApiProperty({ description: 'Kabupaten sesuai KTP', required: false })
+  @Column({ name: 'kabupaten', type: 'varchar', length: 100, nullable: true })
+  kabupaten: string | null;
+
+  @ApiProperty({ description: 'Kecamatan sesuai KTP', required: false })
+  @Column({ name: 'kecamatan', type: 'varchar', length: 100, nullable: true })
+  kecamatan: string | null;
+
+  @ApiProperty({ description: 'Kelurahan sesuai KTP', required: false })
+  @Column({ name: 'kelurahan', type: 'varchar', length: 100, nullable: true })
+  kelurahan: string | null;
+
+  @ApiProperty({ description: 'RT/RW sesuai KTP', required: false })
+  @Column({ name: 'rt_rw', type: 'varchar', length: 50, nullable: true })
+  rtRw: string | null;
+
+  @ApiProperty({ description: 'Path atau link foto KTP', required: false })
+  @Column({ name: 'foto_ktp', type: 'text', nullable: true })
+  fotoKtp: string | null;
+
+  @ApiProperty({ description: 'Path atau link foto Kartu Keluarga (KK)', required: false })
+  @Column({ name: 'foto_kartu_keluarga', type: 'text', nullable: true })
+  fotoKartuKeluarga: string | null;
+
   @ApiProperty({ description: 'Email sudah terverifikasi?' })
   @Column({
     name: 'email_terverifikasi',

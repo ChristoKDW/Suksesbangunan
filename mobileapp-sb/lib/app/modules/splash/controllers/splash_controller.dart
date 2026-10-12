@@ -14,9 +14,9 @@ class SplashController extends GetxController {
       final session = Get.find<SessionService>();
 
       if (session.isLoggedIn) {
-        // Sesi masih aktif → langsung ke Dashboard
-        // Cek apakah wajah sudah terdaftar
-        if (!session.sudahRegistrasiWajah.value) {
+        if (!session.sudahLengkapData.value) {
+          Get.offAllNamed(Routes.COMPLETE_PROFILE);
+        } else if (!session.sudahRegistrasiWajah.value) {
           Get.offAllNamed(Routes.FACE_REGISTRATION);
         } else {
           Get.offAllNamed(Routes.DASHBOARD);

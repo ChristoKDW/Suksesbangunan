@@ -124,6 +124,19 @@ export interface Karyawan {
   potonganBpjs?: number | null
   hakCuti: boolean
   hariLibur: string | null
+  namaPanggilan?: string | null
+  agama?: string | null
+  tempatLahir?: string | null
+  tanggalLahir?: string | null
+  statusPerkawinan?: string | null
+  namaIbuKandung?: string | null
+  kotaTerbitKtp?: string | null
+  kabupaten?: string | null
+  kecamatan?: string | null
+  kelurahan?: string | null
+  rtRw?: string | null
+  fotoKtp?: string | null
+  fotoKartuKeluarga?: string | null
   resetPasswordStatus?: string
   createdAt?: string
   updatedAt?: string

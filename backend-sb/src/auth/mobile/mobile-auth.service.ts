@@ -54,12 +54,39 @@ export class MobileAuthService {
     };
   }
 
+  checkDataLengkap(karyawan: any): boolean {
+    if (!karyawan) return false;
+    const isOk = (val?: string | null) => typeof val === 'string' && val.trim().length > 0;
+    return !!(
+      isOk(karyawan.nama) &&
+      isOk(karyawan.namaPanggilan) &&
+      isOk(karyawan.agama) &&
+      isOk(karyawan.tempatLahir) &&
+      isOk(karyawan.tanggalLahir) &&
+      isOk(karyawan.statusPerkawinan) &&
+      isOk(karyawan.namaIbuKandung) &&
+      isOk(karyawan.kabupaten) &&
+      isOk(karyawan.kecamatan) &&
+      isOk(karyawan.kelurahan) &&
+      isOk(karyawan.rtRw) &&
+      isOk(karyawan.fotoKtp) &&
+      isOk(karyawan.fotoKartuKeluarga) &&
+      isOk(karyawan.fotoProfil)
+    );
+  }
+
   /**
    * Daftarkan wajah karyawan: foto dikirim dari mobile, server yang menjalankan
    * model AI (SCRFD + MobileFaceNet) lalu menyimpan embedding 512-dim ke pgvector.
    */
   async registerFace(idKaryawan: number, imageBase64: string) {
     const karyawan = await this.karyawanService.findOne(idKaryawan);
+
+    if (!this.checkDataLengkap(karyawan)) {
+      throw new BadRequestException(
+        'Data identitas, foto KTP, foto Kartu Keluarga, dan foto profil Anda wajib dilengkapi terlebih dahulu sebelum mendaftarkan biometrik wajah.',
+      );
+    }
 
     if (!this.faceService.isReady()) {
       throw new ServiceUnavailableException(
@@ -346,6 +373,7 @@ export class MobileAuthService {
       sudahRegistrasiWajah:
         Array.isArray(karyawan.faceEmbedding) &&
         karyawan.faceEmbedding.length > 0,
+      sudahLengkapData: this.checkDataLengkap(karyawan),
       karyawan: {
         idKaryawan: karyawan.idKaryawan,
         nik: karyawan.nik,
@@ -399,6 +427,19 @@ export class MobileAuthService {
       nama: k.nama,
       email: k.email,
       nomorTelepon: k.nomorTelepon,
+      namaPanggilan: k.namaPanggilan ?? null,
+      agama: k.agama ?? null,
+      tempatLahir: k.tempatLahir ?? null,
+      tanggalLahir: k.tanggalLahir ?? null,
+      statusPerkawinan: k.statusPerkawinan ?? null,
+      namaIbuKandung: k.namaIbuKandung ?? null,
+      kotaTerbitKtp: k.kotaTerbitKtp ?? null,
+      kabupaten: k.kabupaten ?? null,
+      kecamatan: k.kecamatan ?? null,
+      kelurahan: k.kelurahan ?? null,
+      rtRw: k.rtRw ?? null,
+      fotoKtp: k.fotoKtp ?? null,
+      fotoKartuKeluarga: k.fotoKartuKeluarga ?? null,
       jenisKelamin: k.jenisKelamin ?? null,
       departemen: k.departemen?.namaDepartemen ?? null,
       jabatan: k.jabatan?.namaJabatan ?? null,
@@ -408,19 +449,20 @@ export class MobileAuthService {
       gajiPokok: k.gajiPokok,
       hakCuti: k.hakCuti,
       fotoProfil: k.fotoProfil
-        ? `/uploads/foto-profil/${k.fotoProfil.split(/[\\/]/).pop()}`
+        ? (k.fotoProfil.startsWith('http') ? k.fotoProfil : `/uploads/foto-profil/${k.fotoProfil.split(/[\\/]/).pop()}`)
         : null,
       sudahRegistrasiWajah:
         Array.isArray(k.faceEmbedding) && k.faceEmbedding.length > 0,
+      sudahLengkapData: this.checkDataLengkap(k),
     };
   }
 
   /**
-   * Update profil karyawan (nama, email, telepon) dari mobile.
+   * Update profil karyawan dari mobile (lengkap dengan data KTP dan keluarga).
    */
   async updateProfile(
     idKaryawan: number,
-    dto: { nama?: string; email?: string; nomorTelepon?: string },
+    dto: any,
   ) {
     const karyawan = await this.karyawanService.findOne(idKaryawan);
 
@@ -433,11 +475,25 @@ export class MobileAuthService {
     }
 
     if (dto.nama) karyawan.nama = dto.nama;
-    if (dto.nomorTelepon !== undefined)
-      karyawan.nomorTelepon = dto.nomorTelepon;
+    if (dto.nomorTelepon !== undefined) karyawan.nomorTelepon = dto.nomorTelepon;
+    if (dto.namaPanggilan !== undefined) karyawan.namaPanggilan = dto.namaPanggilan;
+    if (dto.agama !== undefined) karyawan.agama = dto.agama;
+    if (dto.tempatLahir !== undefined) karyawan.tempatLahir = dto.tempatLahir;
+    if (dto.tanggalLahir !== undefined) karyawan.tanggalLahir = dto.tanggalLahir;
+    if (dto.statusPerkawinan !== undefined) karyawan.statusPerkawinan = dto.statusPerkawinan;
+    if (dto.namaIbuKandung !== undefined) karyawan.namaIbuKandung = dto.namaIbuKandung;
+    if (dto.kotaTerbitKtp !== undefined) karyawan.kotaTerbitKtp = dto.kotaTerbitKtp;
+    if (dto.kabupaten !== undefined) karyawan.kabupaten = dto.kabupaten;
+    if (dto.kecamatan !== undefined) karyawan.kecamatan = dto.kecamatan;
+    if (dto.kelurahan !== undefined) karyawan.kelurahan = dto.kelurahan;
+    if (dto.rtRw !== undefined) karyawan.rtRw = dto.rtRw;
+    if (dto.jenisKelamin !== undefined) karyawan.jenisKelamin = dto.jenisKelamin;
 
     await this.karyawanService.saveEntity(karyawan);
-    return { message: 'Profil berhasil diperbarui' };
+    return {
+      message: 'Profil berhasil diperbarui',
+      sudahLengkapData: this.checkDataLengkap(karyawan),
+    };
   }
 
   /**
@@ -475,6 +531,39 @@ export class MobileAuthService {
     return {
       message: 'Foto profil berhasil diperbarui',
       fotoProfil: cleanPath,
+      sudahLengkapData: this.checkDataLengkap(karyawan),
+    };
+  }
+
+  /**
+   * Upload foto KTP karyawan.
+   */
+  async updateKtpPhoto(idKaryawan: number, filePath: string) {
+    const karyawan = await this.karyawanService.findOne(idKaryawan);
+    const cleanPath = `/uploads/foto-ktp/${filePath.split(/[\\/]/).pop()}`;
+    karyawan.fotoKtp = cleanPath;
+    await this.karyawanService.saveEntity(karyawan);
+
+    return {
+      message: 'Foto KTP berhasil disimpan',
+      fotoKtp: cleanPath,
+      sudahLengkapData: this.checkDataLengkap(karyawan),
+    };
+  }
+
+  /**
+   * Upload foto Kartu Keluarga karyawan.
+   */
+  async updateKkPhoto(idKaryawan: number, filePath: string) {
+    const karyawan = await this.karyawanService.findOne(idKaryawan);
+    const cleanPath = `/uploads/foto-kk/${filePath.split(/[\\/]/).pop()}`;
+    karyawan.fotoKartuKeluarga = cleanPath;
+    await this.karyawanService.saveEntity(karyawan);
+
+    return {
+      message: 'Foto Kartu Keluarga berhasil disimpan',
+      fotoKartuKeluarga: cleanPath,
+      sudahLengkapData: this.checkDataLengkap(karyawan),
     };
   }
 }

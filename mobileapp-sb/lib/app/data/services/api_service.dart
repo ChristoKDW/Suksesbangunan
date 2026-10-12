@@ -332,20 +332,84 @@ class ApiService extends GetConnect {
     return _handleDynamic(res) ?? [];
   }
 
-  // ---------- Profile Update (Mobile) ----------
-
-  /// PATCH /auth/mobile/update-profile → update nama, email, telepon.
+  /// PATCH /auth/mobile/update-profile → update data profil lengkap karyawan.
   Future<Map<String, dynamic>> updateProfile({
     String? nama,
     String? email,
     String? nomorTelepon,
+    String? namaPanggilan,
+    String? agama,
+    String? tempatLahir,
+    String? tanggalLahir,
+    String? statusPerkawinan,
+    String? namaIbuKandung,
+    String? kotaTerbitKtp,
+    String? kabupaten,
+    String? kecamatan,
+    String? kelurahan,
+    String? rtRw,
+    String? jenisKelamin,
   }) async {
     final body = <String, dynamic>{};
     if (nama != null) body['nama'] = nama;
     if (email != null) body['email'] = email;
     if (nomorTelepon != null) body['nomorTelepon'] = nomorTelepon;
+    if (namaPanggilan != null) body['namaPanggilan'] = namaPanggilan;
+    if (agama != null) body['agama'] = agama;
+    if (tempatLahir != null) body['tempatLahir'] = tempatLahir;
+    if (tanggalLahir != null) body['tanggalLahir'] = tanggalLahir;
+    if (statusPerkawinan != null) body['statusPerkawinan'] = statusPerkawinan;
+    if (namaIbuKandung != null) body['namaIbuKandung'] = namaIbuKandung;
+    if (kotaTerbitKtp != null) body['kotaTerbitKtp'] = kotaTerbitKtp;
+    if (kabupaten != null) body['kabupaten'] = kabupaten;
+    if (kecamatan != null) body['kecamatan'] = kecamatan;
+    if (kelurahan != null) body['kelurahan'] = kelurahan;
+    if (rtRw != null) body['rtRw'] = rtRw;
+    if (jenisKelamin != null) body['jenisKelamin'] = jenisKelamin;
 
     final res = await patch('/auth/mobile/update-profile', body);
+    return _handle(res);
+  }
+
+  /// PATCH /auth/mobile/ktp-photo → upload foto KTP (multipart).
+  Future<Map<String, dynamic>> uploadKtpPhoto(String filePath) async {
+    final file = File(filePath);
+    final bytes = await file.readAsBytes();
+    final fileName = filePath.split(RegExp(r'[\\/]')).last;
+    final ext = fileName.contains('.')
+        ? fileName.split('.').last.toLowerCase()
+        : 'jpg';
+    final mime = ext == 'png'
+        ? 'image/png'
+        : ext == 'webp'
+        ? 'image/webp'
+        : 'image/jpeg';
+
+    final form = FormData({
+      'foto': MultipartFile(bytes, filename: fileName, contentType: mime),
+    });
+    final res = await patch('/auth/mobile/ktp-photo', form);
+    return _handle(res);
+  }
+
+  /// PATCH /auth/mobile/kk-photo → upload foto KK (multipart).
+  Future<Map<String, dynamic>> uploadKkPhoto(String filePath) async {
+    final file = File(filePath);
+    final bytes = await file.readAsBytes();
+    final fileName = filePath.split(RegExp(r'[\\/]')).last;
+    final ext = fileName.contains('.')
+        ? fileName.split('.').last.toLowerCase()
+        : 'jpg';
+    final mime = ext == 'png'
+        ? 'image/png'
+        : ext == 'webp'
+        ? 'image/webp'
+        : 'image/jpeg';
+
+    final form = FormData({
+      'foto': MultipartFile(bytes, filename: fileName, contentType: mime),
+    });
+    final res = await patch('/auth/mobile/kk-photo', form);
     return _handle(res);
   }
 

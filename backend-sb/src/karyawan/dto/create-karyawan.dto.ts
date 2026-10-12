@@ -141,4 +141,74 @@ export class CreateKaryawanDto {
   @IsOptional()
   @IsString()
   resetPasswordStatus?: string;
+
+  @ApiPropertyOptional({ description: 'Nama panggilan' })
+  @IsOptional()
+  @IsString()
+  namaPanggilan?: string;
+
+  @ApiPropertyOptional({ description: 'Agama sesuai KTP' })
+  @IsOptional()
+  @IsString()
+  agama?: string;
+
+  @ApiPropertyOptional({ description: 'Tempat lahir sesuai KTP' })
+  @IsOptional()
+  @IsString()
+  tempatLahir?: string;
+
+  @ApiPropertyOptional({ description: 'Tanggal lahir sesuai KTP' })
+  @IsOptional()
+  @IsString()
+  tanggalLahir?: string;
+
+  @ApiPropertyOptional({ description: 'Status perkawinan' })
+  @IsOptional()
+  @IsString()
+  statusPerkawinan?: string;
+
+  @ApiPropertyOptional({ description: 'Nama ibu kandung' })
+  @IsOptional()
+  @IsString()
+  namaIbuKandung?: string;
+
+  @ApiPropertyOptional({ description: 'Lokasi kota terbit KTP' })
+  @IsOptional()
+  @IsString()
+  kotaTerbitKtp?: string;
+
+  @ApiPropertyOptional({ description: 'Kabupaten sesuai KTP' })
+  @IsOptional()
+  @IsString()
+  kabupaten?: string;
+
+  @ApiPropertyOptional({ description: 'Kecamatan sesuai KTP' })
+  @IsOptional()
+  @IsString()
+  kecamatan?: string;
+
+  @ApiPropertyOptional({ description: 'Kelurahan sesuai KTP' })
+  @IsOptional()
+  @IsString()
+  kelurahan?: string;
+
+  @ApiPropertyOptional({ description: 'RT/RW sesuai KTP' })
+  @IsOptional()
+  @IsString()
+  rtRw?: string;
+
+  @ApiPropertyOptional({ description: 'Path atau URL foto KTP' })
+  @IsOptional()
+  @IsString()
+  fotoKtp?: string;
+
+  @ApiPropertyOptional({ description: 'Path atau URL foto KK' })
+  @IsOptional()
+  @IsString()
+  fotoKartuKeluarga?: string;
+
+  @ApiPropertyOptional({ description: 'Path atau URL foto profil' })
+  @IsOptional()
+  @IsString()
+  fotoProfil?: string;
 }

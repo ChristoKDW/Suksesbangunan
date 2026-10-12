@@ -3,7 +3,7 @@
 import { showError } from "@/lib/swal"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { Loader2, ArrowLeft, ExternalLink } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -31,6 +31,19 @@ type FormState = {
   potonganBpjs: number
   hariLibur: string
   hakCuti: boolean
+  namaPanggilan: string
+  agama: string
+  tempatLahir: string
+  tanggalLahir: string
+  statusPerkawinan: string
+  namaIbuKandung: string
+  kotaTerbitKtp: string
+  kabupaten: string
+  kecamatan: string
+  kelurahan: string
+  rtRw: string
+  fotoKtp: string
+  fotoKartuKeluarga: string
 }
 
 const emptyForm: FormState = {
@@ -54,6 +67,19 @@ const emptyForm: FormState = {
   potonganBpjs: 0,
   hariLibur: "Minggu",
   hakCuti: false,
+  namaPanggilan: "",
+  agama: "",
+  tempatLahir: "",
+  tanggalLahir: "",
+  statusPerkawinan: "Belum Kawin",
+  namaIbuKandung: "",
+  kotaTerbitKtp: "",
+  kabupaten: "",
+  kecamatan: "",
+  kelurahan: "",
+  rtRw: "",
+  fotoKtp: "",
+  fotoKartuKeluarga: "",
 }
 
 const inputClass = "w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
@@ -66,6 +92,13 @@ const requiredFields: Array<[keyof FormState, string, (v: unknown) => boolean]> 
 
 function Label({ children, required = false }: { children: React.ReactNode; required?: boolean }) {
   return <label className="text-xs font-medium text-[var(--text-secondary)]">{children}{required && <span className="text-red-500"> *</span>}</label>
+}
+
+function getMediaUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  if (url.startsWith("http")) return url
+  const base = process.env.NEXT_PUBLIC_API_URL || "https://alfiyah.my.id"
+  return `${base.replace(/\/+$/, "")}/${url.replace(/^\/+/, "")}`
 }
 
 function toForm(emp: Karyawan): FormState {
@@ -91,6 +124,19 @@ function toForm(emp: Karyawan): FormState {
     potonganBpjs: Number(emp.potonganBpjs || 0),
     hariLibur: emp.hariLibur || "Minggu",
     hakCuti: !!emp.hakCuti,
+    namaPanggilan: emp.namaPanggilan || "",
+    agama: emp.agama || "",
+    tempatLahir: emp.tempatLahir || "",
+    tanggalLahir: emp.tanggalLahir || "",
+    statusPerkawinan: emp.statusPerkawinan || "Belum Kawin",
+    namaIbuKandung: emp.namaIbuKandung || "",
+    kotaTerbitKtp: emp.kotaTerbitKtp || "",
+    kabupaten: emp.kabupaten || "",
+    kecamatan: emp.kecamatan || "",
+    kelurahan: emp.kelurahan || "",
+    rtRw: emp.rtRw || "",
+    fotoKtp: emp.fotoKtp || "",
+    fotoKartuKeluarga: emp.fotoKartuKeluarga || "",
   }
 }
 
@@ -116,6 +162,19 @@ function toBody(form: FormState) {
     tunjanganJabatan: Number(form.tunjanganJabatan || 0),
     potonganBpjs: Number(form.potonganBpjs || 0),
     hariLibur: form.hariLibur || "Minggu",
+    namaPanggilan: form.namaPanggilan.trim() || undefined,
+    agama: form.agama.trim() || undefined,
+    tempatLahir: form.tempatLahir.trim() || undefined,
+    tanggalLahir: form.tanggalLahir.trim() || undefined,
+    statusPerkawinan: form.statusPerkawinan.trim() || undefined,
+    namaIbuKandung: form.namaIbuKandung.trim() || undefined,
+    kotaTerbitKtp: form.kotaTerbitKtp.trim() || undefined,
+    kabupaten: form.kabupaten.trim() || undefined,
+    kecamatan: form.kecamatan.trim() || undefined,
+    kelurahan: form.kelurahan.trim() || undefined,
+    rtRw: form.rtRw.trim() || undefined,
+    fotoKtp: form.fotoKtp.trim() || undefined,
+    fotoKartuKeluarga: form.fotoKartuKeluarga.trim() || undefined,
   }
 }
 
@@ -218,6 +277,202 @@ export default function EmployeeForm({ id }: { id?: string }) {
               </select>
             </div>
             {id && <div className="space-y-1"><Label>Status</Label><select className={inputClass} value={form.statusAktif} onChange={(e) => set("statusAktif", e.target.value)}><option value="aktif">Aktif</option><option value="cuti">Cuti</option><option value="resign">Resign</option></select></div>}
+          </div>
+
+          {/* Data Identitas & Kependudukan (KTP & KK) */}
+          <div className="rounded-lg border border-[var(--border-default)] p-4 space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--border-default)] pb-2">
+              <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-primary)]">
+                Data Identitas & Kependudukan (KTP & KK)
+              </div>
+              <span className="text-xs text-[var(--text-muted)]">
+                Data dari pendaftaran karyawan / KTP & KK
+              </span>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-1">
+                <Label>Nama Panggilan</Label>
+                <input
+                  className={inputClass}
+                  placeholder="Contoh: Budi"
+                  value={form.namaPanggilan}
+                  onChange={(e) => set("namaPanggilan", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Tempat Lahir</Label>
+                <input
+                  className={inputClass}
+                  placeholder="Kota/Kabupaten lahir"
+                  value={form.tempatLahir}
+                  onChange={(e) => set("tempatLahir", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Tanggal Lahir</Label>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={form.tanggalLahir}
+                  onChange={(e) => set("tanggalLahir", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Agama</Label>
+                <select
+                  className={inputClass}
+                  value={form.agama}
+                  onChange={(e) => set("agama", e.target.value)}
+                >
+                  <option value="">Pilih Agama</option>
+                  <option value="Islam">Islam</option>
+                  <option value="Kristen Protestan">Kristen Protestan</option>
+                  <option value="Katolik">Katolik</option>
+                  <option value="Hindu">Hindu</option>
+                  <option value="Buddha">Buddha</option>
+                  <option value="Konghucu">Konghucu</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Status Perkawinan</Label>
+                <select
+                  className={inputClass}
+                  value={form.statusPerkawinan}
+                  onChange={(e) => set("statusPerkawinan", e.target.value)}
+                >
+                  <option value="Belum Kawin">Belum Kawin</option>
+                  <option value="Kawin">Kawin</option>
+                  <option value="Cerai Hidup">Cerai Hidup</option>
+                  <option value="Cerai Mati">Cerai Mati</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Nama Ibu Kandung</Label>
+                <input
+                  className={inputClass}
+                  placeholder="Nama ibu kandung"
+                  value={form.namaIbuKandung}
+                  onChange={(e) => set("namaIbuKandung", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Kota Terbit KTP</Label>
+                <input
+                  className={inputClass}
+                  placeholder="Kota/Kab. terbit KTP"
+                  value={form.kotaTerbitKtp}
+                  onChange={(e) => set("kotaTerbitKtp", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Kabupaten / Kota</Label>
+                <input
+                  className={inputClass}
+                  placeholder="Contoh: Gowa / Makassar"
+                  value={form.kabupaten}
+                  onChange={(e) => set("kabupaten", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Kecamatan</Label>
+                <input
+                  className={inputClass}
+                  placeholder="Contoh: Somba Opu"
+                  value={form.kecamatan}
+                  onChange={(e) => set("kecamatan", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Kelurahan / Desa</Label>
+                <input
+                  className={inputClass}
+                  placeholder="Contoh: Sungguminasa"
+                  value={form.kelurahan}
+                  onChange={(e) => set("kelurahan", e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>RT / RW</Label>
+                <input
+                  className={inputClass}
+                  placeholder="Contoh: 001/002"
+                  value={form.rtRw}
+                  onChange={(e) => set("rtRw", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Dokumen Foto KTP & KK */}
+            <div className="grid gap-4 sm:grid-cols-2 pt-3 border-t border-[var(--border-default)]">
+              <div className="rounded-lg border border-[var(--border-default)] p-3 bg-[var(--bg-page)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[var(--text-secondary)]">Foto KTP</span>
+                  {form.fotoKtp && (
+                    <a
+                      href={getMediaUrl(form.fotoKtp)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[var(--color-primary)] hover:underline inline-flex items-center gap-1 font-medium"
+                    >
+                      Buka Foto <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+                {form.fotoKtp ? (
+                  <div className="relative aspect-[3/2] w-full overflow-hidden rounded border border-[var(--border-default)] bg-black/5">
+                    <img
+                      src={getMediaUrl(form.fotoKtp)!}
+                      alt="Foto KTP"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-24 items-center justify-center rounded border border-dashed border-[var(--border-default)] text-xs text-[var(--text-muted)] text-center p-2">
+                    Belum ada foto KTP (diupload oleh karyawan di aplikasi mobile)
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-[var(--border-default)] p-3 bg-[var(--bg-page)] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[var(--text-secondary)]">Foto Kartu Keluarga</span>
+                  {form.fotoKartuKeluarga && (
+                    <a
+                      href={getMediaUrl(form.fotoKartuKeluarga)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[var(--color-primary)] hover:underline inline-flex items-center gap-1 font-medium"
+                    >
+                      Buka Foto <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+                {form.fotoKartuKeluarga ? (
+                  <div className="relative aspect-[3/2] w-full overflow-hidden rounded border border-[var(--border-default)] bg-black/5">
+                    <img
+                      src={getMediaUrl(form.fotoKartuKeluarga)!}
+                      alt="Foto Kartu Keluarga"
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-24 items-center justify-center rounded border border-dashed border-[var(--border-default)] text-xs text-[var(--text-muted)] text-center p-2">
+                    Belum ada foto Kartu Keluarga (diupload oleh karyawan di aplikasi mobile)
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {form.statusKaryawan === "External" && (
