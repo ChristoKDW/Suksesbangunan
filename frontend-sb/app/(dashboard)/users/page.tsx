@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
-import { Search, Plus, X, UserCog, Edit2, Trash2, Loader2, Shield } from "lucide-react"
+import { Search, Plus, X, UserCog, Edit2, Trash2, Loader2, Shield, Eye, EyeOff } from "lucide-react"
 import { userApi, User } from "@/lib/api"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -20,6 +20,8 @@ export default function UsersPage() {
   const [newUser, setNewUser] = useState<Partial<User>>({ nama: "", username: "", password: "", role: "HRD" })
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showEditPassword, setShowEditPassword] = useState(false)
 
   const fetchUsers = async () => {
     try {
@@ -163,8 +165,18 @@ export default function UsersPage() {
                 <input required type="text" value={(newUser as any).username} onChange={e => setNewUser({...newUser, username: e.target.value} as any)} className="w-full bg-slate-50 dark:bg-[#0B0F17] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500" />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Password</label>
-                <input required type="password" value={(newUser as any).password} onChange={e => setNewUser({...newUser, password: e.target.value} as any)} className="w-full bg-slate-50 dark:bg-[#0B0F17] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500" placeholder="Kombinasi huruf, angka & simbol" />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Password</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 inline-flex items-center gap-1"
+                  >
+                    {showNewPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+                    <span>{showNewPassword ? "Sembunyikan" : "Lihat"}</span>
+                  </button>
+                </div>
+                <input required type={showNewPassword ? "text" : "password"} value={(newUser as any).password} onChange={e => setNewUser({...newUser, password: e.target.value} as any)} className="w-full bg-slate-50 dark:bg-[#0B0F17] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500" placeholder="Kombinasi huruf, angka & simbol" />
                 <p className="text-[11px] text-amber-600 dark:text-amber-400">
                   Wajib min. 8 karakter gabungan huruf besar, huruf kecil, angka, dan simbol (contoh: Admin#2026)
                 </p>
@@ -226,8 +238,18 @@ export default function UsersPage() {
                 <input required type="text" value={(editingUser as any).username || ''} onChange={e => setEditingUser({...editingUser, username: e.target.value} as any)} className="w-full bg-slate-50 dark:bg-[#0B0F17] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500" />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Password (Kosongkan jika tidak diubah)</label>
-                <input type="password" placeholder="Kombinasi huruf, angka & simbol" onChange={e => setEditingUser({...editingUser, password: e.target.value} as any)} className="w-full bg-slate-50 dark:bg-[#0B0F17] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500" />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Password (Kosongkan jika tidak diubah)</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditPassword(!showEditPassword)}
+                    className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 inline-flex items-center gap-1"
+                  >
+                    {showEditPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+                    <span>{showEditPassword ? "Sembunyikan" : "Lihat"}</span>
+                  </button>
+                </div>
+                <input type={showEditPassword ? "text" : "password"} placeholder="Kombinasi huruf, angka & simbol" onChange={e => setEditingUser({...editingUser, password: e.target.value} as any)} className="w-full bg-slate-50 dark:bg-[#0B0F17] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500" />
                 <p className="text-[11px] text-amber-600 dark:text-amber-400">
                   Jika diisi, wajib min. 8 karakter gabungan huruf besar, huruf kecil, angka, dan simbol
                 </p>

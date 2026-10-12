@@ -290,3 +290,9 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
+/* Sembunyikan tombol mata bawaan Edge/IE agar tidak muncul ganda */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+

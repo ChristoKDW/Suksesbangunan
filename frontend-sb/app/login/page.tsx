@@ -1,12 +1,13 @@
 "use client"
 import { useState } from "react"
-import { Building2, User, Lock, Check } from "lucide-react"
+import { Building2, User, Lock, Check, Eye, EyeOff } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
 export default function LoginPage() {
   const { login } = useAuth()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -92,16 +93,24 @@ export default function LoginPage() {
               </label>
             </div>
             <div className="relative flex items-center bg-[var(--bg-page)] rounded-lg p-3 group focus-within:ring-2 focus-within:ring-[var(--color-primary)] transition-all border border-[var(--border-default)]">
-              <Lock className="text-[var(--text-muted)] h-5 w-5 mr-3 group-focus-within:text-[var(--color-primary)] transition-colors" />
+              <Lock className="text-[var(--text-muted)] h-5 w-5 mr-3 group-focus-within:text-[var(--color-primary)] transition-colors flex-shrink-0" />
               <input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
                 className="bg-transparent border-none outline-none w-full text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-1 flex-shrink-0 ml-1"
+                title={showPassword ? "Sembunyikan password" : "Lihat password"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
 
