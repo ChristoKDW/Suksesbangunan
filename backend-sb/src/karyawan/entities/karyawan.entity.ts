@@ -58,6 +58,15 @@ export class Karyawan {
   })
   statusAktif: string;
 
+  @ApiProperty({ description: 'Status karyawan: Internal atau External', default: 'Internal' })
+  @Column({
+    name: 'status_karyawan',
+    type: 'varchar',
+    length: 20,
+    default: 'Internal',
+  })
+  statusKaryawan: string;
+
   @ApiProperty({ description: 'Username login mobile' })
   @Column({ name: 'username', type: 'varchar', nullable: true })
   username: string;
@@ -217,4 +226,12 @@ export class Karyawan {
     name: 'reset_password_status'
   })
   resetPasswordStatus: string;
+
+  @ApiProperty({ description: 'Nomor Rekening Bank', required: false })
+  @Column({ name: 'no_rekening', type: 'varchar', length: 34, nullable: true })
+  noRekening?: string;
+
+  @ApiProperty({ description: 'Nama Bank', required: false })
+  @Column({ name: 'nama_bank', type: 'varchar', length: 50, nullable: true })
+  namaBank?: string;
 }

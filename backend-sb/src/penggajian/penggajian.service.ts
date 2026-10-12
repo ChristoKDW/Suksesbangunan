@@ -88,6 +88,8 @@ export class PenggajianService {
     potonganGlobal?: number,
     dendaPerTelatCustom?: number,
     totalHariKerjaCustom?: number,
+    idDepartemenPotongan?: number,
+    bagiRata?: boolean,
   ): Promise<Penggajian[]> {
     const periodeAwalStr = normalizeDateOnly(periodeAwal);
     const periodeAkhirStr = normalizeDateOnly(periodeAkhir);
@@ -135,9 +137,14 @@ export class PenggajianService {
       : dynamicWorkingDays;
 
     const karyawanList = await this.karyawanService.findAllAktif();
+    // Karyawan eksternal hanya absensi saja & digaji oleh vendor/perusahaan sendiri,
+    // sehingga di-exclude dari kalkulasi payroll CV Sukses Bangunan.
+    const eligibleKaryawanList = karyawanList.filter(
+      (k) => (k.statusKaryawan || 'Internal') !== 'External',
+    );
     const results: Penggajian[] = [];
 
-    for (const karyawan of karyawanList) {
+    for (const karyawan of eligibleKaryawanList) {
       // 1. Tentukan total hari kerja spesifik untuk karyawan:
       let totalHariKerja = baseTotalHariKerja;
       if (!hasValidTotalHariKerjaCustom) {
@@ -552,6 +559,12 @@ export class PenggajianService {
     const karyawan = await this.karyawanService.findOne(idKaryawan);
     if (!karyawan) {
       throw new NotFoundException('Data karyawan tidak ditemukan');
+    }
+
+    if ((karyawan.statusKaryawan || 'Internal') === 'External') {
+      throw new BadRequestException(
+        'Karyawan eksternal tidak memiliki slip gaji pada sistem ini.',
+      );
     }
 
     const settings = await this.getSettings();

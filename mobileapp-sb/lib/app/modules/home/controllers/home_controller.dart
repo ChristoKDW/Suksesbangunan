@@ -14,6 +14,7 @@ class HomeController extends GetxController {
 
   final isLoading = true.obs;
   final isOperasional = false.obs;
+  final isExternal = false.obs;
   final userProfile = <String, dynamic>{}.obs;
   final todayAttendance = Rxn<Map<String, dynamic>>();
   final todayBreak = Rxn<Map<String, dynamic>>();
@@ -39,6 +40,8 @@ class HomeController extends GetxController {
       todayBreak.value = results[2];
       final elig = results[3] as Map<String, dynamic>;
       isOperasional.value = elig['isOperasional'] == true;
+      final status = (userProfile['statusKaryawan'] ?? 'Internal').toString().toLowerCase();
+      isExternal.value = (status == 'external');
     } catch (e) {
       // Fallback ke session data jika API gagal
       userProfile.value = {
@@ -46,6 +49,7 @@ class HomeController extends GetxController {
         'nik': _session.nik.value ?? '-',
       };
       isOperasional.value = false;
+      isExternal.value = false;
     } finally {
       isLoading.value = false;
     }

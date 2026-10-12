@@ -1,10 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { Search, ChevronDown, Moon, Sun } from "lucide-react"
+import { Search, ChevronDown, Moon, Sun, Eye, EyeOff } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
+import { userApi } from "@/lib/api"
 import { NotificationDropdown } from "./NotificationDropdown"
 
 export function TopBar() {
@@ -14,12 +15,26 @@ export function TopBar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
-  const [profileForm, setProfileForm] = useState({ nama: "", username: "", password: "", fotoProfil: "" })
+  const [profileForm, setProfileForm] = useState({
+    nama: "",
+    username: "",
+    password: "",
+    konfirmasiPassword: "",
+    fotoProfil: "",
+  })
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     setMounted(true)
     if (user) {
-      setProfileForm(prev => ({ ...prev, nama: user.nama, username: user.username || "", fotoProfil: user.fotoProfil || "" }))
+      setProfileForm((prev) => ({
+        ...prev,
+        nama: user.nama,
+        username: user.username || "",
+        fotoProfil: user.fotoProfil || "",
+        password: "",
+        konfirmasiPassword: "",
+      }))
     }
   }, [user])
 
@@ -35,32 +50,50 @@ export function TopBar() {
 
     const reader = new FileReader()
     reader.onload = (event) => {
-      setProfileForm(prev => ({ ...prev, fotoProfil: event.target?.result as string }))
+      setProfileForm((prev) => ({ ...prev, fotoProfil: event.target?.result as string }))
     }
     reader.readAsDataURL(file)
   }
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (profileForm.password) {
+      if (profileForm.password !== profileForm.konfirmasiPassword) {
+        alert("Konfirmasi password baru tidak cocok!")
+        return
+      }
+      const pwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^_\-.~+=#<>])[A-Za-z\d@$!%*?&#^_\-.~+=#<>]{8,}$/
+      if (!pwdRegex.test(profileForm.password)) {
+        alert(
+          "Password baru harus minimal 8 karakter dan merupakan kombinasi huruf besar, huruf kecil, angka, dan karakter khusus/simbol (contoh: Spv#2026)."
+        )
+        return
+      }
+    }
+
     setIsUpdatingProfile(true)
     try {
-      const { api } = await import('@/lib/api');
-      const body: Record<string, string> = { nama: profileForm.nama, username: profileForm.username }
-      if (profileForm.password) {
+      const body: Record<string, string> = {
+        nama: profileForm.nama,
+        username: profileForm.username,
+      }
+      if (profileForm.password && profileForm.password.trim() !== "") {
         body.password = profileForm.password
       }
       if (profileForm.fotoProfil) {
         body.fotoProfil = profileForm.fotoProfil
       }
-      
-      // Update data di server (gunakan endpoint /user/profile yang bisa diakses non-Admin)
-      await api.patch(`user/profile`, body)
-      
+
+      // Update data di server (bisa diakses oleh semua role)
+      await userApi.updateProfile(body)
+
       // Update session storage secara lokal supaya langsung terlihat tanpa login ulang
       const savedUserStr = localStorage.getItem("userData")
       if (savedUserStr) {
         const savedUser = JSON.parse(savedUserStr)
-        const updatedUser = { ...savedUser, ...body }
+        const updatedUser = { ...savedUser, nama: body.nama, username: body.username }
+        if (body.fotoProfil) updatedUser.fotoProfil = body.fotoProfil
         try {
           localStorage.setItem("userData", JSON.stringify(updatedUser))
         } catch (err) {
@@ -70,7 +103,7 @@ export function TopBar() {
         }
       }
 
-      alert("Profil berhasil diperbarui. Halaman akan dimuat ulang.")
+      alert("Profil dan akun berhasil diperbarui! Halaman akan dimuat ulang.")
       setIsProfileModalOpen(false)
       window.location.reload()
     } catch (err) {
@@ -185,19 +218,24 @@ export function TopBar() {
                 <div className="absolute right-0 mt-2 w-48 rounded-md bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50 overflow-hidden">
                   <div className="py-1">
                     <div className="block px-4 py-2 text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100 dark:border-white/5 mb-1">
-                      Akun Saya
+                      Akun Saya ({user?.role})
                     </div>
-                    {user?.role !== 'Admin' && (
-                      <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          setIsProfileModalOpen(true);
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
-                      >
-                        Pengaturan Profil
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setIsProfileModalOpen(true);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                    >
+                      Pengaturan Profil Cepat
+                    </button>
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      className="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                    >
+                      Halaman Profil Saya
+                    </Link>
                     <button
                       onClick={() => {
                         setIsUserMenuOpen(false);
@@ -220,13 +258,16 @@ export function TopBar() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-white dark:bg-[#0B0F17] w-full max-w-md rounded-xl shadow-xl border border-slate-200 dark:border-white/10 overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
-              <h3 className="font-semibold text-slate-900 dark:text-slate-50">Pengaturan Profil</h3>
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-slate-50">Pengaturan Profil ({user?.role})</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Ubah username & password akun Anda</p>
+              </div>
               <button onClick={() => setIsProfileModalOpen(false)} className="text-slate-500 hover:text-slate-900 dark:hover:text-slate-50">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
               </button>
             </div>
             <form onSubmit={handleUpdateProfile} className="p-4 space-y-4">
-              <div className="flex justify-center mb-4">
+              <div className="flex justify-center mb-2">
                 <div className="relative h-20 w-20 overflow-hidden rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center cursor-pointer group">
                   {profileForm.fotoProfil ? (
                     <img src={profileForm.fotoProfil} alt="Pratinjau" className="h-full w-full object-cover" />
@@ -247,18 +288,69 @@ export function TopBar() {
                 <input required type="text" value={profileForm.nama} onChange={e => setProfileForm({...profileForm, nama: e.target.value})} className="w-full bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500" />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Username</label>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Username Login</label>
                 <input required type="text" value={profileForm.username} onChange={e => setProfileForm({...profileForm, username: e.target.value})} className="w-full bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500" />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Password Baru <span className="text-slate-400 font-normal">(Kosongkan jika tidak ingin diubah)</span></label>
-                <input type="password" value={profileForm.password} onChange={e => setProfileForm({...profileForm, password: e.target.value})} className="w-full bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500" placeholder="••••••••" />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Password Baru <span className="text-slate-400 font-normal">(Kosongkan jika tidak diubah)</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1"
+                  >
+                    {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+                    <span>{showPassword ? "Sembunyikan" : "Lihat"}</span>
+                  </button>
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={profileForm.password}
+                  onChange={e => setProfileForm({...profileForm, password: e.target.value})}
+                  className="w-full bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500"
+                  placeholder="Kombinasi huruf besar, kecil, angka, simbol"
+                />
+                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                  Wajib min. 8 karakter gabungan huruf besar, huruf kecil, angka, dan simbol (contoh: Spv#2026)
+                </p>
               </div>
-              <div className="pt-4 flex justify-end gap-2">
-                <button type="button" onClick={() => setIsProfileModalOpen(false)} className="px-4 py-2 rounded-md text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent">Batal</button>
-                <button type="submit" disabled={isUpdatingProfile} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors">
-                  {isUpdatingProfile ? "Menyimpan..." : "Simpan Profil"}
-                </button>
+
+              {profileForm.password.length > 0 && (
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Konfirmasi Password Baru</label>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={profileForm.konfirmasiPassword}
+                    onChange={e => setProfileForm({...profileForm, konfirmasiPassword: e.target.value})}
+                    className={`w-full bg-slate-50 dark:bg-[#111827] border rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none ${
+                      profileForm.konfirmasiPassword && profileForm.password !== profileForm.konfirmasiPassword
+                        ? "border-red-500"
+                        : "border-slate-200 dark:border-white/10 focus:border-red-500"
+                    }`}
+                    placeholder="Ulangi password baru"
+                  />
+                  {profileForm.konfirmasiPassword && profileForm.password !== profileForm.konfirmasiPassword && (
+                    <p className="text-[11px] text-red-500">Konfirmasi password tidak cocok</p>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-3 flex items-center justify-between border-t border-slate-200 dark:border-white/10">
+                <Link
+                  href="/profile"
+                  onClick={() => setIsProfileModalOpen(false)}
+                  className="text-xs font-medium text-red-600 hover:text-red-500 dark:text-red-400 underline underline-offset-2"
+                >
+                  Halaman Profil Lengkap &rarr;
+                </Link>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setIsProfileModalOpen(false)} className="px-4 py-2 rounded-md text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 border border-transparent">Batal</button>
+                  <button type="submit" disabled={isUpdatingProfile} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors">
+                    {isUpdatingProfile ? "Menyimpan..." : "Simpan Profil"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

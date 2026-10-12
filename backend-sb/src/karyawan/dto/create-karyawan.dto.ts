@@ -52,6 +52,15 @@ export class CreateKaryawanDto {
   @IsIn(['aktif', 'resign', 'cuti'])
   statusAktif?: string;
 
+  @ApiPropertyOptional({
+    description: 'Status karyawan: Internal (digaji) atau External (hanya absensi)',
+    enum: ['Internal', 'External'],
+    default: 'Internal',
+  })
+  @IsOptional()
+  @IsIn(['Internal', 'External'])
+  statusKaryawan?: string;
+
   @ApiPropertyOptional({ description: 'Username login mobile' })
   @IsOptional()
   @IsString()

@@ -332,8 +332,13 @@ class HomeView extends GetView<HomeController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Kartu Logo Slip Gaji (Untuk semua karyawan: kantor & operasional)
-        _buildSlipGajiLogoCard(context),
+        // Kartu Logo Slip Gaji (Hanya untuk karyawan internal, disembunyikan untuk external)
+        Obx(() {
+          if (controller.isExternal.value) {
+            return const SizedBox.shrink();
+          }
+          return _buildSlipGajiLogoCard(context);
+        }),
 
         // Khusus Karyawan Operasional: Regular Off & Tukar Shift
         Obx(() {

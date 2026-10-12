@@ -26,8 +26,8 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
-  @Roles('Admin')
-  @ApiOperation({ summary: 'Buat user baru (Admin/HRD/SPV)' })
+  @Roles('Admin', 'HRD')
+  @ApiOperation({ summary: 'Buat user baru (Admin/HRD)' })
   create(@Body() dto: CreateUserDto) {
     return this.userService.create(dto);
   }
@@ -39,12 +39,20 @@ export class UserController {
     return this.userService.findAll();
   }
 
+  @Get('profile')
+  @ApiOperation({ summary: 'Ambil profil sendiri (Admin/HRD/SPV)' })
+  getProfile(@Req() req) {
+    const id = req.user.idUser || req.user.sub;
+    return this.userService.findOne(id);
+  }
+
   @Patch('profile')
   @ApiOperation({ summary: 'Update profil sendiri (Admin/HRD/SPV)' })
   updateProfile(@Body() dto: UpdateUserDto, @Req() req) {
     // req.user has the jwt payload which includes sub or idUser
     const id = req.user.idUser || req.user.sub;
-    return this.userService.update(id, dto);
+    const { role: _r, idDepartemen: _d, ...profileData } = dto;
+    return this.userService.update(id, profileData);
   }
 
   @Get(':id')
@@ -55,13 +63,15 @@ export class UserController {
   }
 
   @Patch(':id')
-  @Roles('Admin')
+  @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Update user' })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateUserDto,
+    @Req() req,
   ) {
-    return this.userService.update(id, dto);
+    const requesterRole = req.user?.role;
+    return this.userService.update(id, dto, requesterRole);
   }
 
   @Delete(':id')

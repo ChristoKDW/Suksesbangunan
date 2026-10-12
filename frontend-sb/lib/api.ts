@@ -148,9 +148,11 @@ export type { User }
 // ---------------------------------------------------------------------------
 export const userApi = {
   getAll: (): Promise<User[]> => api.get('user'),
+  getProfile: (): Promise<User> => api.get('user/profile'),
   getById: (id: number): Promise<User> => api.get(`user/${id}`),
   create: (data: Partial<User>): Promise<User> => api.post('user', data),
   update: (id: number, data: Partial<User>): Promise<User> => api.patch(`user/${id}`, data),
+  updateProfile: (data: Partial<User>): Promise<User> => api.patch('user/profile', data),
   delete: (id: number): Promise<any> => api.delete(`user/${id}`),
 }
 

@@ -53,7 +53,7 @@ const navGroups: NavGroup[] = [
       { href: "/employees", label: "Karyawan", icon: Users, roles: ["Admin", "HRD"] },
       { href: "/departments", label: "Departemen", icon: Building2, roles: ["Admin", "HRD"] },
       { href: "/positions", label: "Jabatan", icon: Briefcase, roles: ["Admin", "HRD"] },
-      { href: "/users", label: "Pengguna Sistem", icon: UserCog, roles: ["Admin"] },
+      { href: "/users", label: "Pengguna Sistem", icon: UserCog, roles: ["Admin", "HRD"] },
     ],
   },
   {
@@ -86,6 +86,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Pengaturan",
     items: [
+      { href: "/profile", label: "Profil Saya", icon: UserCog, roles: ["Admin", "HRD", "SPV"] },
       { href: "/geofence", label: "Titik Kantor", icon: MapPin, roles: ["Admin"] },
       { href: "/reports", label: "Laporan", icon: BarChart3 },
     ],
@@ -185,23 +186,31 @@ export function Sidebar() {
       <div
         className="flex-shrink-0 px-3 py-3 border-t border-slate-200 dark:border-white/10"
       >
-        <div
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 mb-2 bg-slate-50 dark:bg-white/5"
+        <Link
+          href="/profile"
+          className="flex items-center gap-3 rounded-lg px-3 py-2.5 mb-2 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors group cursor-pointer"
+          title="Buka Pengaturan Profil (Username & Password)"
         >
           <div
-            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-white text-xs font-semibold bg-red-600 dark:bg-red-500"
+            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-white text-xs font-semibold bg-red-600 dark:bg-red-500 overflow-hidden"
           >
-            {user?.nama
-              ? user.nama.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
-              : "??"}
+            {user?.fotoProfil ? (
+              <img src={user.fotoProfil} alt="Profil" className="h-full w-full object-cover" />
+            ) : user?.nama ? (
+              user.nama.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()
+            ) : (
+              "??"
+            )}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-medium truncate text-slate-900 dark:text-slate-50">{user?.nama || "Unknown"}</div>
+            <div className="text-xs font-medium truncate text-slate-900 dark:text-slate-50 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+              {user?.nama || "Unknown"}
+            </div>
             <div className="text-xs truncate text-slate-500 dark:text-slate-400">
-              {user?.role || "—"}
+              {user?.role || "—"} • Edit Profil
             </div>
           </div>
-        </div>
+        </Link>
         
         <button
           onClick={handleLogout}

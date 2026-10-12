@@ -62,6 +62,7 @@ export default function EmployeesPage() {
     email: "",
     nomorTelepon: "",
     jenisKelamin: "Laki-laki",
+    statusKaryawan: "Internal",
     idDepartemen: 0,
     idJabatan: 0,
     tanggalMasuk: "",
@@ -112,6 +113,7 @@ export default function EmployeesPage() {
         nik: newEmployee.nik,
         nama: newEmployee.nama,
         jenisKelamin: newEmployee.jenisKelamin,
+        statusKaryawan: newEmployee.statusKaryawan || "Internal",
       }
       if (newEmployee.email) body.email = newEmployee.email
       if (newEmployee.nomorTelepon) body.nomorTelepon = newEmployee.nomorTelepon
@@ -136,6 +138,7 @@ export default function EmployeesPage() {
         email: "",
         nomorTelepon: "",
         jenisKelamin: "Laki-laki",
+        statusKaryawan: "Internal",
         idDepartemen: 0,
         idJabatan: 0,
         tanggalMasuk: "",
@@ -180,6 +183,7 @@ export default function EmployeesPage() {
   const openEditModal = (emp: Karyawan) => {
     setEditingEmployee({
       ...emp,
+      statusKaryawan: emp.statusKaryawan || "Internal",
       tanggalMasuk: emp.tanggalMasuk ? emp.tanggalMasuk.split("T")[0] : "",
       gajiPokok: emp.gajiPokok !== null && emp.gajiPokok !== undefined ? Number(emp.gajiPokok) : 0,
       tunjanganKonsumsiHari: emp.tunjanganKonsumsiHari !== null && emp.tunjanganKonsumsiHari !== undefined ? Number(emp.tunjanganKonsumsiHari) : 20000,
@@ -202,6 +206,7 @@ export default function EmployeesPage() {
         email: editingEmployee.email || undefined,
         nomorTelepon: editingEmployee.nomorTelepon || undefined,
         jenisKelamin: editingEmployee.jenisKelamin || "Laki-laki",
+        statusKaryawan: editingEmployee.statusKaryawan || "Internal",
         idDepartemen: editingEmployee.idDepartemen || undefined,
         idJabatan: editingEmployee.idJabatan || undefined,
         statusAktif: editingEmployee.statusAktif,
@@ -307,6 +312,22 @@ export default function EmployeesPage() {
                     <option value="Perempuan">Perempuan</option>
                   </select>
                 </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-[var(--text-secondary)]">Status Karyawan *</label>
+                <select
+                  value={newEmployee.statusKaryawan}
+                  onChange={e => setNewEmployee({...newEmployee, statusKaryawan: e.target.value})}
+                  className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
+                >
+                  <option value="Internal">Internal (Digaji CV Sukses Bangunan - Dapat Slip Gaji)</option>
+                  <option value="External">External (Digaji Vendor/Perusahaan Sendiri - Hanya Absensi & Tanpa Slip Gaji)</option>
+                </select>
+                <p className="text-[11px] text-[var(--text-muted)]">
+                  {newEmployee.statusKaryawan === "External"
+                    ? "Karyawan External hanya dicatat absensinya di sistem kami. Penggajian CV Sukses Bangunan tidak menghitung gajinya dan slip gaji disembunyikan di mobile."
+                    : "Karyawan Internal menerima gaji dari CV Sukses Bangunan dan dapat melihat rincian slip gaji di mobile."}
+                </p>
               </div>
               {user?.role === "HRD" && (
                 <div className="space-y-1">
@@ -520,6 +541,22 @@ export default function EmployeesPage() {
                   </select>
                 </div>
               </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-[var(--text-secondary)]">Status Karyawan</label>
+                <select
+                  value={editingEmployee.statusKaryawan || "Internal"}
+                  onChange={e => setEditingEmployee({...editingEmployee, statusKaryawan: e.target.value})}
+                  className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
+                >
+                  <option value="Internal">Internal (Digaji CV Sukses Bangunan)</option>
+                  <option value="External">External (Digaji Vendor Sendiri - Hanya Absensi)</option>
+                </select>
+                <p className="text-[11px] text-[var(--text-muted)]">
+                  {(editingEmployee.statusKaryawan || "Internal") === "External"
+                    ? "Karyawan External tidak masuk ke penggajian perusahaan dan slip gaji disembunyikan di aplikasi mobile."
+                    : "Karyawan Internal dihitung gajinya oleh perusahaan dan dapat mengakses slip gaji."}
+                </p>
+              </div>
               {user?.role === "HRD" && (
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Hak Cuti (Cuti Dibayar)</label>
@@ -656,6 +693,7 @@ export default function EmployeesPage() {
                 <TableHead>Departemen</TableHead>
                 <TableHead>Jabatan</TableHead>
                 <TableHead>Tgl Masuk</TableHead>
+                <TableHead>Tipe</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -717,6 +755,17 @@ export default function EmployeesPage() {
                   <TableCell className="text-sm text-[var(--text-secondary)]">{emp.jabatan?.namaJabatan || "—"}</TableCell>
                   <TableCell className="text-sm text-[var(--text-secondary)]">
                     {formatTanggal(emp.tanggalMasuk)}
+                  </TableCell>
+                  <TableCell>
+                    {emp.statusKaryawan === "External" ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
+                        External
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+                        Internal
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant={variantMap[emp.statusAktif] || "secondary"}>{capitalize(emp.statusAktif)}</Badge>

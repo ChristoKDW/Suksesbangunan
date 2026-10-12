@@ -69,6 +69,8 @@ class ProfileView extends GetView<ProfileController> {
                   user['nomorTelepon']?.toString() ?? '-'),
               _buildInfoTile(Icons.work_outline, 'Status Kepegawaian',
                   user['statusAktif']?.toString() ?? '-'),
+              _buildInfoTile(Icons.category_outlined, 'Tipe Karyawan',
+                  user['statusKaryawan']?.toString() ?? 'Internal'),
               _buildInfoTile(
                 Icons.face,
                 'Status Biometrik',

@@ -5,9 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, Plus, X, UserCog, Edit2, Trash2, Loader2, Shield } from "lucide-react"
 import { userApi, User } from "@/lib/api"
 import { api } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
 import type { Departemen } from "@/lib/types"
 
 export default function UsersPage() {
+  const { user: currentUser } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -73,12 +75,37 @@ export default function UsersPage() {
     setSubmitting(true)
     try {
       const { idUser, idDepartemen, ...updates } = editingUser as any
+      // Jika password kosong, hapus agar tidak menimpa password yang tersimpan
+      if (!updates.password || updates.password.trim() === "") {
+        delete updates.password
+      }
       if (idUser) {
         await userApi.update(idUser, updates)
+
+        // Jika user yang diedit adalah akun yang sedang login, sinkronkan data localStorage
+        if (currentUser && currentUser.idUser === idUser) {
+          const savedUserStr = localStorage.getItem("userData")
+          if (savedUserStr) {
+            const savedUser = JSON.parse(savedUserStr)
+            const updatedUser = {
+              ...savedUser,
+              nama: updates.nama || savedUser.nama,
+              username: updates.username || savedUser.username,
+            }
+            if (updates.fotoProfil) updatedUser.fotoProfil = updates.fotoProfil
+            try {
+              localStorage.setItem("userData", JSON.stringify(updatedUser))
+            } catch (err) {
+              delete updatedUser.fotoProfil
+              localStorage.setItem("userData", JSON.stringify(updatedUser))
+            }
+          }
+        }
       }
       setIsEditModalOpen(false)
       setEditingUser(null)
       await fetchUsers()
+      alert("Data pengguna berhasil diperbarui.")
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal mengupdate user")
     } finally {
@@ -207,7 +234,7 @@ export default function UsersPage() {
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Role Akses</label>
-                <select required disabled={editingUser.role === 'Admin'} value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as "Admin" | "HRD" | "SPV"})} className="w-full bg-slate-50 dark:bg-[#0B0F17] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500 disabled:opacity-50">
+                <select required disabled={editingUser.role === 'Admin' || currentUser?.role !== 'Admin'} value={editingUser.role} onChange={e => setEditingUser({...editingUser, role: e.target.value as "Admin" | "HRD" | "SPV"})} className="w-full bg-slate-50 dark:bg-[#0B0F17] border border-slate-200 dark:border-white/10 rounded-md px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500 disabled:opacity-50">
                   {editingUser.role === 'Admin' && <option value="Admin">Admin</option>}
                   <option value="HRD">HRD</option>
                   <option value="SPV">SPV</option>
@@ -251,6 +278,8 @@ export default function UsersPage() {
               {users.map((u) => {
                 const id = u.idUser;
                 const isAdmin = u.role === 'Admin';
+                const canEdit = currentUser?.role === 'Admin' || (currentUser?.role === 'HRD' && !isAdmin) || currentUser?.idUser === id;
+                const canDelete = currentUser?.role === 'Admin' && !isAdmin;
                 return (
                   <TableRow key={id} className="border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
                     <TableCell>
@@ -298,10 +327,14 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => openEditModal(u)} title="Edit Pengguna" className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-red-500">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        {!isAdmin ? (
+                        {canEdit ? (
+                          <button onClick={() => openEditModal(u)} title="Edit Pengguna" className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-red-500">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <div className="w-8 h-8"></div>
+                        )}
+                        {canDelete ? (
                           <button onClick={() => id && handleDeleteUser(id)} title="Hapus Pengguna" className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-red-500">
                             <Trash2 className="w-4 h-4" />
                           </button>

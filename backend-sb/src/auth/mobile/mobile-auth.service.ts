@@ -352,6 +352,7 @@ export class MobileAuthService {
         nama: karyawan.nama,
         email: karyawan.email,
         jenisKelamin: karyawan.jenisKelamin ?? null,
+        statusKaryawan: karyawan.statusKaryawan ?? 'Internal',
       },
     };
   }
@@ -402,6 +403,7 @@ export class MobileAuthService {
       departemen: k.departemen?.namaDepartemen ?? null,
       jabatan: k.jabatan?.namaJabatan ?? null,
       statusAktif: k.statusAktif,
+      statusKaryawan: k.statusKaryawan ?? 'Internal',
       tanggalMasuk: k.tanggalMasuk,
       gajiPokok: k.gajiPokok,
       hakCuti: k.hakCuti,

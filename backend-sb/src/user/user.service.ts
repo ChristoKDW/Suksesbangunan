@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -74,14 +75,42 @@ export class UserService {
     return this.userRepo.findOne({ where: { username } });
   }
 
-  async update(id: number, dto: UpdateUserDto): Promise<User> {
+  async update(id: number, dto: UpdateUserDto, requesterRole?: string): Promise<User> {
     const user = await this.findOne(id);
-    const { idUser: _, idDepartemen: __, ...updates } = dto;
-    if (updates.password) {
-      updates.password = await bcrypt.hash(updates.password, 10);
+
+    // Jika pemohon adalah HRD, tidak diizinkan mengubah akun Admin
+    if (requesterRole === 'HRD' && user.role === 'Admin') {
+      throw new ForbiddenException('HRD tidak memiliki akses untuk mengubah akun Admin');
     }
+
+    const { idUser: _, idDepartemen: __, ...updates } = dto;
+
+    // Jika bukan Admin, tidak diizinkan mengubah role
+    if (requesterRole && requesterRole !== 'Admin') {
+      delete updates.role;
+    }
+
+    // Cek keunikan username jika diubah
+    if (updates.username && updates.username !== user.username) {
+      const existing = await this.userRepo.findOne({
+        where: { username: updates.username },
+      });
+      if (existing && existing.idUser !== user.idUser) {
+        throw new ConflictException(`Username '${updates.username}' sudah digunakan oleh pengguna lain`);
+      }
+    }
+
+    // Hash password jika diisi dan tidak kosong
+    if (updates.password && updates.password.trim() !== '') {
+      updates.password = await bcrypt.hash(updates.password, 10);
+    } else {
+      delete updates.password;
+    }
+
     Object.assign(user, updates);
-    return this.userRepo.save(user);
+    const saved = await this.userRepo.save(user);
+    const { password: _p, ...result } = saved;
+    return result as User;
   }
 
   async remove(id: number): Promise<void> {

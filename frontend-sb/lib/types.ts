@@ -109,6 +109,9 @@ export interface Karyawan {
   tanggalMasuk: string | null
   jenisKelamin?: string | null
   statusAktif: string // "aktif" | "resign" | "cuti"
+  statusKaryawan?: string | null // "Internal" | "External"
+  noRekening?: string | null
+  namaBank?: string | null
   username: string | null
   emailTerverifikasi: boolean
   fotoWajahReferensi: string | null
@@ -203,6 +206,8 @@ export interface PengajuanIzin {
   jenisIzin: string // "izin" | "sakit" | "cuti" | "dinas luar"
   tanggalMulai: string  // "YYYY-MM-DD"
   tanggalSelesai: string // "YYYY-MM-DD"
+  jamMulai?: string | null
+  jamSelesai?: string | null
   alasan: string
   filePendukung: string | null
   menggunakanLokasi: boolean
