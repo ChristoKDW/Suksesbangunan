@@ -46,6 +46,7 @@ export default function UsersPage() {
     try {
       await userApi.create(newUser)
       setIsModalOpen(false)
+      setShowNewPassword(false)
       setNewUser({ nama: "", username: "", password: "", role: "HRD" })
       await fetchUsers()
     } catch (err) {
@@ -68,6 +69,7 @@ export default function UsersPage() {
   const openEditModal = (u: User) => {
     const id = u.idUser
     setEditingUser({ idUser: id, nama: u.nama, username: u.username, role: u.role, fotoProfil: u.fotoProfil })
+    setShowEditPassword(false)
     setIsEditModalOpen(true)
   }
 
@@ -136,7 +138,10 @@ export default function UsersPage() {
           </p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setShowNewPassword(false)
+            setIsModalOpen(true)
+          }}
           className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-sm bg-red-600 hover:bg-red-500"
         >
           <Plus className="w-4 h-4" />

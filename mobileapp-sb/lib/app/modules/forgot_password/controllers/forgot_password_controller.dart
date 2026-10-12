@@ -7,12 +7,22 @@ class ForgotPasswordController extends GetxController {
 
   final isClaimMode = false.obs; // false = Request mode, true = Claim mode
   final isLoading = false.obs;
+  final isPasswordHidden = true.obs;
+  final isConfirmPasswordHidden = true.obs;
 
   final requestUsernameCtrl = TextEditingController();
 
   final claimUsernameCtrl = TextEditingController();
   final newPasswordCtrl = TextEditingController();
   final confirmPasswordCtrl = TextEditingController();
+
+  void togglePasswordVisibility() {
+    isPasswordHidden.value = !isPasswordHidden.value;
+  }
+
+  void toggleConfirmPasswordVisibility() {
+    isConfirmPasswordHidden.value = !isConfirmPasswordHidden.value;
+  }
 
   @override
   void onClose() {

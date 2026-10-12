@@ -108,25 +108,43 @@ class ForgotPasswordView extends GetView<ForgotPasswordController> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                TextField(
+                Obx(() => TextField(
                   controller: controller.newPasswordCtrl,
-                  obscureText: true,
+                  obscureText: controller.isPasswordHidden.value,
                   decoration: InputDecoration(
                     labelText: 'Password Baru',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        controller.isPasswordHidden.value
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: Colors.grey,
+                      ),
+                      onPressed: controller.togglePasswordVisibility,
+                    ),
                   ),
-                ),
+                )),
                 const SizedBox(height: 16),
-                TextField(
+                Obx(() => TextField(
                   controller: controller.confirmPasswordCtrl,
-                  obscureText: true,
+                  obscureText: controller.isConfirmPasswordHidden.value,
                   decoration: InputDecoration(
                     labelText: 'Konfirmasi Password',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        controller.isConfirmPasswordHidden.value
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: Colors.grey,
+                      ),
+                      onPressed: controller.toggleConfirmPasswordVisibility,
+                    ),
                   ),
-                ),
+                )),
                 const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: controller.isLoading.value ? null : controller.submitClaim,
