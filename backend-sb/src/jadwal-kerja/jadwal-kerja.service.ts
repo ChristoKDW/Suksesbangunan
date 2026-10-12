@@ -12,9 +12,11 @@ import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
 import { Departemen } from '../departemen/entities/departemen.entity.js';
 import { HariLibur } from '../hari-libur/entities/hari-libur.entity.js';
 import { Shift } from '../shift/entities/shift.entity.js';
+import { User } from '../user/entities/user.entity.js';
 import { CreateJadwalKerjaDto } from './dto/create-jadwal-kerja.dto.js';
 import { UpdateJadwalKerjaDto } from './dto/update-jadwal-kerja.dto.js';
 import { BulkJadwalKerjaItemDto } from './dto/bulk-jadwal-kerja.dto.js';
+import { matchUserName } from '../karyawan/name-matcher.util.js';
 
 @Injectable()
 export class JadwalKerjaService {
@@ -29,6 +31,8 @@ export class JadwalKerjaService {
     private readonly hariLiburRepo: Repository<HariLibur>,
     @InjectRepository(Shift)
     private readonly shiftRepo: Repository<Shift>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   private isBackoffice(name?: string): boolean {
@@ -86,20 +90,36 @@ export class JadwalKerjaService {
       relations: { departemen: { pengelola: true } },
     });
 
-    for (const emp of karyawanList) {
-      const isManagedByAdminOrHrd = this.isManagedByAdminOrHrd(emp.departemen);
+    const users = await this.userRepo.find({ relations: { departemen: true } });
 
-      // Karyawan di departemen yang dikelola Admin & HRD memiliki jadwal tetap otomatis (08:45–17:00, Minggu & Libur Nasional Libur) dan TIDAK PERLU / TIDAK BISA diubah manual
+    for (const emp of karyawanList) {
+      const matchedUser = users.find((u) => matchUserName(emp.nama, u.nama));
+      const isEmpSpv = matchedUser?.role === 'SPV';
+
+      if (isEmpSpv) {
+        // Karyawan adalah SPV: HRD dan Admin yang berhak mengatur jadwalnya.
+        // SPV TIDAK BISA mengatur jadwal kerja dirinya sendiri.
+        if (user.role === 'SPV') {
+          throw new ForbiddenException(
+            `Supervisor tidak dapat mengatur jadwal kerja dirinya sendiri (${emp.nama}). Jadwal Anda ditentukan oleh HRD.`,
+          );
+        }
+        // Admin dan HRD diizinkan mengatur jadwal SPV
+        continue;
+      }
+
+      // Untuk karyawan non-SPV di departemen Office/Backoffice (Admin & HRD):
+      const isManagedByAdminOrHrd = this.isManagedByAdminOrHrd(emp.departemen);
       if (isManagedByAdminOrHrd) {
         throw new BadRequestException(
           `Jadwal kerja karyawan "${emp.nama}" di departemen "${emp.departemen?.namaDepartemen || 'Office'}" sudah default permanen (08:45 - 17:00, Minggu & Libur Nasional Libur) dan tidak bisa diubah manual.`,
         );
       }
 
-      // Karyawan di departemen SPV hanya bisa diatur oleh SPV bersangkutan, Admin dan HRD tidak bisa mengubahnya
+      // Untuk staf non-SPV di departemen operasional (yang dipimpin SPV):
       if (user.role === 'Admin' || user.role === 'HRD') {
         throw new ForbiddenException(
-          `Admin dan HRD tidak dapat mengubah jadwal karyawan "${emp.nama}" pada departemen "${emp.departemen?.namaDepartemen || '-'}" karena jadwal departemen ini diatur secara mandiri oleh Supervisor. Anda hanya memiliki hak akses melihat (read-only).`,
+          `Admin dan HRD mengatur jadwal untuk Supervisor. Jadwal staf operasional "${emp.nama}" diatur oleh Supervisor departemen bersangkutan.`,
         );
       } else if (user.role === 'SPV') {
         if (!user.idDepartemen || emp.idDepartemen !== user.idDepartemen) {

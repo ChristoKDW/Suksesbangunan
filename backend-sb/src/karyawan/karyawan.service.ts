@@ -7,16 +7,49 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Karyawan } from './entities/karyawan.entity.js';
+import { User } from '../user/entities/user.entity.js';
 import { CreateKaryawanDto } from './dto/create-karyawan.dto.js';
 import { UpdateKaryawanDto } from './dto/update-karyawan.dto.js';
+import { matchUserName } from './name-matcher.util.js';
 
 @Injectable()
 export class KaryawanService {
   constructor(
     @InjectRepository(Karyawan)
     private readonly karyawanRepo: Repository<Karyawan>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     private readonly dataSource: DataSource,
   ) {}
+
+  private enrichWithHakAkses(karyawanList: Karyawan[], users: User[]): Karyawan[] {
+    for (const emp of karyawanList) {
+      const matched = users.find((u) => matchUserName(emp.nama, u.nama));
+      (emp as any).hakAkses = matched
+        ? {
+            hasAccess: true,
+            role: matched.role,
+            username: matched.username,
+            idUser: matched.idUser,
+            idDepartemen: matched.idDepartemen || null,
+            namaDepartemen: matched.departemen?.namaDepartemen || null,
+            label:
+              matched.role === 'SPV'
+                ? `SPV - ${matched.departemen?.namaDepartemen || emp.departemen?.namaDepartemen || 'Departemen'}`
+                : matched.role,
+          }
+        : {
+            hasAccess: false,
+            role: null,
+            username: null,
+            idUser: null,
+            idDepartemen: null,
+            namaDepartemen: null,
+            label: 'Staf',
+          };
+    }
+    return karyawanList;
+  }
 
   async create(dto: CreateKaryawanDto): Promise<Karyawan> {
     const existingNik = await this.karyawanRepo.findOne({
@@ -56,6 +89,12 @@ export class KaryawanService {
       where,
       relations: { departemen: { pengelola: true }, jabatan: true },
     });
+
+    const users = await this.userRepo.find({
+      relations: { departemen: true },
+    });
+    this.enrichWithHakAkses(list, users);
+
     if (userRole === 'SPV') {
       return list.filter((k) => {
         const managers = Array.isArray(k.departemen?.pengelola)
@@ -85,6 +124,10 @@ export class KaryawanService {
         `Karyawan dengan ID ${id} tidak ditemukan`,
       );
     }
+    const users = await this.userRepo.find({
+      relations: { departemen: true },
+    });
+    this.enrichWithHakAkses([karyawan], users);
     return karyawan;
   }
 
@@ -101,10 +144,14 @@ export class KaryawanService {
   }
 
   async findAllAktif(): Promise<Karyawan[]> {
-    return this.karyawanRepo.find({
+    const list = await this.karyawanRepo.find({
       where: { statusAktif: 'aktif' },
       relations: { departemen: true, jabatan: true },
     });
+    const users = await this.userRepo.find({
+      relations: { departemen: true },
+    });
+    return this.enrichWithHakAkses(list, users);
   }
 
   async update(id: number, dto: UpdateKaryawanDto): Promise<Karyawan> {

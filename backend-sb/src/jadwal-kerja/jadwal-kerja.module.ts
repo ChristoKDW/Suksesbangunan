@@ -5,6 +5,7 @@ import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
 import { Departemen } from '../departemen/entities/departemen.entity.js';
 import { HariLibur } from '../hari-libur/entities/hari-libur.entity.js';
 import { Shift } from '../shift/entities/shift.entity.js';
+import { User } from '../user/entities/user.entity.js';
 import { JadwalKerjaService } from './jadwal-kerja.service.js';
 import { JadwalKerjaController } from './jadwal-kerja.controller.js';
 
@@ -16,6 +17,7 @@ import { JadwalKerjaController } from './jadwal-kerja.controller.js';
       Departemen,
       HariLibur,
       Shift,
+      User,
     ]),
   ],
   controllers: [JadwalKerjaController],

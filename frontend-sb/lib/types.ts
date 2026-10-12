@@ -94,7 +94,15 @@ export interface Jabatan {
   updatedAt?: string
 }
 
-// ─── Karyawan ───────────────────────────────────────────────────────────────
+export interface HakAksesInfo {
+  hasAccess: boolean
+  role: "Admin" | "HRD" | "SPV" | null
+  username?: string | null
+  idUser?: number | null
+  idDepartemen?: number | null
+  namaDepartemen?: string | null
+  label: string
+}
 
 export interface Karyawan {
   idKaryawan: number
@@ -138,6 +146,7 @@ export interface Karyawan {
   fotoKtp?: string | null
   fotoKartuKeluarga?: string | null
   resetPasswordStatus?: string
+  hakAkses?: HakAksesInfo | null
   createdAt?: string
   updatedAt?: string
 }

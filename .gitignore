@@ -23,6 +23,7 @@ build/
 **/build/
 ios/Flutter/.last_build_id
 ios/.symlinks/
+*.apk
 
 # Environment Variables
 .env

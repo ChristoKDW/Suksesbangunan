@@ -212,19 +212,33 @@ export default function SchedulePage() {
 
   // Cek apakah user yang sedang login berhak mengubah jadwal karyawan tertentu
   // Sesuai ketentuan:
-  // 1. Departemen yang dikelola Admin & HRD itu TIDAK PERLU diatur lagi dan TIDAK BISA diubah juga (sudah otomatis default permanen: 08:45-17:00, Minggu & Libur Nasional Libur).
-  // 2. Departemen yang dikelola SPV HANYA bisa diatur oleh SPV bersangkutan. Admin & HRD hanya melihat (Read-Only).
+  // 1. Departemen yang dikelola Admin & HRD: TIDAK PERLU diatur lagi dan TIDAK BISA diubah manual (sudah otomatis permanen: 08:45-17:00, Minggu & Libur Nasional Libur).
+  // 2. Karyawan yang berstatus SPV: Jadwal kerjanya diatur oleh HRD / Admin. SPV TIDAK BISA mengatur jadwal dirinya sendiri.
+  // 3. Staf operasional di departemen SPV: Diatur secara mandiri oleh SPV departemen bersangkutan.
   const canUserEditEmployee = (emp: Karyawan) => {
     const isManaged = isDeptManagedByAdminOrHrd(emp.idDepartemen)
     if (isManaged) {
       // Departemen Admin & HRD: Tidak perlu dan tidak bisa diubah (permanen default)
       return false
     }
+
+    const isEmpSpv = emp.hakAkses?.role === "SPV"
+
+    if (user?.role === "Admin" || user?.role === "HRD") {
+      // HRD & Admin berhak mengatur jadwal karyawan yang berstatus SPV!
+      return isEmpSpv
+    }
+
     if (isSPV) {
-      // SPV hanya bisa mengatur jadwal departemennya sendiri
+      // SPV tidak boleh mengatur jadwal dirinya sendiri (atau sesama SPV).
+      // Jadwal SPV diatur oleh HRD.
+      if (isEmpSpv) {
+        return false
+      }
+      // SPV mengatur jadwal staf di departemennya sendiri
       return emp.idDepartemen === user?.idDepartemen
     }
-    // Admin dan HRD hanya melihat jadwal SPV (read-only)
+
     return false
   }
 
@@ -876,9 +890,9 @@ export default function SchedulePage() {
                                   <span>👤</span>
                                   <span>{section.managerNames}</span>
                                   {isAdminOrHrd ? (
-                                    <span className="ml-1 text-[10px] font-bold text-amber-900 dark:text-amber-100 bg-amber-200/80 dark:bg-amber-800/80 px-1.5 py-0.5 rounded flex items-center gap-1">
-                                      <span>🔒</span>
-                                      <span>Hanya Lihat (Read-Only)</span>
+                                    <span className="ml-1 text-[10px] font-bold text-blue-900 dark:text-blue-100 bg-blue-200/80 dark:bg-blue-800/80 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                      <span>⚙️</span>
+                                      <span>HRD Mengatur SPV · Staf Dikelola SPV</span>
                                     </span>
                                   ) : isSPV && canManageSection ? (
                                     <span className="ml-1 text-[10px] font-bold text-emerald-800 dark:text-emerald-200 bg-emerald-200/80 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded">
@@ -909,6 +923,21 @@ export default function SchedulePage() {
                                     className="text-[9px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 rounded px-1.5 py-0.5 shrink-0"
                                   >
                                     Jadwal Tetap
+                                  </span>
+                                ) : emp.hakAkses?.role === "SPV" ? (
+                                  <span
+                                    title={
+                                      isAdminOrHrd
+                                        ? "Jadwal SPV: Anda (HRD/Admin) berhak mengatur jadwal kerja Supervisor ini"
+                                        : "Jadwal Supervisor Anda diatur oleh HRD (Terkunci)"
+                                    }
+                                    className={`text-[9px] font-bold rounded px-1.5 py-0.5 shrink-0 border ${
+                                      isAdminOrHrd
+                                        ? "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/60 border-blue-300 dark:border-blue-700"
+                                        : "text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800"
+                                    }`}
+                                  >
+                                    {isAdminOrHrd ? "SPV (Bisa Diatur)" : "SPV (Diatur HRD)"}
                                   </span>
                                 ) : !canEdit ? (
                                   <span

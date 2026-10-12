@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
 import { Badge } from "@/components/atoms"
-import { Search, Plus, Edit2, Trash2, Loader2, Key, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
+import { Search, Plus, Edit2, Trash2, Loader2, Key, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye, ShieldCheck } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import type { Karyawan } from "@/lib/types"
@@ -93,6 +93,8 @@ export default function EmployeesPage() {
       emp.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.nik.toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (emp.hakAkses?.label && emp.hakAkses.label.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (emp.departemen?.namaDepartemen && emp.departemen.namaDepartemen.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (emp.jenisKelamin && emp.jenisKelamin.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
@@ -179,19 +181,20 @@ export default function EmployeesPage() {
                 <TableHead>Karyawan</TableHead>
                 <TableHead>NIK</TableHead>
                 <TableHead>Username</TableHead>
+                <TableHead>Hak Kelola Akses</TableHead>
                 <TableHead>Jenis Kelamin</TableHead>
                 <TableHead>Departemen</TableHead>
                 <TableHead>Jabatan</TableHead>
                 <TableHead>Tgl Masuk</TableHead>
                 <TableHead>Tipe</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-12"></TableHead>
+                <TableHead className="w-24 text-right">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedEmployees.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="h-32 text-center text-sm text-[var(--text-muted)]">
+                  <TableCell colSpan={11} className="h-32 text-center text-sm text-[var(--text-muted)]">
                     Tidak ada data karyawan yang ditemukan.
                   </TableCell>
                 </TableRow>
@@ -242,6 +245,24 @@ export default function EmployeesPage() {
                       )}
                     </div>
                   </TableCell>
+                  <TableCell>
+                    {emp.hakAkses?.hasAccess ? (
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold shadow-sm ${
+                          emp.hakAkses.role === "Admin"
+                            ? "bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800"
+                            : emp.hakAkses.role === "HRD"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                            : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800"
+                        }`}
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 flex-shrink-0" />
+                        {emp.hakAkses.label}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[var(--text-muted)] font-medium">Staf</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-sm">
                     {emp.jenisKelamin === "Perempuan" ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-pink-50 text-pink-700 border border-pink-200 dark:bg-pink-950/40 dark:text-pink-300 dark:border-pink-800">
@@ -291,6 +312,13 @@ export default function EmployeesPage() {
                           <Key className="w-4 h-4" />
                         </button>
                       )}
+                      <Link
+                        href={`/employees/${emp.idKaryawan}`}
+                        title="Lihat Detail Karyawan"
+                        className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-sky-600"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Link>
                       <Link
                         href={`/employees/${emp.idKaryawan}/edit`}
                         title="Edit Karyawan"
