@@ -53,9 +53,8 @@ export class CreateKaryawanDto {
   statusAktif?: string;
 
   @ApiPropertyOptional({
-    description: 'Status karyawan: Internal (digaji) atau External (hanya absensi)',
+    description: 'Status karyawan: Internal (digaji perusahaan) / External (hanya absensi)',
     enum: ['Internal', 'External'],
-    default: 'Internal',
   })
   @IsOptional()
   @IsIn(['Internal', 'External'])
@@ -78,10 +77,10 @@ export class CreateKaryawanDto {
   )
   password?: string;
 
-  @ApiPropertyOptional({ description: 'Email karyawan' })
-  @IsOptional()
-  @IsEmail()
-  email?: string;
+  @ApiProperty({ description: 'Email karyawan (wajib)' })
+  @IsNotEmpty({ message: 'Email wajib diisi' })
+  @IsEmail({}, { message: 'Format email tidak valid' })
+  email: string;
 
   @ApiPropertyOptional({ description: 'Gaji pokok bulanan' })
   @IsOptional()
@@ -118,10 +117,20 @@ export class CreateKaryawanDto {
   hakCuti?: boolean;
 
 
-  @ApiProperty({ description: 'Nomor Telepon/WhatsApp' })
+  @ApiProperty({ description: 'Nomor Telepon/WhatsApp (wajib)' })
+  @IsNotEmpty({ message: 'Nomor telepon wajib diisi' })
   @IsString()
+  nomorTelepon: string;
+
+  @ApiPropertyOptional({ description: 'Nomor rekening bank untuk payroll' })
   @IsOptional()
-  nomorTelepon?: string;
+  @IsString()
+  noRekening?: string;
+
+  @ApiPropertyOptional({ description: 'Nama bank rekening payroll', example: 'BNI' })
+  @IsOptional()
+  @IsString()
+  namaBank?: string;
 
   @ApiPropertyOptional({ description: 'Hari Libur Paten' })
   @IsOptional()

@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  Between,
   IsNull,
   LessThanOrEqual,
   MoreThanOrEqual,
@@ -13,6 +14,7 @@ import {
 } from 'typeorm';
 import { Penggajian } from './entities/penggajian.entity.js';
 import { PengajuanIzin } from '../pengajuan-izin/entities/pengajuan-izin.entity.js';
+import { HariLibur } from '../hari-libur/entities/hari-libur.entity.js';
 import { KaryawanService } from '../karyawan/karyawan.service.js';
 import { AbsensiService } from '../absensi/absensi.service.js';
 import { JadwalKerjaService } from '../jadwal-kerja/jadwal-kerja.service.js';
@@ -63,23 +65,135 @@ export class PenggajianService {
     private readonly pengaturanRepo: Repository<PengaturanPenggajian>,
     @InjectRepository(PengajuanIzin)
     private readonly pengajuanIzinRepo: Repository<PengajuanIzin>,
+    @InjectRepository(HariLibur)
+    private readonly hariLiburRepo: Repository<HariLibur>,
     private readonly karyawanService: KaryawanService,
     private readonly absensiService: AbsensiService,
     private readonly jadwalKerjaService: JadwalKerjaService,
   ) {}
 
   /**
-   * Menghitung total hari kerja kalender dalam rentang tanggal (Senin s/d Sabtu, non-Minggu).
+   * Set tanggal hari penting/libur yang diatur HRD (isLibur = true) dalam periode.
+   * Hari seperti event outing dsb tidak dihitung jam kerja & tidak dapat uang harian.
+   */
+  async getHariPentingLiburSet(
+    startDate: string,
+    endDate: string,
+  ): Promise<Set<string>> {
+    const rows = await this.hariLiburRepo.find({
+      where: {
+        isLibur: true,
+        tanggal: Between(startDate as any, endDate as any),
+      },
+    });
+    return new Set(rows.map((r) => normalizeDateOnly(r.tanggal)));
+  }
+
+  /**
+   * Menghitung total hari kerja kalender dalam rentang tanggal:
+   * Senin s/d Sabtu, dikurangi hari penting/libur yang diatur HRD.
    */
   hitungHariKerjaKalender(
     startDate: string | Date,
     endDate: string | Date,
+    liburSet?: Set<string>,
+    fallback = 26,
   ): number {
     const days = dateRange(
       normalizeDateOnly(startDate),
       normalizeDateOnly(endDate),
-    ).filter((date) => !isSunday(date)).length;
-    return days > 0 ? days : 26;
+    ).filter((date) => !isSunday(date) && !liburSet?.has(date)).length;
+    return days > 0 ? days : fallback;
+  }
+
+  /**
+   * Total hari izin (dedupe per tanggal, non-Minggu) untuk satu jenis izin disetujui.
+   */
+  private async hitungHariIzinJenis(
+    idKaryawan: number,
+    jenisIzin: string,
+    periodeAwalStr: string,
+    periodeAkhirStr: string,
+  ): Promise<number> {
+    const list = await this.pengajuanIzinRepo.find({
+      where: {
+        idKaryawan,
+        jenisIzin,
+        status: 'disetujui',
+        tanggalMulai: LessThanOrEqual(periodeAkhirStr as any),
+        tanggalSelesai: MoreThanOrEqual(periodeAwalStr as any),
+      },
+    });
+    return list.reduce(
+      (total, izin) =>
+        total +
+        countNonSundayOverlap(
+          izin.tanggalMulai,
+          izin.tanggalSelesai,
+          periodeAwalStr,
+          periodeAkhirStr,
+        ),
+      0,
+    );
+  }
+
+  /**
+   * Total menit izin sementara disetujui dalam periode.
+   * Jam kerja karyawan wajib dikompensasi sesuai durasi izin sementara.
+   */
+  private async hitungMenitIzinSementara(
+    idKaryawan: number,
+    periodeAwalStr: string,
+    periodeAkhirStr: string,
+  ): Promise<number> {
+    const list = await this.pengajuanIzinRepo.find({
+      where: {
+        idKaryawan,
+        jenisIzin: 'izin sementara',
+        status: 'disetujui',
+        tanggalMulai: LessThanOrEqual(periodeAkhirStr as any),
+        tanggalSelesai: MoreThanOrEqual(periodeAwalStr as any),
+      },
+    });
+    return list.reduce((total, izin) => {
+      if (!izin.jamMulai || !izin.jamSelesai) return total;
+      const [h1, m1] = izin.jamMulai.split(':').map(Number);
+      const [h2, m2] = izin.jamSelesai.split(':').map(Number);
+      return total + Math.max(0, h2 * 60 + m2 - (h1 * 60 + m1));
+    }, 0);
+  }
+
+  /**
+   * Hari kerja berbasis jadwal shift karyawan (dedupe per tanggal unik).
+   */
+  private async hitungHariKerjaJadwal(
+    idKaryawan: number,
+    periodeAwalStr: string,
+    periodeAkhirStr: string,
+    baseTotalHariKerja: number,
+  ): Promise<number> {
+    try {
+      const jadwalList = await this.jadwalKerjaService.findByKaryawanAndPeriode(
+        idKaryawan,
+        periodeAwalStr,
+        periodeAkhirStr,
+      );
+      if (!jadwalList || jadwalList.length === 0) return baseTotalHariKerja;
+      const shiftHariKerja = new Set(
+        jadwalList
+          .filter((j) => !j.isLibur)
+          .map((j) => normalizeDateOnly(j.tanggal)),
+      ).size;
+      if (shiftHariKerja > 0) return shiftHariKerja;
+      const explicitHariLibur = new Set(
+        jadwalList
+          .filter((j) => j.isLibur && !isSunday(j.tanggal))
+          .map((j) => normalizeDateOnly(j.tanggal)),
+      ).size;
+      return Math.max(baseTotalHariKerja - explicitHariLibur, 1);
+    } catch {
+      return baseTotalHariKerja;
+    }
   }
 
   async generate(
@@ -89,7 +203,7 @@ export class PenggajianService {
     dendaPerTelatCustom?: number,
     totalHariKerjaCustom?: number,
     idDepartemenPotongan?: number,
-    bagiRata?: boolean,
+    bagiRataPotongan?: boolean,
   ): Promise<Penggajian[]> {
     const periodeAwalStr = normalizeDateOnly(periodeAwal);
     const periodeAkhirStr = normalizeDateOnly(periodeAkhir);
@@ -117,10 +231,18 @@ export class PenggajianService {
         ? Number(dendaPerTelatCustom)
         : Number(settings?.dendaPerTelatDefault ?? 20000);
 
-    // Hitung hari kerja dinamis kalender periode cut-off (Senin s/d Sabtu)
+    // Hari penting/libur yang diatur HRD (event outing dll): tidak dihitung hari/jam kerja
+    const liburSet = await this.getHariPentingLiburSet(
+      periodeAwalStr,
+      periodeAkhirStr,
+    );
+
+    // Hitung hari kerja dinamis kalender periode cut-off (Senin s/d Sabtu, minus hari penting)
     const dynamicWorkingDays = this.hitungHariKerjaKalender(
       periodeAwalStr,
       periodeAkhirStr,
+      liburSet,
+      Number(settings?.standarHariKerja ?? 26),
     );
     const normalizedTotalHariKerjaCustom = Number(totalHariKerjaCustom);
     const hasValidTotalHariKerjaCustom =
@@ -136,44 +258,37 @@ export class PenggajianService {
       ? normalizedTotalHariKerjaCustom
       : dynamicWorkingDays;
 
-    const karyawanList = await this.karyawanService.findAllAktif();
-    // Karyawan eksternal hanya absensi saja & digaji oleh vendor/perusahaan sendiri,
-    // sehingga di-exclude dari kalkulasi payroll CV Sukses Bangunan.
-    const eligibleKaryawanList = karyawanList.filter(
+    // Karyawan External digaji vendor/perusahaan asalnya sendiri — hanya absensi
+    // yang dicatat, jadi di-exclude dari payroll (termasuk pembagian potongan).
+    const karyawanList = (await this.karyawanService.findAllAktif()).filter(
       (k) => (k.statusKaryawan || 'Internal') !== 'External',
     );
     const results: Penggajian[] = [];
 
-    for (const karyawan of eligibleKaryawanList) {
+    // Potongan global: bisa dibatasi ke satu divisi/departemen dan/atau dibagi rata
+    const hasPotonganGlobal =
+      potonganGlobal !== undefined && Number.isFinite(Number(potonganGlobal));
+    const karyawanKenaPotongan = new Set(
+      (idDepartemenPotongan
+        ? karyawanList.filter((k) => k.idDepartemen === idDepartemenPotongan)
+        : karyawanList
+      ).map((k) => k.idKaryawan),
+    );
+    const nominalPotonganPerOrang =
+      hasPotonganGlobal && bagiRataPotongan && karyawanKenaPotongan.size > 0
+        ? Math.round(Number(potonganGlobal) / karyawanKenaPotongan.size)
+        : Number(potonganGlobal);
+
+    for (const karyawan of karyawanList) {
       // 1. Tentukan total hari kerja spesifik untuk karyawan:
       let totalHariKerja = baseTotalHariKerja;
       if (!hasValidTotalHariKerjaCustom) {
-        try {
-          const jadwalList =
-            await this.jadwalKerjaService.findByKaryawanAndPeriode(
-              karyawan.idKaryawan,
-              periodeAwalStr,
-              periodeAkhirStr,
-            );
-          if (jadwalList && jadwalList.length > 0) {
-            const shiftHariKerja = jadwalList.filter((j) => !j.isLibur).length;
-            if (shiftHariKerja > 0) {
-              totalHariKerja = shiftHariKerja;
-            } else {
-              const explicitHariLibur = new Set(
-                jadwalList
-                  .filter((j) => j.isLibur && !isSunday(j.tanggal))
-                  .map((j) => normalizeDateOnly(j.tanggal)),
-              ).size;
-              totalHariKerja = Math.max(
-                baseTotalHariKerja - explicitHariLibur,
-                1,
-              );
-            }
-          }
-        } catch (e) {
-          // Fallback baseTotalHariKerja
-        }
+        totalHariKerja = await this.hitungHariKerjaJadwal(
+          karyawan.idKaryawan,
+          periodeAwalStr,
+          periodeAkhirStr,
+          baseTotalHariKerja,
+        );
       }
 
       // 1b. Data absensi riil dari database
@@ -194,6 +309,8 @@ export class PenggajianService {
         if (status === 'tepat waktu' || status === 'telat') {
           if (absensi.jamMasukAktual) {
             const dStr = businessDateOf(new Date(absensi.jamMasukAktual));
+            // Hari penting/event dari HRD: tidak dihitung jam kerja & uang harian
+            if (liburSet.has(dStr)) continue;
             attendedDates.add(dStr);
             const completedBreaks = (absensi.istirahat || []).filter(
               (istirahat) => !!istirahat.jamMasukIstirahat,
@@ -223,53 +340,36 @@ export class PenggajianService {
       }
       lateCount += lateBreakCount;
 
-      // 2. Data izin sakit resmi (disetujui)
-      // Catatan: Jika izin sakit dengan surat resmi, hanya tunjangan konsumsi yang dipotong.
-      // Gaji pokok tetap dibayarkan.
-      const izinSakitList = await this.pengajuanIzinRepo.find({
-        where: {
-          idKaryawan: karyawan.idKaryawan,
-          jenisIzin: 'sakit',
-          status: 'disetujui',
-          tanggalMulai: LessThanOrEqual(periodeAkhirStr as any),
-          tanggalSelesai: MoreThanOrEqual(periodeAwalStr as any),
-        },
-      });
-
-      const hariSakitResmi = izinSakitList.reduce(
-        (total, izin) =>
-          total +
-          countNonSundayOverlap(
-            izin.tanggalMulai,
-            izin.tanggalSelesai,
-            periodeAwalStr,
-            periodeAkhirStr,
-          ),
-        0,
+      // 2. Data izin resmi (disetujui):
+      // - sakit: gaji pokok tetap dibayar, tunjangan konsumsi dipotong
+      // - izin: unpaid (potong gaji harian & uang makan)
+      // - dinas luar: dianggap hari kerja dibayar (tanpa uang makan kantor)
+      const hariSakitResmi = await this.hitungHariIzinJenis(
+        karyawan.idKaryawan,
+        'sakit',
+        periodeAwalStr,
+        periodeAkhirStr,
+      );
+      const hariIzin = await this.hitungHariIzinJenis(
+        karyawan.idKaryawan,
+        'izin',
+        periodeAwalStr,
+        periodeAkhirStr,
+      );
+      const hariDinasLuarRaw = await this.hitungHariIzinJenis(
+        karyawan.idKaryawan,
+        'dinas luar',
+        periodeAwalStr,
+        periodeAkhirStr,
       );
 
-      // 2b. Data izin biasa (disetujui) -> Unpaid (potong gaji harian & uang makan)
-      const izinList = await this.pengajuanIzinRepo.find({
-        where: {
-          idKaryawan: karyawan.idKaryawan,
-          jenisIzin: 'izin',
-          status: 'disetujui',
-          tanggalMulai: LessThanOrEqual(periodeAkhirStr as any),
-          tanggalSelesai: MoreThanOrEqual(periodeAwalStr as any),
-        },
-      });
-
-      const hariIzin = izinList.reduce(
-        (total, izin) =>
-          total +
-          countNonSundayOverlap(
-            izin.tanggalMulai,
-            izin.tanggalSelesai,
-            periodeAwalStr,
-            periodeAkhirStr,
-          ),
-        0,
+      // Izin sementara (keluar sebentar saat jam kerja): kompensasi jam kerja
+      const menitIzinSementara = await this.hitungMenitIzinSementara(
+        karyawan.idKaryawan,
+        periodeAwalStr,
+        periodeAkhirStr,
       );
+      totalJamKerja = Math.max(0, totalJamKerja - menitIzinSementara / 60);
 
       // 3. Cuti berbayar (jika hakCuti aktif)
       const cutiList =
@@ -288,15 +388,21 @@ export class PenggajianService {
       }
 
       const totalHariHadir = attendedDates.size;
+      // ponytail: kemungkinan tumpang-tindih hadir riil vs dinas luar di hari sama
+      // diredam oleh cap Math.min(totalHariKerja, ...)
       const hariDibayarGajiPokok = Math.min(
         totalHariKerja,
-        totalHariHadir + hariSakitResmi + (karyawan.hakCuti ? hariCuti : 0),
+        totalHariHadir +
+          hariSakitResmi +
+          hariDinasLuarRaw +
+          (karyawan.hakCuti ? hariCuti : 0),
       );
       const hariAlpa = Math.max(
         0,
         totalHariKerja -
           (totalHariHadir +
             hariSakitResmi +
+            hariDinasLuarRaw +
             (karyawan.hakCuti ? hariCuti : 0) +
             hariIzin),
       );
@@ -339,8 +445,8 @@ export class PenggajianService {
       const potonganPinjaman = 0;
       const sisaPinjaman = 0;
       const potonganLainnya =
-        potonganGlobal !== undefined && Number.isFinite(Number(potonganGlobal))
-          ? Number(potonganGlobal)
+        hasPotonganGlobal && karyawanKenaPotongan.has(karyawan.idKaryawan)
+          ? nominalPotonganPerOrang
           : Number(penggajian?.potonganLainnya || 0);
 
       const totalPotongan =
@@ -383,6 +489,16 @@ export class PenggajianService {
       if (hariIzin > 0) {
         detailKehadiran.push(
           `${hariIzin} Hari Izin (Potong Gaji & Uang Makan)`,
+        );
+      }
+      if (hariDinasLuarRaw > 0) {
+        detailKehadiran.push(
+          `${hariDinasLuarRaw} Hari Dinas Luar (Gaji Pokok Tetap)`,
+        );
+      }
+      if (menitIzinSementara > 0) {
+        detailKehadiran.push(
+          `${menitIzinSementara} Menit Izin Sementara (Kompensasi Jam Kerja)`,
         );
       }
       if (hariAlpa > 0) {
@@ -560,10 +676,9 @@ export class PenggajianService {
     if (!karyawan) {
       throw new NotFoundException('Data karyawan tidak ditemukan');
     }
-
     if ((karyawan.statusKaryawan || 'Internal') === 'External') {
       throw new BadRequestException(
-        'Karyawan eksternal tidak memiliki slip gaji pada sistem ini.',
+        'Karyawan External tidak memiliki slip gaji pada sistem ini.',
       );
     }
 
@@ -604,38 +719,25 @@ export class PenggajianService {
       periodeAkhirStr,
     );
 
+    // Hari penting/libur HRD (event dll): tidak dihitung hari/jam kerja & uang harian
+    const liburSet = await this.getHariPentingLiburSet(
+      periodeAwalStr,
+      periodeAkhirStr,
+    );
+
     // Hitung hari kerja dinamis berbasis kalender rentang cut-off (Senin s/d Sabtu)
     const dynamicWorkingDays = this.hitungHariKerjaKalender(
       periodeAwalStr,
       periodeAkhirStr,
+      liburSet,
+      Number(settings?.standarHariKerja ?? 26),
     );
-    let standarHariKerja = dynamicWorkingDays;
-
-    try {
-      const jadwalList = await this.jadwalKerjaService.findByKaryawanAndPeriode(
-        idKaryawan,
-        periodeAwalStr,
-        periodeAkhirStr,
-      );
-      if (jadwalList && jadwalList.length > 0) {
-        const shiftHariKerja = jadwalList.filter((j) => !j.isLibur).length;
-        if (shiftHariKerja > 0) {
-          standarHariKerja = shiftHariKerja;
-        } else {
-          const explicitHariLibur = new Set(
-            jadwalList
-              .filter((j) => j.isLibur && !isSunday(j.tanggal))
-              .map((j) => normalizeDateOnly(j.tanggal)),
-          ).size;
-          standarHariKerja = Math.max(
-            dynamicWorkingDays - explicitHariLibur,
-            1,
-          );
-        }
-      }
-    } catch (e) {
-      // Gunakan dynamicWorkingDays
-    }
+    const standarHariKerja = await this.hitungHariKerjaJadwal(
+      idKaryawan,
+      periodeAwalStr,
+      periodeAkhirStr,
+      dynamicWorkingDays,
+    );
 
     const absensiList = await this.absensiService.findByKaryawanDanPeriode(
       idKaryawan,
@@ -658,6 +760,8 @@ export class PenggajianService {
       if (!a.jamMasukAktual) continue;
       const d = new Date(a.jamMasukAktual);
       const dateKey = businessDateOf(d);
+      // Hari penting/event HRD tidak dihitung jam kerja & uang harian
+      if (liburSet.has(dateKey)) continue;
       const status = (a.statusKehadiran || '').toLowerCase();
 
       if (status === 'tepat waktu' || status === 'telat') {
@@ -718,51 +822,31 @@ export class PenggajianService {
       }
     }
 
-    // Ambil data sakit resmi (disetujui)
-    const izinSakitList = await this.pengajuanIzinRepo.find({
-      where: {
-        idKaryawan,
-        jenisIzin: 'sakit',
-        status: 'disetujui',
-        tanggalMulai: LessThanOrEqual(periodeAkhirStr as any),
-        tanggalSelesai: MoreThanOrEqual(periodeAwalStr as any),
-      },
-    });
-
-    const hariSakitResmi = izinSakitList.reduce(
-      (total, izin) =>
-        total +
-        countNonSundayOverlap(
-          izin.tanggalMulai,
-          izin.tanggalSelesai,
-          periodeAwalStr,
-          periodeAkhirStr,
-        ),
-      0,
+    // Ambil data izin resmi (disetujui)
+    const hariSakitResmi = await this.hitungHariIzinJenis(
+      idKaryawan,
+      'sakit',
+      periodeAwalStr,
+      periodeAkhirStr,
     );
-
-    // Ambil data izin biasa (disetujui)
-    const izinList = await this.pengajuanIzinRepo.find({
-      where: {
-        idKaryawan,
-        jenisIzin: 'izin',
-        status: 'disetujui',
-        tanggalMulai: LessThanOrEqual(periodeAkhirStr as any),
-        tanggalSelesai: MoreThanOrEqual(periodeAwalStr as any),
-      },
-    });
-
-    const hariIzin = izinList.reduce(
-      (total, izin) =>
-        total +
-        countNonSundayOverlap(
-          izin.tanggalMulai,
-          izin.tanggalSelesai,
-          periodeAwalStr,
-          periodeAkhirStr,
-        ),
-      0,
+    const hariIzin = await this.hitungHariIzinJenis(
+      idKaryawan,
+      'izin',
+      periodeAwalStr,
+      periodeAkhirStr,
     );
+    const hariDinasLuar = await this.hitungHariIzinJenis(
+      idKaryawan,
+      'dinas luar',
+      periodeAwalStr,
+      periodeAkhirStr,
+    );
+    const menitIzinSementara = await this.hitungMenitIzinSementara(
+      idKaryawan,
+      periodeAwalStr,
+      periodeAkhirStr,
+    );
+    totalJamKerja = Math.max(0, totalJamKerja - menitIzinSementara / 60);
 
     // Cuti berbayar
     const cutiList = await this.jadwalKerjaService.findCutiByKaryawanAndPeriode(
@@ -779,19 +863,24 @@ export class PenggajianService {
     const totalHariHadir = attendedDates.size;
     const hariDibayarGajiPokok = Math.min(
       standarHariKerja,
-      totalHariHadir + hariSakitResmi + (karyawan.hakCuti ? hariCuti : 0),
+      totalHariHadir +
+        hariSakitResmi +
+        hariDinasLuar +
+        (karyawan.hakCuti ? hariCuti : 0),
     );
     const hariAlpa = Math.max(
       0,
       standarHariKerja -
         (totalHariHadir +
           hariSakitResmi +
+          hariDinasLuar +
           (karyawan.hakCuti ? hariCuti : 0) +
           hariIzin),
     );
 
-    // Cek record slip gaji yang sudah di-generate di database
-    // 1. Coba exact match periode cut-off
+    // Cek record slip gaji resmi yang sudah di-generate & DIFINALISASI (dibayar).
+    // Selama belum difinalisasi HRD, slip karyawan selalu dihitung real-time
+    // sehingga tidak perlu menunggu HRD menekan tombol generate.
     let slipResmi = await this.penggajianRepo.findOne({
       where: {
         idKaryawan,
@@ -799,6 +888,9 @@ export class PenggajianService {
         periodeAkhir: periodeAkhirStr as any,
       },
     });
+    if (slipResmi && !slipResmi.tanggalBayar) {
+      slipResmi = null; // belum final -> gunakan kalkulasi real-time
+    }
 
     const isOfficial = !!slipResmi;
     const effPeriodeAwal = slipResmi
@@ -900,6 +992,8 @@ export class PenggajianService {
       totalHariHadir: effTotalHariHadir,
       hariSakitResmi,
       hariIzin,
+      hariDinasLuar,
+      menitIzinSementara,
       hariAlpa,
       hariCuti,
       gajiPokok,
