@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
 import { Badge } from "@/components/atoms"
-import { Search, Plus, Edit2, Trash2, Loader2, Key } from "lucide-react"
+import { Search, Plus, Edit2, Trash2, Loader2, Key, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import type { Karyawan } from "@/lib/types"
@@ -46,10 +46,25 @@ function formatTanggal(dateStr?: string | null) {
   }
 }
 
+function getPageNumbers(current: number, total: number): (number | "...")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, "...", total]
+  }
+  if (current >= total - 3) {
+    return [1, "...", total - 4, total - 3, total - 2, total - 1, total]
+  }
+  return [1, "...", current - 1, current, current + 1, "...", total]
+}
+
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Karyawan[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const { user } = useAuth()
 
   const fetchData = async () => {
@@ -67,6 +82,10 @@ export default function EmployeesPage() {
     fetchData()
   }, [])
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, pageSize])
+
   const activeCount = employees.filter((e) => e.statusAktif === "aktif").length
 
   const filteredEmployees = employees.filter(
@@ -76,6 +95,12 @@ export default function EmployeesPage() {
       emp.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (emp.jenisKelamin && emp.jenisKelamin.toLowerCase().includes(searchQuery.toLowerCase()))
   )
+
+  const totalFiltered = filteredEmployees.length
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize))
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalFiltered)
+  const paginatedEmployees = filteredEmployees.slice(startIndex, endIndex)
 
   const handleDeleteEmployee = async (id: number) => {
     if (user?.role !== "Admin") {
@@ -164,7 +189,14 @@ export default function EmployeesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredEmployees.map((emp) => (
+              {paginatedEmployees.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={10} className="h-32 text-center text-sm text-[var(--text-muted)]">
+                    Tidak ada data karyawan yang ditemukan.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedEmployees.map((emp) => (
                 <TableRow key={emp.idKaryawan}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -278,9 +310,95 @@ export default function EmployeesPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              )))}
             </TableBody>
           </Table>
+
+          {/* Pagination Controls */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t border-[var(--border-default)] bg-[var(--bg-card)]">
+            <div className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
+              <span>
+                Menampilkan{" "}
+                <strong className="text-[var(--text-primary)]">
+                  {totalFiltered > 0 ? startIndex + 1 : 0}
+                </strong>
+                {" - "}
+                <strong className="text-[var(--text-primary)]">{endIndex}</strong> dari{" "}
+                <strong className="text-[var(--text-primary)]">{totalFiltered}</strong> karyawan
+              </span>
+              <div className="flex items-center gap-1.5 ml-2">
+                <span>Baris:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="rounded border border-[var(--border-default)] bg-[var(--bg-page)] px-2 py-1 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                title="Halaman Pertama"
+                className="flex h-8 w-8 items-center justify-center rounded border border-[var(--border-default)] bg-[var(--bg-page)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-raised)] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                title="Halaman Sebelumnya"
+                className="flex h-8 w-8 items-center justify-center rounded border border-[var(--border-default)] bg-[var(--bg-page)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-raised)] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+
+              <div className="flex items-center gap-1 px-1">
+                {getPageNumbers(currentPage, totalPages).map((p, idx) =>
+                  p === "..." ? (
+                    <span key={`dots-${idx}`} className="px-1 text-xs text-[var(--text-muted)]">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={`page-${p}`}
+                      onClick={() => setCurrentPage(Number(p))}
+                      className={`flex h-8 min-w-[2rem] items-center justify-center rounded px-2 text-xs font-medium transition-colors ${
+                        currentPage === p
+                          ? "bg-[var(--color-primary)] text-white shadow-sm"
+                          : "border border-[var(--border-default)] bg-[var(--bg-page)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface-raised)]"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                title="Halaman Selanjutnya"
+                className="flex h-8 w-8 items-center justify-center rounded border border-[var(--border-default)] bg-[var(--bg-page)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-raised)] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                title="Halaman Terakhir"
+                className="flex h-8 w-8 items-center justify-center rounded border border-[var(--border-default)] bg-[var(--bg-page)] text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-raised)] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
