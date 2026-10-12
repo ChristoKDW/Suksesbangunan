@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import { Badge } from "@/components/atoms"
 import { Search, Download, UserCheck, UserX, Clock, Trash2, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
@@ -29,6 +29,8 @@ export default function AttendancePage() {
   const [attendance, setAttendance] = useState<Absensi[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const fetchData = async () => {
     try {
@@ -69,6 +71,10 @@ export default function AttendancePage() {
     (record.karyawan?.nama || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     String(record.idKaryawan).includes(searchQuery)
   )
+
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize))
+  const startIndex = (currentPage - 1) * pageSize
+  const paginatedData = filteredData.slice(startIndex, startIndex + pageSize)
 
   const stats = {
     hadir: todayData.filter(a => a.statusKehadiran === "tepat waktu").length,
@@ -128,7 +134,17 @@ export default function AttendancePage() {
         <CardHeader className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "var(--border-default)" }}>
           <div className="flex items-center gap-2 rounded-lg px-3 py-2 w-full sm:max-w-xs" style={{ background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
             <Search className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
-            <input type="search" placeholder="Cari karyawan..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="flex-1 bg-transparent text-sm outline-none" style={{ color: "var(--text-primary)" }} />
+            <input 
+              type="search" 
+              placeholder="Cari karyawan..." 
+              value={searchQuery} 
+              onChange={e => {
+                setSearchQuery(e.target.value)
+                setCurrentPage(1)
+              }} 
+              className="flex-1 bg-transparent text-sm outline-none" 
+              style={{ color: "var(--text-primary)" }} 
+            />
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -145,14 +161,14 @@ export default function AttendancePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.length === 0 ? (
+              {paginatedData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>
                     Belum ada data absensi hari ini
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((record) => {
+                paginatedData.map((record) => {
                   const badge = getStatusBadge(record.statusKehadiran)
                   return (
                     <TableRow key={record.idAbsensi}>
@@ -181,6 +197,19 @@ export default function AttendancePage() {
             </TableBody>
           </Table>
         </CardContent>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredData.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize)
+            setCurrentPage(1)
+          }}
+          itemLabel="data absensi"
+        />
       </Card>
     </div>
   )

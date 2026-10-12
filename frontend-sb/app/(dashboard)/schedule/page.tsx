@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect, useMemo, Fragment } from "react"
-import { Card, CardContent, CardHeader } from "@/components/molecules"
+import { Card, CardContent, CardHeader, Pagination } from "@/components/molecules"
 import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Save, Filter, Building2, UserCheck, CalendarRange, Sparkles, AlertCircle, Shuffle, RotateCw, CheckCircle2, X, Info } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -33,6 +33,8 @@ export default function SchedulePage() {
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>("all")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const [cutOffSettings, setCutOffSettings] = useState<PengaturanPenggajian>({
     id: 1,
@@ -254,6 +256,12 @@ export default function SchedulePage() {
     return karyawanList.filter(k => k.idDepartemen === Number(selectedDeptFilter))
   }, [karyawanList, isSPV, user?.idDepartemen, selectedDeptFilter, departemenList])
 
+  const totalPages = Math.max(1, Math.ceil(displayedKaryawan.length / pageSize))
+  const startIndex = (currentPage - 1) * pageSize
+  const paginatedKaryawan = useMemo(() => {
+    return displayedKaryawan.slice(startIndex, startIndex + pageSize)
+  }, [displayedKaryawan, startIndex, pageSize])
+
   // Shifts available for current user/department, ordered by start time (Pagi -> Middle -> Siang)
   const departmentShifts = useMemo(() => {
     return shiftList
@@ -414,7 +422,7 @@ export default function SchedulePage() {
   const departmentSections = useMemo(() => {
     const map = new Map<number | null, Karyawan[]>()
 
-    displayedKaryawan.forEach(emp => {
+    paginatedKaryawan.forEach(emp => {
       const deptId = emp.idDepartemen || null
       if (!map.has(deptId)) {
         map.set(deptId, [])
@@ -465,7 +473,7 @@ export default function SchedulePage() {
       if (!a.isManagedByAdminOrHrd && b.isManagedByAdminOrHrd) return 1
       return a.namaDepartemen.localeCompare(b.namaDepartemen)
     })
-  }, [displayedKaryawan, departemenList])
+  }, [paginatedKaryawan, departemenList])
 
   const handleCellClick = (idKaryawan: number, date: number, isFixedLibur: boolean, isBlockedLibur: boolean) => {
     const emp = karyawanList.find(k => k.idKaryawan === idKaryawan)
@@ -596,11 +604,13 @@ export default function SchedulePage() {
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear(year - 1) }
     else setMonth(month - 1)
+    setCurrentPage(1)
   }
 
   const nextMonth = () => {
     if (month === 11) { setMonth(0); setYear(year + 1) }
     else setMonth(month + 1)
+    setCurrentPage(1)
   }
 
   if (loading) {
@@ -633,7 +643,10 @@ export default function SchedulePage() {
               <Filter className="w-3.5 h-3.5 text-[var(--text-muted)]" />
               <select
                 value={selectedDeptFilter}
-                onChange={e => setSelectedDeptFilter(e.target.value)}
+                onChange={e => {
+                  setSelectedDeptFilter(e.target.value)
+                  setCurrentPage(1)
+                }}
                 className="bg-transparent text-xs font-medium text-[var(--text-primary)] outline-none"
               >
                 <option value="all">Semua Departemen ({karyawanList.length} karyawan)</option>
@@ -1063,6 +1076,18 @@ export default function SchedulePage() {
             </tbody>
           </table>
         </CardContent>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={displayedKaryawan.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize)
+            setCurrentPage(1)
+          }}
+          itemLabel="karyawan"
+        />
       </Card>
       {/* MODAL GENERATE JADWAL OTOMATIS (SISTEM ROLLING SHIFT) */}
       {showAutoModal && (

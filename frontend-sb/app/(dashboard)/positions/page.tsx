@@ -1,13 +1,16 @@
 "use client"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import { Search, Plus, X, Briefcase, Edit2, Trash2, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Jabatan } from "@/lib/types"
 
 export default function PositionsPage() {
   const [positions, setPositions] = useState<Jabatan[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -74,6 +77,18 @@ export default function PositionsPage() {
     }
   }
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  const filteredPositions = positions.filter((p) =>
+    p.namaJabatan.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+  const totalFiltered = filteredPositions.length
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalFiltered)
+  const paginatedPositions = filteredPositions.slice(startIndex, endIndex)
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -89,7 +104,7 @@ export default function PositionsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Jabatan</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">Total {positions.length} jabatan terdaftar</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-sm bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]">
+        <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-sm bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] cursor-pointer">
           <Plus className="w-4 h-4" />
           Tambah Jabatan
         </button>
@@ -110,7 +125,7 @@ export default function PositionsPage() {
               </div>
               <div className="pt-4 flex justify-end gap-2">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-md text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-surface-raised)] border border-transparent">Batal</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60">
+                <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60 cursor-pointer">
                   {submitting ? "Menyimpan..." : "Simpan Jabatan"}
                 </button>
               </div>
@@ -134,7 +149,7 @@ export default function PositionsPage() {
               </div>
               <div className="pt-4 flex justify-end gap-2">
                 <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 rounded-md text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-surface-raised)] border border-transparent">Batal</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60">
+                <button type="submit" disabled={submitting} className="px-4 py-2 rounded-md text-sm font-medium text-white bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] disabled:opacity-60 cursor-pointer">
                   {submitting ? "Menyimpan..." : "Simpan Perubahan"}
                 </button>
               </div>
@@ -148,7 +163,13 @@ export default function PositionsPage() {
         <CardHeader className="flex flex-col gap-3 border-b border-[var(--border-default)] pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 rounded-lg px-3 py-2 w-full sm:max-w-xs bg-[var(--bg-page)] border border-[var(--border-default)]">
             <Search className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0" />
-            <input type="search" placeholder="Cari jabatan..." className="flex-1 bg-transparent text-sm outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]" />
+            <input
+              type="search"
+              placeholder="Cari jabatan..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent text-sm outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+            />
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -161,35 +182,53 @@ export default function PositionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {positions.map((pos) => (
-                <TableRow key={pos.idJabatan}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--bg-page)] border border-[var(--border-default)] text-[var(--text-muted)]">
-                        <Briefcase className="w-4 h-4" />
-                      </div>
-                      <div className="font-medium text-[var(--text-primary)]">{pos.namaJabatan}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="rounded-md px-2 py-1 text-xs font-medium bg-[var(--bg-page)] border border-[var(--border-default)] text-[var(--text-secondary)]">
-                      #{pos.idJabatan}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-2">
-                      <button onClick={() => openEditModal(pos)} className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-[var(--color-primary)]">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDeletePosition(pos.idJabatan)} className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-red-500">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+              {paginatedPositions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="h-24 text-center text-sm text-[var(--text-muted)]">
+                    Tidak ada jabatan yang ditemukan.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                paginatedPositions.map((pos) => (
+                  <TableRow key={pos.idJabatan}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--bg-page)] border border-[var(--border-default)] text-[var(--text-muted)]">
+                          <Briefcase className="w-4 h-4" />
+                        </div>
+                        <div className="font-medium text-[var(--text-primary)]">{pos.namaJabatan}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="rounded-md px-2 py-1 text-xs font-medium bg-[var(--bg-page)] border border-[var(--border-default)] text-[var(--text-secondary)]">
+                        #{pos.idJabatan}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => openEditModal(pos)} className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-[var(--color-primary)] cursor-pointer">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDeletePosition(pos.idJabatan)} className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-red-500 cursor-pointer">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalFiltered}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="jabatan"
+          />
         </CardContent>
       </Card>
     </div>

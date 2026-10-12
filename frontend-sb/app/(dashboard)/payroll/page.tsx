@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import {
   Download,
   Calculator,
@@ -40,6 +40,8 @@ export default function PayrollPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
   })
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   // Settings state
   const [settings, setSettings] = useState<PengaturanPenggajian>({
@@ -300,6 +302,10 @@ export default function PayrollPage() {
     return matchMonth && matchSearch
   })
 
+  const totalPages = Math.max(1, Math.ceil(filteredPayroll.length / pageSize))
+  const startIndex = (currentPage - 1) * pageSize
+  const paginatedPayroll = filteredPayroll.slice(startIndex, startIndex + pageSize)
+
   // Computed stats for filtered period
   const totalPayroll = filteredPayroll.reduce((sum, p) => sum + Number(p.totalGaji || 0), 0)
   const totalDeductions = filteredPayroll.reduce((sum, p) => sum + Number(p.potongan || 0), 0)
@@ -422,7 +428,10 @@ export default function PayrollPage() {
             <input
               type="month"
               value={selectedMonth}
-              onChange={e => setSelectedMonth(e.target.value)}
+              onChange={e => {
+                setSelectedMonth(e.target.value)
+                setCurrentPage(1)
+              }}
               className="bg-transparent text-sm font-medium text-[var(--text-primary)] outline-none cursor-pointer"
             />
           </div>
@@ -488,7 +497,10 @@ export default function PayrollPage() {
               type="search"
               placeholder="Cari nama, NIK, jabatan..."
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={e => {
+                setSearchQuery(e.target.value)
+                setCurrentPage(1)
+              }}
               className="flex-1 bg-transparent text-sm outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
@@ -512,7 +524,7 @@ export default function PayrollPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPayroll.length === 0 ? (
+              {paginatedPayroll.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-10 text-sm text-[var(--text-muted)]">
                     Tidak ada data penggajian untuk periode {selectedMonth}.
@@ -524,7 +536,7 @@ export default function PayrollPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredPayroll.map(p => {
+                paginatedPayroll.map(p => {
                   const totalTunjangan =
                     Number(p.tunjanganKonsumsi || 0) +
                     Number(p.tunjanganTransportasi || 0) +
@@ -613,6 +625,19 @@ export default function PayrollPage() {
             </TableBody>
           </Table>
         </CardContent>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredPayroll.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize)
+            setCurrentPage(1)
+          }}
+          itemLabel="data gaji"
+        />
       </Card>
 
       {/* Generate Modal */}

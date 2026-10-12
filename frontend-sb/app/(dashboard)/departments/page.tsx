@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import { Search, Plus, X, Building2, Edit2, Trash2, Loader2, UserCheck, Users } from "lucide-react"
 import { api, userApi, User } from "@/lib/api"
 import type { Departemen } from "@/lib/types"
@@ -10,6 +10,8 @@ export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<Departemen[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -169,9 +171,18 @@ export default function DepartmentsPage() {
     }
   }
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
   const filteredDepts = departments.filter(d => 
     d.namaDepartemen.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  const totalFiltered = filteredDepts.length
+  const startIndex = (currentPage - 1) * pageSize
+  const endIndex = Math.min(startIndex + pageSize, totalFiltered)
+  const paginatedDepts = filteredDepts.slice(startIndex, endIndex)
 
   if (loading) {
     return (
@@ -401,64 +412,82 @@ export default function DepartmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredDepts.map((dept) => {
-                const managers = getManagers(dept)
-                return (
-                  <TableRow key={dept.idDepartemen}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--bg-page)] border border-[var(--border-default)] text-[var(--text-muted)]">
-                          <Building2 className="w-4 h-4" />
+              {paginatedDepts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center text-sm text-[var(--text-muted)]">
+                    Tidak ada departemen yang ditemukan.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedDepts.map((dept) => {
+                  const managers = getManagers(dept)
+                  return (
+                    <TableRow key={dept.idDepartemen}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--bg-page)] border border-[var(--border-default)] text-[var(--text-muted)]">
+                            <Building2 className="w-4 h-4" />
+                          </div>
+                          <div className="font-medium text-[var(--text-primary)]">
+                            {dept.namaDepartemen}
+                          </div>
                         </div>
-                        <div className="font-medium text-[var(--text-primary)]">
-                          {dept.namaDepartemen}
+                      </TableCell>
+                      <TableCell>
+                        <span className="rounded-md px-2 py-1 text-xs font-medium bg-[var(--bg-page)] border border-[var(--border-default)] text-[var(--text-secondary)]">
+                          #{dept.idDepartemen}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {managers.length > 0 ? (
+                          <div className="flex flex-wrap items-center gap-1.5 max-w-md">
+                            {managers.map((m) => (
+                              <div
+                                key={m.idUser}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-page)] border border-[var(--border-default)] text-xs"
+                              >
+                                <UserCheck className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                                <span className="font-medium text-[var(--text-primary)]">{m.nama}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                                  m.role === 'Admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
+                                  m.role === 'HRD' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
+                                  'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                                }`}>
+                                  {m.role}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-amber-500 italic">Belum ditentukan</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => openEditModal(dept)} className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-[var(--color-primary)] cursor-pointer">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDeleteDept(dept.idDepartemen)} className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-red-500 cursor-pointer">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="rounded-md px-2 py-1 text-xs font-medium bg-[var(--bg-page)] border border-[var(--border-default)] text-[var(--text-secondary)]">
-                        #{dept.idDepartemen}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {managers.length > 0 ? (
-                        <div className="flex flex-wrap items-center gap-1.5 max-w-md">
-                          {managers.map((m) => (
-                            <div
-                              key={m.idUser}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--bg-page)] border border-[var(--border-default)] text-xs"
-                            >
-                              <UserCheck className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                              <span className="font-medium text-[var(--text-primary)]">{m.nama}</span>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${
-                                m.role === 'Admin' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' :
-                                m.role === 'HRD' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' :
-                                'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                              }`}>
-                                {m.role}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-amber-500 italic">Belum ditentukan</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => openEditModal(dept)} className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-[var(--color-primary)]">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDeleteDept(dept.idDepartemen)} className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-red-500">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
             </TableBody>
           </Table>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalFiltered}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="departemen"
+          />
         </CardContent>
       </Card>
     </div>

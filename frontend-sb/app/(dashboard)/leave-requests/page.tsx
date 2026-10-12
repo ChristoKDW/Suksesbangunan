@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import { Badge } from "@/components/atoms"
 import { Check, X, FileText, Search, Paperclip, Loader2, ArrowLeftRight, CheckCircle2, Clock, AlertCircle, Info } from "lucide-react"
 import { api } from "@/lib/api"
@@ -111,6 +111,8 @@ export default function LeaveRequestsPage() {
   const [requests, setRequests] = useState<PengajuanIzin[]>([])
   const [loadingIzin, setLoadingIzin] = useState(true)
   const [activeTabIzin, setActiveTabIzin] = useState("Semua")
+  const [currentPageIzin, setCurrentPageIzin] = useState(1)
+  const [pageSizeIzin, setPageSizeIzin] = useState(10)
   const [selectedRequest, setSelectedRequest] = useState<PengajuanIzin | null>(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
@@ -118,6 +120,8 @@ export default function LeaveRequestsPage() {
   const [swaps, setSwaps] = useState<PengajuanPertukaran[]>([])
   const [loadingSwaps, setLoadingSwaps] = useState(true)
   const [activeTabSwap, setActiveTabSwap] = useState("Semua")
+  const [currentPageSwap, setCurrentPageSwap] = useState(1)
+  const [pageSizeSwap, setPageSizeSwap] = useState(10)
   const [selectedSwap, setSelectedSwap] = useState<PengajuanPertukaran | null>(null)
   const [isSwapPreviewOpen, setIsSwapPreviewOpen] = useState(false)
 
@@ -336,6 +340,14 @@ export default function LeaveRequestsPage() {
     return true
   })
 
+  const totalPagesIzin = Math.max(1, Math.ceil(filteredRequests.length / pageSizeIzin))
+  const startIndexIzin = (currentPageIzin - 1) * pageSizeIzin
+  const paginatedRequests = filteredRequests.slice(startIndexIzin, startIndexIzin + pageSizeIzin)
+
+  const totalPagesSwap = Math.max(1, Math.ceil(filteredSwaps.length / pageSizeSwap))
+  const startIndexSwap = (currentPageSwap - 1) * pageSizeSwap
+  const paginatedSwaps = filteredSwaps.slice(startIndexSwap, startIndexSwap + pageSizeSwap)
+
   if (loadingIzin && loadingSwaps) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -420,7 +432,10 @@ export default function LeaveRequestsPage() {
               return (
                 <button
                   key={tab}
-                  onClick={() => setActiveTabIzin(tab)}
+                  onClick={() => {
+                    setActiveTabIzin(tab)
+                    setCurrentPageIzin(1)
+                  }}
                   className="px-4 py-2 rounded-md text-sm font-medium transition-colors"
                   style={{
                     background: activeTabIzin === tab ? "var(--bg-surface)" : "transparent",
@@ -444,7 +459,17 @@ export default function LeaveRequestsPage() {
             <CardHeader className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "var(--border-default)" }}>
               <div className="flex items-center gap-2 rounded-lg px-3 py-2 w-full sm:max-w-xs" style={{ background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
                 <Search className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
-                <input type="search" placeholder="Cari karyawan..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="flex-1 bg-transparent text-sm outline-none" style={{ color: "var(--text-primary)" }} />
+                <input 
+                  type="search" 
+                  placeholder="Cari karyawan..." 
+                  value={searchQuery} 
+                  onChange={e => {
+                    setSearchQuery(e.target.value)
+                    setCurrentPageIzin(1)
+                  }} 
+                  className="flex-1 bg-transparent text-sm outline-none" 
+                  style={{ color: "var(--text-primary)" }} 
+                />
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -462,14 +487,14 @@ export default function LeaveRequestsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRequests.length === 0 ? (
+                  {paginatedRequests.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>
                         Tidak ada pengajuan izin
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredRequests.map((req) => {
+                    paginatedRequests.map((req) => {
                       const days = daysBetween(req.tanggalMulai, req.tanggalSelesai)
                       const tc = typeColors[req.jenisIzin] || { bg: "#f3f4f6", color: "#6b7280" }
                       const canSpvAction = (isSpv || isHrdOrAdmin) && (req.status === "menunggu_spv" || req.status === "menunggu")
@@ -561,6 +586,19 @@ export default function LeaveRequestsPage() {
                 </TableBody>
               </Table>
             </CardContent>
+
+            <Pagination
+              currentPage={currentPageIzin}
+              totalPages={totalPagesIzin}
+              totalItems={filteredRequests.length}
+              pageSize={pageSizeIzin}
+              onPageChange={setCurrentPageIzin}
+              onPageSizeChange={(newSize) => {
+                setPageSizeIzin(newSize)
+                setCurrentPageIzin(1)
+              }}
+              itemLabel="pengajuan izin"
+            />
           </Card>
         </>
       )}
@@ -592,7 +630,10 @@ export default function LeaveRequestsPage() {
               return (
                 <button
                   key={tab}
-                  onClick={() => setActiveTabSwap(tab)}
+                  onClick={() => {
+                    setActiveTabSwap(tab)
+                    setCurrentPageSwap(1)
+                  }}
                   className="px-4 py-2 rounded-md text-sm font-medium transition-colors"
                   style={{
                     background: activeTabSwap === tab ? "var(--bg-surface)" : "transparent",
@@ -620,7 +661,10 @@ export default function LeaveRequestsPage() {
                   type="search"
                   placeholder="Cari pemohon / rekan..."
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={e => {
+                    setSearchQuery(e.target.value)
+                    setCurrentPageSwap(1)
+                  }}
                   className="flex-1 bg-transparent text-sm outline-none"
                   style={{ color: "var(--text-primary)" }}
                 />
@@ -641,14 +685,14 @@ export default function LeaveRequestsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSwaps.length === 0 ? (
+                  {paginatedSwaps.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>
                         Tidak ada data pengajuan pertukaran
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredSwaps.map((swap) => {
+                    paginatedSwaps.map((swap) => {
                       const isShift = swap.jenisPertukaran === "shift"
                       const canSpvAction = (isSpv || isHrdOrAdmin) && swap.status === "menunggu_spv"
                       const canHrdAction = isHrdOrAdmin && swap.status === "menunggu_hrd"
@@ -779,6 +823,19 @@ export default function LeaveRequestsPage() {
                 </TableBody>
               </Table>
             </CardContent>
+
+            <Pagination
+              currentPage={currentPageSwap}
+              totalPages={totalPagesSwap}
+              totalItems={filteredSwaps.length}
+              pageSize={pageSizeSwap}
+              onPageChange={setCurrentPageSwap}
+              onPageSizeChange={(newSize) => {
+                setPageSizeSwap(newSize)
+                setCurrentPageSwap(1)
+              }}
+              itemLabel="pengajuan pertukaran"
+            />
           </Card>
         </>
       )}
