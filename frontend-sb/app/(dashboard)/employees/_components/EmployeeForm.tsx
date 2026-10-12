@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Departemen, Jabatan, Karyawan } from "@/lib/types"
+import AssetSection, { PendingAsset } from "./AssetSection"
 
 type FormState = {
   nik: string
@@ -127,6 +128,7 @@ export default function EmployeeForm({ id }: { id?: string }) {
   const [loading, setLoading] = useState(!!id)
   const [submitting, setSubmitting] = useState(false)
   const [missing, setMissing] = useState<string[]>([])
+  const [pendingAssets, setPendingAssets] = useState<PendingAsset[]>([])
 
   useEffect(() => {
     const load = async () => {
@@ -157,8 +159,28 @@ export default function EmployeeForm({ id }: { id?: string }) {
     if (bad.length) return
     setSubmitting(true)
     try {
-      if (id) await api.patch(`karyawan/${id}`, toBody(form))
-      else await api.post("karyawan", toBody(form))
+      if (id) {
+        await api.patch(`karyawan/${id}`, toBody(form))
+      } else {
+        const created = await api.post<Karyawan>("karyawan", toBody(form))
+        const newId = created?.idKaryawan
+        if (newId && pendingAssets.length > 0) {
+          for (const asset of pendingAssets) {
+            try {
+              await api.post("aset", {
+                idKaryawan: newId,
+                kodeBarang: asset.kodeBarang,
+                namaBarang: asset.namaBarang,
+                tanggalPinjam: asset.tanggalPinjam,
+                durasi: asset.durasi,
+                keterangan: asset.keterangan || undefined,
+              })
+            } catch (assetErr) {
+              console.error("Gagal menyimpan aset:", assetErr)
+            }
+          }
+        }
+      }
       router.push("/employees")
     } catch (err) {
       showError(err instanceof Error ? err.message : "Gagal menyimpan karyawan")
@@ -220,11 +242,21 @@ export default function EmployeeForm({ id }: { id?: string }) {
             </div>
           )}
 
+          {!id && (
+            <div className="pt-2">
+              <AssetSection
+                pendingAssets={pendingAssets}
+                onAddPendingAsset={(item) => setPendingAssets((prev) => [...prev, item])}
+                onRemovePendingAsset={(idx) => setPendingAssets((prev) => prev.filter((_, i) => i !== idx))}
+              />
+            </div>
+          )}
+
           {missing.length > 0 && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Harap lengkapi: {missing.join(", ")}</div>}
 
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => router.push("/employees")} className="rounded-md px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-surface-raised)]">Batal</button>
-            <button type="submit" disabled={submitting} className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-60">{submitting ? "Menyimpan..." : "Simpan Karyawan"}</button>
+            <button type="submit" disabled={submitting} className="rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)] disabled:opacity-60">{submitting ? "Menyimpan..." : id ? "Simpan Perubahan" : "Simpan Karyawan"}</button>
           </div>
         </form>
       </CardContent>
