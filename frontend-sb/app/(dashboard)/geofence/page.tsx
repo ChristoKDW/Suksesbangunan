@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
-import { LatticeLoader } from "@/components/atoms"
+import { LatticeLoader, PageLoader } from "@/components/atoms"
 import { Search, Plus, X, Trash2, Edit2, MapPin, ExternalLink, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { PengaturanKantor, Departemen } from "@/lib/types"
@@ -102,7 +102,7 @@ export default function OfficeLocationsPage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--text-muted)" }} /></div>
+    return <PageLoader label="Memuat titik kantor..." />
   }
 
   return (

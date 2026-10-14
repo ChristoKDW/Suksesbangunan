@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
-import { LatticeLoader } from "@/components/atoms"
+import { LatticeLoader, PageLoader } from "@/components/atoms"
 import { Search, Plus, Edit2, Trash2, X, Clock, Building2, Loader2, ShieldCheck, Filter } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -173,7 +173,7 @@ export default function ShiftsPage() {
   }, [shifts, selectedDeptFilter, searchQuery, departments])
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--text-muted)" }} /></div>
+    return <PageLoader label="Memuat data shift..." />
   }
 
   return (

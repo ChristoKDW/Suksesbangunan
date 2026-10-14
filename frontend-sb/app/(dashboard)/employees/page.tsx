@@ -3,7 +3,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
-import { Badge } from "@/components/atoms"
+import { Badge, PageLoader } from "@/components/atoms"
 import { Search, Plus, Edit2, Trash2, Loader2, Key, Eye, ShieldCheck } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
@@ -124,11 +124,7 @@ export default function EmployeesPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--text-muted)" }} />
-      </div>
-    )
+    return <PageLoader label="Memuat data karyawan..." />
   }
 
   return (

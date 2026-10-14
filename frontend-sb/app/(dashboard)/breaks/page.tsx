@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
-import { Badge } from "@/components/atoms"
+import { Badge, PageLoader } from "@/components/atoms"
 import { Search, Download, Coffee, AlertCircle, CheckCircle2, Loader2, Trash2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Istirahat, Absensi, Karyawan } from "@/lib/types"
@@ -81,7 +81,7 @@ export default function BreaksPage() {
   const onTimeBreaks = enrichedBreaks.filter(b => b.durasiMenit !== null && b.durasiMenit <= 60).length
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--text-muted)" }} /></div>
+    return <PageLoader label="Memuat data istirahat..." />
   }
 
   return (

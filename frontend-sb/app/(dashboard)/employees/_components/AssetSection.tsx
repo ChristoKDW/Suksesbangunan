@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { Loader2, Trash2 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
-import { Badge } from "@/components/atoms"
+import { Badge, LatticeLoader } from "@/components/atoms"
 import { api } from "@/lib/api"
 
 export type PendingAsset = {
@@ -188,7 +188,7 @@ export default function AssetSection({
             {loading ? (
               <TableRow>
                 <TableCell colSpan={6} className="py-8 text-center">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin text-[var(--text-muted)]" />
+                  <LatticeLoader status="working" label="Memuat aset..." showTimer={false} cellSize={4} gap={2} fontSize={13} color="var(--color-primary)" />
                 </TableCell>
               </TableRow>
             ) : isPendingMode ? (

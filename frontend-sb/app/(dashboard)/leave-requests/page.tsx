@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
-import { Badge } from "@/components/atoms"
+import { Badge, PageLoader } from "@/components/atoms"
 import { Check, X, FileText, Search, Paperclip, Loader2, ArrowLeftRight, CheckCircle2, Clock, AlertCircle, Info } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -349,11 +349,7 @@ export default function LeaveRequestsPage() {
   const paginatedSwaps = filteredSwaps.slice(startIndexSwap, startIndexSwap + pageSizeSwap)
 
   if (loadingIzin && loadingSwaps) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--text-muted)" }} />
-      </div>
-    )
+    return <PageLoader label="Memuat data pengajuan..." />
   }
 
   return (

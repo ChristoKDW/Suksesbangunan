@@ -195,4 +195,25 @@ export function LatticeLoader({
   );
 }
 
+export function PageLoader({
+  label = 'Memuat data...',
+  containerClassName = 'flex items-center justify-center h-64',
+  ...props
+}: Partial<LatticeLoaderProps> & { containerClassName?: string }) {
+  return (
+    <div className={containerClassName}>
+      <LatticeLoader
+        status="working"
+        label={label}
+        showTimer={false}
+        color="var(--color-primary)"
+        cellSize={6}
+        gap={2}
+        fontSize={14}
+        {...props}
+      />
+    </div>
+  );
+}
+
 export default LatticeLoader;

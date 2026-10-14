@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/molecules"
+import { LatticeLoader } from "@/components/atoms"
 import { FileText, Calendar, Users, Briefcase, FileSpreadsheet, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Departemen } from "@/lib/types"
@@ -118,8 +119,14 @@ export default function ReportsPage() {
               disabled={loading !== null}
               className="w-full flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-50"
             >
-              {loading === "kehadiran-excel" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
-              Excel
+              {loading === "kehadiran-excel" ? (
+                <LatticeLoader status="working" label="Mengunduh..." showTimer={false} cellSize={3} gap={1} fontSize={12} color="currentColor" />
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Excel</span>
+                </>
+              )}
             </button>
             <button 
               onClick={() => handleExport("kehadiran", "pdf")}
@@ -171,8 +178,14 @@ export default function ReportsPage() {
               disabled={loading !== null}
               className="w-full flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-50"
             >
-              {loading === "cuti-excel" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
-              Excel
+              {loading === "cuti-excel" ? (
+                <LatticeLoader status="working" label="Mengunduh..." showTimer={false} cellSize={3} gap={1} fontSize={12} color="currentColor" />
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Excel</span>
+                </>
+              )}
             </button>
             <button 
               onClick={() => handleExport("cuti", "pdf")}
@@ -217,8 +230,14 @@ export default function ReportsPage() {
               disabled={loading !== null}
               className="w-full flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-50"
             >
-              {loading === "gaji-excel" ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
-              Excel
+              {loading === "gaji-excel" ? (
+                <LatticeLoader status="working" label="Mengunduh..." showTimer={false} cellSize={3} gap={1} fontSize={12} color="currentColor" />
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Excel</span>
+                </>
+              )}
             </button>
             <button 
               onClick={() => handleExport("gaji", "pdf")}

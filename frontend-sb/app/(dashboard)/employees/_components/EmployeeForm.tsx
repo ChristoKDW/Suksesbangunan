@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, ArrowLeft, ExternalLink } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
-import { LatticeLoader } from "@/components/atoms"
+import { LatticeLoader, PageLoader } from "@/components/atoms"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Departemen, Jabatan, Karyawan } from "@/lib/types"
@@ -249,7 +249,7 @@ export default function EmployeeForm({ id }: { id?: string }) {
     }
   }
 
-  if (loading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[var(--text-muted)]" /></div>
+  if (loading) return <PageLoader label="Memuat formulir karyawan..." />
 
   return (
     <Card>

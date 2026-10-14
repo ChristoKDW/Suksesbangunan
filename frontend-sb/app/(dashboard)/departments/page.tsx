@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
-import { LatticeLoader } from "@/components/atoms"
+import { LatticeLoader, PageLoader } from "@/components/atoms"
 import { Search, Plus, X, Building2, Edit2, Trash2, Loader2, UserCheck, Users } from "lucide-react"
 import { api, userApi, User } from "@/lib/api"
 import type { Departemen } from "@/lib/types"
@@ -186,11 +186,7 @@ export default function DepartmentsPage() {
   const paginatedDepts = filteredDepts.slice(startIndex, endIndex)
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--text-muted)" }} />
-      </div>
-    )
+    return <PageLoader label="Memuat data departemen..." />
   }
 
   return (

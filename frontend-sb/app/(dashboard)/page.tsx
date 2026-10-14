@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules"
-import { Badge } from "@/components/atoms"
+import { Badge, PageLoader } from "@/components/atoms"
 import {
   Users,
   UserCheck,
@@ -157,11 +157,7 @@ export default function DashboardPage() {
     .slice(0, 5)
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--text-muted)" }} />
-      </div>
-    )
+    return <PageLoader label="Memuat ringkasan dashboard..." />
   }
 
   return (

@@ -2,6 +2,7 @@
 import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/molecules"
+import { LatticeLoader } from "@/components/atoms"
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react"
 
 function VerifyEmailContent() {
@@ -42,7 +43,17 @@ function VerifyEmailContent() {
   return (
     <CardContent className="p-8 text-center space-y-6">
       <div className="flex justify-center">
-        {status === "loading" && <Loader2 className="w-16 h-16 animate-spin text-[var(--color-primary)]" />}
+        {status === "loading" && (
+          <LatticeLoader
+            status="working"
+            label="Memverifikasi..."
+            showTimer={false}
+            cellSize={8}
+            gap={3}
+            fontSize={15}
+            color="var(--color-primary)"
+          />
+        )}
         {status === "success" && <CheckCircle2 className="w-16 h-16 text-green-500" />}
         {status === "error" && <XCircle className="w-16 h-16 text-red-500" />}
       </div>
@@ -68,9 +79,16 @@ export default function VerifyEmailPage() {
         <Suspense fallback={
           <CardContent className="p-8 text-center space-y-6">
             <div className="flex justify-center">
-              <Loader2 className="w-16 h-16 animate-spin text-[var(--color-primary)]" />
+              <LatticeLoader
+                status="working"
+                label="Memuat verifikasi..."
+                showTimer={false}
+                cellSize={8}
+                gap={3}
+                fontSize={15}
+                color="var(--color-primary)"
+              />
             </div>
-            <p className="text-[var(--text-secondary)]">Memuat verifikasi...</p>
           </CardContent>
         }>
           <VerifyEmailContent />

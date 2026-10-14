@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { userApi, User } from "@/lib/api"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
-import { LatticeLoader } from "@/components/atoms"
+import { LatticeLoader, PageLoader } from "@/components/atoms"
 import {
   User as UserIcon,
   Shield,
@@ -173,11 +173,7 @@ export default function ProfilePage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-      </div>
-    )
+    return <PageLoader label="Memuat data profil..." />
   }
 
   const role = authUser?.role || "Pengguna"

@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
-import { LatticeLoader } from "@/components/atoms"
+import { LatticeLoader, PageLoader } from "@/components/atoms"
 import { Search, Plus, X, UserCog, Edit2, Trash2, Loader2, Shield, Eye, EyeOff } from "lucide-react"
 import { userApi, User } from "@/lib/api"
 import { api } from "@/lib/api"
@@ -137,11 +137,7 @@ export default function UsersPage() {
   const paginatedUsers = filteredUsers.slice(startIndex, startIndex + pageSize)
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-      </div>
-    )
+    return <PageLoader label="Memuat data pengguna..." />
   }
 
   return (

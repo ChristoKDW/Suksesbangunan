@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useMemo, Fragment } from "react"
 import { Card, CardContent, CardHeader, Pagination } from "@/components/molecules"
-import { LatticeLoader } from "@/components/atoms"
+import { LatticeLoader, PageLoader } from "@/components/atoms"
 import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Save, Filter, Building2, UserCheck, CalendarRange, Sparkles, AlertCircle, Shuffle, RotateCw, CheckCircle2, X, Info } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -615,7 +615,7 @@ export default function SchedulePage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--text-muted)" }} /></div>
+    return <PageLoader label="Memuat jadwal kerja..." />
   }
 
   const spvDeptName = departemenList.find(d => d.idDepartemen === user?.idDepartemen)?.namaDepartemen || "Departemen Anda"

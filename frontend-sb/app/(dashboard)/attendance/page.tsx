@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
-import { Badge } from "@/components/atoms"
+import { Badge, PageLoader } from "@/components/atoms"
 import { Search, Download, UserCheck, UserX, Clock, Trash2, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Absensi } from "@/lib/types"
@@ -83,7 +83,7 @@ export default function AttendancePage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin" style={{ color: "var(--text-muted)" }} /></div>
+    return <PageLoader label="Memuat data absensi..." />
   }
 
   return (

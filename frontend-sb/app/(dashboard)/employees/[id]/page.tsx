@@ -25,7 +25,7 @@ import {
   User as UserIcon,
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
-import { Badge } from "@/components/atoms"
+import { Badge, PageLoader } from "@/components/atoms"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Karyawan } from "@/lib/types"
@@ -119,11 +119,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
   }, [id])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-80">
-        <Loader2 className="w-8 h-8 animate-spin text-[var(--color-primary)]" />
-      </div>
-    )
+    return <PageLoader label="Memuat profil karyawan..." containerClassName="flex items-center justify-center h-80" />
   }
 
   if (error || !employee) {

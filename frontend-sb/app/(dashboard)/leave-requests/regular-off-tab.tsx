@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
-import { Badge } from "@/components/atoms"
+import { Badge, LatticeLoader } from "@/components/atoms"
 import { Check, X, Search, Loader2, Calendar, CheckCircle2, Clock, AlertCircle, Info } from "lucide-react"
 import { regularOffApi } from "@/lib/api-ro"
 import { useAuth } from "@/lib/auth-context"
@@ -250,9 +250,8 @@ export default function RegularOffTab() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-slate-400">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-red-500" />
-                    Memuat daftar pengajuan Regular Off...
+                  <TableCell colSpan={7} className="text-center py-12">
+                    <LatticeLoader status="working" label="Memuat daftar pengajuan Regular Off..." showTimer={false} cellSize={5} gap={2} fontSize={13} color="var(--color-primary)" />
                   </TableCell>
                 </TableRow>
               ) : filteredList.length === 0 ? (
@@ -323,7 +322,7 @@ export default function RegularOffTab() {
                       </TableCell>
                       <TableCell className="text-right">
                         {isProcessing ? (
-                          <Loader2 className="w-5 h-5 animate-spin text-slate-400 inline-block" />
+                          <LatticeLoader status="working" label="Memproses..." showTimer={false} cellSize={3} gap={1} fontSize={11} color="var(--color-primary)" />
                         ) : canSpvAction ? (
                           <div className="inline-flex items-center gap-1">
                             <button
