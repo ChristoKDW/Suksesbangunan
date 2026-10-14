@@ -22,7 +22,7 @@ const typeColors: Record<string, { bg: string; color: string }> = {
   "dinas luar": { bg: "#fffbeb", color: "#d97706" },
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alfiyah.my.id"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id"
 
 function getAttachmentUrl(path: string): string {
   const cleanPath = path.replace(/\\/g, "/")

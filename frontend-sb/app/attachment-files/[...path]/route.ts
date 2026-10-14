@@ -1,4 +1,4 @@
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "https://alfiyah.my.id").replace(/\/+$/, "")
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id").replace(/\/+$/, "")
 
 export async function GET(
   _request: Request,

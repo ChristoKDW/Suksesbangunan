@@ -3,7 +3,7 @@ class AppConfig {
   AppConfig._();
 
   // Base URL backend NestJS:
-  // - Production: 'https://alfiyah.my.id' (Swagger: https://alfiyah.my.id/api)
+  // - Production: 'https://api.larasbysuksesbangunan.my.id' (Swagger: https://api.larasbysuksesbangunan.my.id/api)
   // - Local Development: 'http://localhost:3002'
   // - Android Emulator (Local): 'http://10.0.2.2:3002'
   static const String baseUrl = 'https://api.larasbysuksesbangunan.my.id';

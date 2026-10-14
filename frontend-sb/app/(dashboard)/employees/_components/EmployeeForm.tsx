@@ -98,7 +98,7 @@ function Label({ children, required = false }: { children: React.ReactNode; requ
 function getMediaUrl(url: string | null | undefined): string | null {
   if (!url) return null
   if (url.startsWith("http")) return url
-  const base = process.env.NEXT_PUBLIC_API_URL || "https://alfiyah.my.id"
+  const base = process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id"
   return `${base.replace(/\/+$/, "")}/${url.replace(/^\/+/, "")}`
 }
 

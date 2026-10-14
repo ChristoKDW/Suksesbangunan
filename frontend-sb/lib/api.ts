@@ -3,7 +3,7 @@
 // Auto-attaches JWT token and handles 401 redirects
 // =============================================================================
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alfiyah.my.id"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id"
 
 class ApiError extends Error {
   status: number

@@ -30,7 +30,7 @@ import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Karyawan } from "@/lib/types"
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alfiyah.my.id"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id"
 
 function getPhotoUrl(foto?: string | null) {
   if (!foto) return null

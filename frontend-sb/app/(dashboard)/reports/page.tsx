@@ -30,7 +30,7 @@ export default function ReportsPage() {
 
   const downloadFile = async (url: string, filename: string) => {
     const token = localStorage.getItem("accessToken")
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "https://alfiyah.my.id").replace(/\/+$/, "")
+    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id").replace(/\/+$/, "")
     const cleanUrl = url.replace(/^\/+/, "")
     const res = await fetch(`${baseUrl}/${cleanUrl}`, {
       headers: {

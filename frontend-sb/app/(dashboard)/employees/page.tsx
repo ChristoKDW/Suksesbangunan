@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import type { Karyawan } from "@/lib/types"
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://alfiyah.my.id"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id"
 
 function getPhotoUrl(fotoProfil?: string | null) {
   if (!fotoProfil) return null
