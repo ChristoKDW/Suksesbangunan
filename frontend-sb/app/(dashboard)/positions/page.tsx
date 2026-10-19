@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
-import { LatticeLoader, PageLoader } from "@/components/atoms"
+import { LatticeLoader, TableRowSkeleton } from "@/components/atoms"
 import { Search, Plus, X, Briefcase, Edit2, Trash2, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Jabatan } from "@/lib/types"
@@ -90,16 +90,14 @@ export default function PositionsPage() {
   const endIndex = Math.min(startIndex + pageSize, totalFiltered)
   const paginatedPositions = filteredPositions.slice(startIndex, endIndex)
 
-  if (loading) {
-    return <PageLoader label="Memuat data jabatan..." />
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Jabatan</h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">Total {positions.length} jabatan terdaftar</p>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
+            {loading ? "Memuat data jabatan..." : `Total ${positions.length} jabatan terdaftar`}
+          </p>
         </div>
         <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-sm bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] cursor-pointer">
           <Plus className="w-4 h-4" />
@@ -187,7 +185,9 @@ export default function PositionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedPositions.length === 0 ? (
+              {loading ? (
+                <TableRowSkeleton columns={3} rows={pageSize} />
+              ) : paginatedPositions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="h-24 text-center text-sm text-[var(--text-muted)]">
                     Tidak ada jabatan yang ditemukan.

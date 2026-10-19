@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
-import { LatticeLoader, PageLoader } from "@/components/atoms"
+import { LatticeLoader, TableRowSkeleton } from "@/components/atoms"
 import { Search, Plus, X, Trash2, Edit2, MapPin, ExternalLink, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { PengaturanKantor, Departemen } from "@/lib/types"
@@ -101,16 +101,14 @@ export default function OfficeLocationsPage() {
     }
   }
 
-  if (loading) {
-    return <PageLoader label="Memuat titik kantor..." />
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Titik Kantor</h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">{offices.length} lokasi terdaftar — Radius geofence untuk validasi absensi</p>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
+            {loading ? "Memuat titik kantor..." : `${offices.length} lokasi terdaftar — Radius geofence untuk validasi absensi`}
+          </p>
         </div>
         <button onClick={() => handleOpenModal()} className="flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-colors shadow-sm bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)]">
           <Plus className="w-4 h-4" />
@@ -190,7 +188,16 @@ export default function OfficeLocationsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredOffices.map((office) => (
+              {loading ? (
+                <TableRowSkeleton columns={6} rows={5} />
+              ) : filteredOffices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-sm text-[var(--text-muted)]">
+                    Belum ada titik kantor yang terdaftar.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredOffices.map((office) => (
                 <TableRow key={office.idKantor}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -226,7 +233,8 @@ export default function OfficeLocationsPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              ))
+            )}
             </TableBody>
           </Table>
         </CardContent>

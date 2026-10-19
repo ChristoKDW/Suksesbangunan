@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
-import { LatticeLoader, PageLoader } from "@/components/atoms"
+import { LatticeLoader, TableRowSkeleton } from "@/components/atoms"
 import { Search, Plus, X, CalendarCheck, Edit2, Trash2, Loader2, AlertCircle, Clock } from "lucide-react"
 import { api } from "@/lib/api"
 import type { HariLibur, Shift } from "@/lib/types"
@@ -153,10 +153,6 @@ export default function HolidaysPage() {
     (h.shift && h.shift.namaShift.toLowerCase().includes(search.toLowerCase()))
   )
 
-  if (loading) {
-    return <PageLoader label="Memuat hari penting & libur..." />
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -166,7 +162,7 @@ export default function HolidaysPage() {
             Hari Penting
           </h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Atur hari-hari penting dan tetapkan shift kerja khusus dari HRD yang otomatis menimpa jadwal karyawan di departemen yang dikelola SPV.
+            {loading ? "Memuat hari penting..." : "Atur hari-hari penting dan tetapkan shift kerja khusus dari HRD yang otomatis menimpa jadwal karyawan di departemen yang dikelola SPV."}
           </p>
         </div>
         <button
@@ -431,7 +427,9 @@ export default function HolidaysPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredHolidays.length === 0 ? (
+              {loading ? (
+                <TableRowSkeleton columns={6} rows={5} />
+              ) : filteredHolidays.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-sm text-[var(--text-muted)]">
                     Belum ada hari penting yang terdaftar.

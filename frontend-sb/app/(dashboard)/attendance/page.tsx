@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
-import { Badge, PageLoader } from "@/components/atoms"
+import { Badge, Skeleton, TableRowSkeleton } from "@/components/atoms"
 import { Search, Download, UserCheck, UserX, Clock, Trash2, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Absensi } from "@/lib/types"
@@ -82,10 +82,6 @@ export default function AttendancePage() {
     tidakHadir: todayData.filter(a => a.statusKehadiran === "tidak hadir").length,
   }
 
-  if (loading) {
-    return <PageLoader label="Memuat data absensi..." />
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -106,7 +102,11 @@ export default function AttendancePage() {
               <UserCheck style={{ width: "1.125rem", height: "1.125rem", color: "#16a34a" }} />
             </div>
           </div>
-          <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.hadir}</div>
+          {loading ? (
+            <Skeleton className="h-8 w-16 mb-1" />
+          ) : (
+            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.hadir}</div>
+          )}
           <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Tepat Waktu</div>
         </div>
         <div className="stat-card">
@@ -115,7 +115,11 @@ export default function AttendancePage() {
               <Clock style={{ width: "1.125rem", height: "1.125rem", color: "#d97706" }} />
             </div>
           </div>
-          <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.terlambat}</div>
+          {loading ? (
+            <Skeleton className="h-8 w-16 mb-1" />
+          ) : (
+            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.terlambat}</div>
+          )}
           <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Terlambat</div>
         </div>
         <div className="stat-card">
@@ -124,7 +128,11 @@ export default function AttendancePage() {
               <UserX style={{ width: "1.125rem", height: "1.125rem", color: "#dc2626" }} />
             </div>
           </div>
-          <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.tidakHadir}</div>
+          {loading ? (
+            <Skeleton className="h-8 w-16 mb-1" />
+          ) : (
+            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.tidakHadir}</div>
+          )}
           <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Tidak Hadir</div>
         </div>
       </div>
@@ -161,7 +169,9 @@ export default function AttendancePage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedData.length === 0 ? (
+              {loading ? (
+                <TableRowSkeleton columns={7} rows={pageSize} />
+              ) : paginatedData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>
                     Belum ada data absensi hari ini

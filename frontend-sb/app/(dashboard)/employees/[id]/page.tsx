@@ -25,7 +25,7 @@ import {
   User as UserIcon,
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
-import { Badge, PageLoader } from "@/components/atoms"
+import { Badge, Skeleton } from "@/components/atoms"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Karyawan } from "@/lib/types"
@@ -119,7 +119,57 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
   }, [id])
 
   if (loading) {
-    return <PageLoader label="Memuat profil karyawan..." containerClassName="flex items-center justify-center h-80" />
+    return (
+      <div className="space-y-6 pb-12 max-w-6xl mx-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--border-default)] pb-4">
+          <div>
+            <button
+              onClick={() => router.push("/employees")}
+              className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-2 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" /> Kembali ke Daftar Karyawan
+            </button>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+                Detail Karyawan
+              </h1>
+              <Skeleton className="h-6 w-16 rounded-full" />
+            </div>
+          </div>
+        </div>
+
+        {/* Hero Skeleton Card */}
+        <Card className="overflow-hidden border border-[var(--border-default)] shadow-xs">
+          <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 h-28 relative" />
+          <CardContent className="px-6 pb-6 pt-0 relative">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 -mt-14 mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                <Skeleton className="h-28 w-28 rounded-2xl ring-4 ring-white dark:ring-slate-900" />
+                <div className="space-y-2 pb-1">
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Detail Tabs Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="p-6 space-y-4">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </Card>
+          <Card className="p-6 md:col-span-2 space-y-4">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   if (error || !employee) {

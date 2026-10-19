@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
-import { LatticeLoader, PageLoader } from "@/components/atoms"
+import { LatticeLoader, TableRowSkeleton } from "@/components/atoms"
 import { Search, Plus, Edit2, Trash2, X, Clock, Building2, Loader2, ShieldCheck, Filter } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -171,10 +171,6 @@ export default function ShiftsPage() {
       return true
     })
   }, [shifts, selectedDeptFilter, searchQuery, departments])
-
-  if (loading) {
-    return <PageLoader label="Memuat data shift..." />
-  }
 
   return (
     <div className="space-y-6">
@@ -385,7 +381,9 @@ export default function ShiftsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredShifts.length === 0 ? (
+              {loading ? (
+                <TableRowSkeleton columns={isAdminOrHrd ? 4 : 3} rows={5} />
+              ) : filteredShifts.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={isAdminOrHrd ? 4 : 3} className="text-center py-8 text-[var(--text-muted)]">
                     Tidak ada shift yang cocok

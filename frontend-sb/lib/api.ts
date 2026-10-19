@@ -19,7 +19,10 @@ class ApiError extends Error {
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null
-  return localStorage.getItem("accessToken")
+  const local = localStorage.getItem("accessToken")
+  if (local) return local
+  const match = document.cookie.match(/(?:^|; )accessToken=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : null
 }
 
 async function request<T>(

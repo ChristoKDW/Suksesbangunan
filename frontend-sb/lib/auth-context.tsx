@@ -35,10 +35,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setToken(savedToken)
         setUser(JSON.parse(savedUser) as AuthUser)
+        document.cookie = `accessToken=${savedToken}; path=/; max-age=2592000; SameSite=Lax`
       } catch {
         // Corrupted data — clear
         localStorage.removeItem("accessToken")
         localStorage.removeItem("userData")
+        document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax"
       }
     }
     setIsLoading(false)
@@ -51,8 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       })
 
-      // Persist to localStorage
+      // Persist to localStorage and cookie
       localStorage.setItem("accessToken", data.accessToken)
+      document.cookie = `accessToken=${data.accessToken}; path=/; max-age=2592000; SameSite=Lax`
       try {
         localStorage.setItem("userData", JSON.stringify(data.user))
       } catch (err) {
@@ -74,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem("accessToken")
     localStorage.removeItem("userData")
+    document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax"
     setToken(null)
     setUser(null)
     router.push("/login")

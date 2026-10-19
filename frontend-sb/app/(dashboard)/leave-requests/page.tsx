@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
-import { Badge, PageLoader } from "@/components/atoms"
+import { Badge, TableRowSkeleton } from "@/components/atoms"
 import { Check, X, FileText, Search, Paperclip, Loader2, ArrowLeftRight, CheckCircle2, Clock, AlertCircle, Info } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -348,10 +348,6 @@ export default function LeaveRequestsPage() {
   const startIndexSwap = (currentPageSwap - 1) * pageSizeSwap
   const paginatedSwaps = filteredSwaps.slice(startIndexSwap, startIndexSwap + pageSizeSwap)
 
-  if (loadingIzin && loadingSwaps) {
-    return <PageLoader label="Memuat data pengajuan..." />
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -483,7 +479,9 @@ export default function LeaveRequestsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedRequests.length === 0 ? (
+                  {loadingIzin ? (
+                    <TableRowSkeleton columns={8} rows={pageSizeIzin} />
+                  ) : paginatedRequests.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>
                         Tidak ada pengajuan izin
@@ -681,7 +679,9 @@ export default function LeaveRequestsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedSwaps.length === 0 ? (
+                  {loadingSwaps ? (
+                    <TableRowSkeleton columns={8} rows={pageSizeSwap} />
+                  ) : paginatedSwaps.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>
                         Tidak ada data pengajuan pertukaran

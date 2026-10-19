@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { userApi, User } from "@/lib/api"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
-import { LatticeLoader, PageLoader } from "@/components/atoms"
+import { LatticeLoader, Skeleton } from "@/components/atoms"
 import {
   User as UserIcon,
   Shield,
@@ -172,10 +172,6 @@ export default function ProfilePage() {
     }
   }
 
-  if (loading) {
-    return <PageLoader label="Memuat data profil..." />
-  }
-
   const role = authUser?.role || "Pengguna"
 
   return (
@@ -186,7 +182,7 @@ export default function ProfilePage() {
           Profil & Akun Saya
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Atur data diri, username login, dan kata sandi akun {role} Anda di sini.
+          {loading ? "Memuat profil akun Anda..." : `Atur data diri, username login, dan kata sandi akun ${role} Anda di sini.`}
         </p>
       </div>
 
@@ -209,53 +205,64 @@ export default function ProfilePage() {
         {/* Left Column: Account Overview */}
         <Card className="bg-white dark:bg-[#1E293B] border-slate-200 dark:border-white/10 shadow-sm md:col-span-1">
           <CardContent className="p-6 flex flex-col items-center text-center">
-            {/* Avatar with Upload Badge */}
-            <div className="relative group cursor-pointer mb-4">
-              <div className="h-24 w-24 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-white/10 flex items-center justify-center shadow-inner">
-                {formData.fotoProfil ? (
-                  <img
-                    src={formData.fotoProfil}
-                    alt="Foto Profil"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <UserIcon className="w-10 h-10 text-slate-400" />
-                )}
+            {loading ? (
+              <div className="flex flex-col items-center py-4 space-y-3 w-full">
+                <Skeleton className="h-24 w-24 rounded-full" />
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-6 w-20 rounded-full" />
               </div>
-              <label className="absolute inset-0 rounded-full bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                <Camera className="w-6 h-6 text-white mb-1" />
-                <span className="text-[10px] text-white font-medium">Ubah Foto</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </label>
-            </div>
+            ) : (
+              <>
+                {/* Avatar with Upload Badge */}
+                <div className="relative group cursor-pointer mb-4">
+                  <div className="h-24 w-24 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-white/10 flex items-center justify-center shadow-inner">
+                    {formData.fotoProfil ? (
+                      <img
+                        src={formData.fotoProfil}
+                        alt="Foto Profil"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <UserIcon className="w-10 h-10 text-slate-400" />
+                    )}
+                  </div>
+                  <label className="absolute inset-0 rounded-full bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                    <Camera className="w-6 h-6 text-white mb-1" />
+                    <span className="text-[10px] text-white font-medium">Ubah Foto</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
 
-            <h3 className="font-semibold text-lg text-slate-900 dark:text-slate-50">
-              {formData.nama || "Tanpa Nama"}
-            </h3>
-            <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">
-              @{formData.username || "-"}
-            </p>
+                <h3 className="font-semibold text-lg text-slate-900 dark:text-slate-50">
+                  {formData.nama || "Tanpa Nama"}
+                </h3>
+                <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                  @{formData.username || "-"}
+                </p>
 
-            {/* Role Badge */}
-            <div className="mt-3">
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold inline-flex items-center gap-1.5 border ${
-                  role === "Admin"
-                    ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20"
-                    : role === "HRD"
-                    ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20"
-                    : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
-                }`}
-              >
-                <Shield className="w-3 h-3" />
-                {role}
-              </span>
-            </div>
+                {/* Role Badge */}
+                <div className="mt-3">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold inline-flex items-center gap-1.5 border ${
+                      role === "Admin"
+                        ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20"
+                        : role === "HRD"
+                        ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
+                    }`}
+                  >
+                    <Shield className="w-3 h-3" />
+                    {role}
+                  </span>
+                </div>
+              </>
+            )}
 
             {/* Department info if any */}
             {departmentName && (
@@ -287,16 +294,32 @@ export default function ProfilePage() {
           </CardHeader>
 
           <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Nama Lengkap */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Nama Lengkap
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.nama}
+            {loading ? (
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <Skeleton className="h-3.5 w-24" />
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-3.5 w-28" />
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                </div>
+                <div className="space-y-2 pt-4 border-t border-slate-200 dark:border-white/10">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="h-10 w-full rounded-lg" />
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Nama Lengkap */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Nama Lengkap
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.nama}
                   onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
                   className="w-full bg-slate-50 dark:bg-[#0B0F17] border border-slate-200 dark:border-white/10 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-red-500 transition-colors"
                   placeholder="Nama lengkap Anda"
@@ -449,6 +472,7 @@ export default function ProfilePage() {
                 </button>
               </div>
             </form>
+            )}
           </CardContent>
         </Card>
       </div>

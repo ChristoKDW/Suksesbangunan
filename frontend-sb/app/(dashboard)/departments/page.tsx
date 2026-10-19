@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
-import { LatticeLoader, PageLoader } from "@/components/atoms"
+import { LatticeLoader, TableRowSkeleton, Skeleton } from "@/components/atoms"
 import { Search, Plus, X, Building2, Edit2, Trash2, Loader2, UserCheck, Users } from "lucide-react"
 import { api, userApi, User } from "@/lib/api"
 import type { Departemen } from "@/lib/types"
@@ -185,10 +185,6 @@ export default function DepartmentsPage() {
   const endIndex = Math.min(startIndex + pageSize, totalFiltered)
   const paginatedDepts = filteredDepts.slice(startIndex, endIndex)
 
-  if (loading) {
-    return <PageLoader label="Memuat data departemen..." />
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -198,7 +194,7 @@ export default function DepartmentsPage() {
             Departemen
           </h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Total {departments.length} departemen terdaftar
+            {loading ? "Memuat data departemen..." : `Total ${departments.length} departemen terdaftar`}
           </p>
         </div>
         <button
@@ -417,7 +413,9 @@ export default function DepartmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedDepts.length === 0 ? (
+              {loading ? (
+                <TableRowSkeleton columns={4} rows={pageSize} />
+              ) : paginatedDepts.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center text-sm text-[var(--text-muted)]">
                     Tidak ada departemen yang ditemukan.

@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules"
-import { Badge, PageLoader } from "@/components/atoms"
+import { Badge, Skeleton } from "@/components/atoms"
 import {
   Users,
   UserCheck,
@@ -156,10 +156,6 @@ export default function DashboardPage() {
     .sort((a, b) => new Date(b.jamMasukAktual!).getTime() - new Date(a.jamMasukAktual!).getTime())
     .slice(0, 5)
 
-  if (loading) {
-    return <PageLoader label="Memuat ringkasan dashboard..." />
-  }
-
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -213,9 +209,13 @@ export default function DashboardPage() {
                 />
               )}
             </div>
-            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
-              {stat.value}
-            </div>
+            {loading ? (
+              <Skeleton className="h-8 w-14 mb-1" />
+            ) : (
+              <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
+                {stat.value}
+              </div>
+            )}
             <div className="mt-1 text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
               {stat.label}
             </div>
@@ -242,7 +242,19 @@ export default function DashboardPage() {
             <TrendingUp style={{ width: "1rem", height: "1rem", color: "var(--text-muted)" }} />
           </CardHeader>
           <CardContent className="pt-4 space-y-1">
-            {recentAttendance.length === 0 ? (
+            {loading ? (
+              Array.from({ length: 5 }).map((_, idx) => (
+                <div key={idx} className="flex items-center gap-3 px-3 py-2.5">
+                  <Skeleton className="h-8 w-8 rounded-full flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </div>
+              ))
+            ) : recentAttendance.length === 0 ? (
               <p className="text-sm py-4 text-center" style={{ color: "var(--text-muted)" }}>
                 Belum ada data absensi hari ini
               </p>
@@ -304,7 +316,18 @@ export default function DashboardPage() {
             )}
           </CardHeader>
           <CardContent className="pt-4 space-y-1">
-            {pendingIzin.length === 0 ? (
+            {loading ? (
+              Array.from({ length: 3 }).map((_, idx) => (
+                <div key={idx} className="flex items-start gap-3 px-3 py-2.5">
+                  <Skeleton className="h-8 w-8 rounded-full flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-3 w-36" />
+                  </div>
+                  <Skeleton className="h-5 w-14 rounded-full" />
+                </div>
+              ))
+            ) : pendingIzin.length === 0 ? (
               <p className="text-sm py-4 text-center" style={{ color: "var(--text-muted)" }}>
                 Tidak ada pengajuan menunggu
               </p>

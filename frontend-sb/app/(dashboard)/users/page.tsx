@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
-import { LatticeLoader, PageLoader } from "@/components/atoms"
+import { LatticeLoader, TableRowSkeleton } from "@/components/atoms"
 import { Search, Plus, X, UserCog, Edit2, Trash2, Loader2, Shield, Eye, EyeOff } from "lucide-react"
 import { userApi, User } from "@/lib/api"
 import { api } from "@/lib/api"
@@ -136,10 +136,6 @@ export default function UsersPage() {
   const startIndex = (currentPage - 1) * pageSize
   const paginatedUsers = filteredUsers.slice(startIndex, startIndex + pageSize)
 
-  if (loading) {
-    return <PageLoader label="Memuat data pengguna..." />
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -149,7 +145,7 @@ export default function UsersPage() {
             Pengguna Sistem
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Total {filteredUsers.length} pengelola sistem terdaftar
+            {loading ? "Memuat data pengguna..." : `Total ${filteredUsers.length} pengelola sistem terdaftar`}
           </p>
         </div>
         <button
@@ -334,7 +330,9 @@ export default function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedUsers.length === 0 ? (
+              {loading ? (
+                <TableRowSkeleton columns={5} rows={pageSize} />
+              ) : paginatedUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="py-8 text-center text-slate-500 dark:text-slate-400">
                     Tidak ada data pengguna

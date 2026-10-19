@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, ArrowLeft, ExternalLink } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
-import { LatticeLoader, PageLoader } from "@/components/atoms"
+import { LatticeLoader, Skeleton } from "@/components/atoms"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Departemen, Jabatan, Karyawan } from "@/lib/types"
@@ -249,7 +249,42 @@ export default function EmployeeForm({ id }: { id?: string }) {
     }
   }
 
-  if (loading) return <PageLoader label="Memuat formulir karyawan..." />
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader className="border-b border-[var(--border-default)]">
+          <button onClick={() => router.push("/employees")} className="mb-3 inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"><ArrowLeft className="h-4 w-4" /> Kembali</button>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">{id ? "Edit Karyawan" : "Tambah Karyawan"}</h1>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-3.5 w-20" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Skeleton className="h-3.5 w-28" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-3.5 w-20" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>

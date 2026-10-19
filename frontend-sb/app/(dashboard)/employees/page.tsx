@@ -3,7 +3,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
-import { Badge, PageLoader } from "@/components/atoms"
+import { Badge, TableRowSkeleton } from "@/components/atoms"
 import { Search, Plus, Edit2, Trash2, Loader2, Key, Eye, ShieldCheck } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
@@ -123,17 +123,13 @@ export default function EmployeesPage() {
     }
   }
 
-  if (loading) {
-    return <PageLoader label="Memuat data karyawan..." />
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Karyawan</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            {employees.length} total · {activeCount} aktif
+            {loading ? "Memuat data karyawan..." : `${employees.length} total · ${activeCount} aktif`}
           </p>
         </div>
         <Link
@@ -176,7 +172,9 @@ export default function EmployeesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedEmployees.length === 0 ? (
+              {loading ? (
+                <TableRowSkeleton columns={11} rows={pageSize} />
+              ) : paginatedEmployees.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={11} className="h-32 text-center text-sm text-[var(--text-muted)]">
                     Tidak ada data karyawan yang ditemukan.

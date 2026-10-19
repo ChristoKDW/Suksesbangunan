@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
-import { Badge, PageLoader } from "@/components/atoms"
+import { Badge, Skeleton, TableRowSkeleton } from "@/components/atoms"
 import { Search, Download, Coffee, AlertCircle, CheckCircle2, Loader2, Trash2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Istirahat, Absensi, Karyawan } from "@/lib/types"
@@ -80,16 +80,14 @@ export default function BreaksPage() {
   const overtimeBreaks = enrichedBreaks.filter(b => b.terlambatKembali).length
   const onTimeBreaks = enrichedBreaks.filter(b => b.durasiMenit !== null && b.durasiMenit <= 60).length
 
-  if (loading) {
-    return <PageLoader label="Memuat data istirahat..." />
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>Waktu Istirahat</h1>
-          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>{enrichedBreaks.length} total record</p>
+          <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+            {loading ? "Memuat data istirahat..." : `${enrichedBreaks.length} total record`}
+          </p>
         </div>
       </div>
 
@@ -101,7 +99,11 @@ export default function BreaksPage() {
               <Coffee style={{ width: "1.125rem", height: "1.125rem", color: "#2563eb" }} />
             </div>
           </div>
-          <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{activeBreaks}</div>
+          {loading ? (
+            <Skeleton className="h-8 w-16 mb-1" />
+          ) : (
+            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{activeBreaks}</div>
+          )}
           <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Sedang Istirahat</div>
         </div>
         <div className="stat-card">
@@ -110,7 +112,11 @@ export default function BreaksPage() {
               <AlertCircle style={{ width: "1.125rem", height: "1.125rem", color: "#dc2626" }} />
             </div>
           </div>
-          <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{overtimeBreaks}</div>
+          {loading ? (
+            <Skeleton className="h-8 w-16 mb-1" />
+          ) : (
+            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{overtimeBreaks}</div>
+          )}
           <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Terlambat Kembali</div>
         </div>
         <div className="stat-card">
@@ -119,7 +125,11 @@ export default function BreaksPage() {
               <CheckCircle2 style={{ width: "1.125rem", height: "1.125rem", color: "#16a34a" }} />
             </div>
           </div>
-          <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{onTimeBreaks}</div>
+          {loading ? (
+            <Skeleton className="h-8 w-16 mb-1" />
+          ) : (
+            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{onTimeBreaks}</div>
+          )}
           <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Tepat Waktu</div>
         </div>
       </div>
@@ -147,7 +157,9 @@ export default function BreaksPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.length === 0 ? (
+              {loading ? (
+                <TableRowSkeleton columns={8} rows={5} />
+              ) : filteredData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-8 text-sm" style={{ color: "var(--text-muted)" }}>
                     Belum ada data istirahat

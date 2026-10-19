@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
-import { Badge, LatticeLoader } from "@/components/atoms"
+import { Badge, LatticeLoader, TableRowSkeleton } from "@/components/atoms"
 import { Check, X, Search, Loader2, Calendar, CheckCircle2, Clock, AlertCircle, Info } from "lucide-react"
 import { regularOffApi } from "@/lib/api-ro"
 import { useAuth } from "@/lib/auth-context"
@@ -249,11 +249,7 @@ export default function RegularOffTab() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12">
-                    <LatticeLoader status="working" label="Memuat daftar pengajuan Regular Off..." showTimer={false} cellSize={5} gap={2} fontSize={13} color="var(--color-primary)" />
-                  </TableCell>
-                </TableRow>
+                <TableRowSkeleton columns={7} rows={5} />
               ) : filteredList.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-slate-400">

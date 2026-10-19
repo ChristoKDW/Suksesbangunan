@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
-import { LatticeLoader, PageLoader } from "@/components/atoms"
+import { LatticeLoader, TableRowSkeleton } from "@/components/atoms"
 import {
   Download,
   Calculator,
@@ -374,10 +374,6 @@ export default function PayrollPage() {
 
   const exportExcelUrl = `/api/reports/penggajian/excel?periode=${selectedMonth}&grup=all`
 
-  if (loading) {
-    return <PageLoader label="Memuat data penggajian..." />
-  }
-
   return (
     <div className="space-y-6">
       {/* Print CSS */}
@@ -521,7 +517,9 @@ export default function PayrollPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedPayroll.length === 0 ? (
+              {loading ? (
+                <TableRowSkeleton columns={9} rows={pageSize} />
+              ) : paginatedPayroll.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-10 text-sm text-[var(--text-muted)]">
                     Tidak ada data penggajian untuk periode {selectedMonth}.

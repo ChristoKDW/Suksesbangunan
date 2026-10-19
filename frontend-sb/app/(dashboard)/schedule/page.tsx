@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useMemo, Fragment } from "react"
 import { Card, CardContent, CardHeader, Pagination } from "@/components/molecules"
-import { LatticeLoader, PageLoader } from "@/components/atoms"
+import { LatticeLoader, Skeleton } from "@/components/atoms"
 import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Save, Filter, Building2, UserCheck, CalendarRange, Sparkles, AlertCircle, Shuffle, RotateCw, CheckCircle2, X, Info } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -614,10 +614,6 @@ export default function SchedulePage() {
     setCurrentPage(1)
   }
 
-  if (loading) {
-    return <PageLoader label="Memuat jadwal kerja..." />
-  }
-
   const spvDeptName = departemenList.find(d => d.idDepartemen === user?.idDepartemen)?.namaDepartemen || "Departemen Anda"
 
   return (
@@ -852,7 +848,22 @@ export default function SchedulePage() {
               </tr>
             </thead>
             <tbody>
-              {departmentSections.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 6 }).map((_, rIdx) => (
+                  <tr key={rIdx} className="border-b border-[var(--border-default)]">
+                    <td className="sticky left-0 bg-[var(--bg-surface)] px-4 py-3 border-r border-[var(--border-default)]">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-4 w-28" />
+                      </div>
+                    </td>
+                    {days.map((d) => (
+                      <td key={d.date} className="p-1 border-r border-[var(--border-default)] text-center">
+                        <Skeleton className="h-6 w-7 mx-auto rounded" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : departmentSections.length === 0 ? (
                 <tr>
                   <td colSpan={days.length + 1} className="py-8 text-center text-[var(--text-muted)]">
                     Tidak ada data karyawan
