@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import { Badge, TableRowSkeleton } from "@/components/atoms"
-import { Search, Plus, Edit2, Trash2, Smartphone, Loader2, Key, Eye, ShieldCheck } from "lucide-react"
+import { Search, Plus, Edit2, Trash2, Smartphone, Loader2, Key, Eye, ShieldCheck, CheckCircle2, XCircle } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import type { Karyawan } from "@/lib/types"
@@ -246,6 +246,15 @@ export default function EmployeesPage() {
                           Reset Pending
                         </Badge>
                       )}
+                      {(emp.sudahRegistrasiWajah || Boolean(emp.faceEmbedding) || emp.fotoWajahReferensi) ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="w-3 h-3 flex-shrink-0" /> Wajah Terdaftar
+                        </span>
+                      ) : emp.username ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                          <XCircle className="w-3 h-3 flex-shrink-0" /> Belum Verif Wajah
+                        </span>
+                      ) : null}
                     </div>
                   </TableCell>
                   <TableCell>

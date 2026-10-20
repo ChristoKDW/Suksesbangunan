@@ -9,6 +9,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import * as nodemailer from 'nodemailer';
+import * as fs from 'fs';
+import * as path from 'path';
 import { KaryawanService } from '../../karyawan/karyawan.service.js';
 import { FaceRecognitionService } from '../../face/face-recognition.service.js';
 
@@ -119,6 +121,19 @@ export class MobileAuthService {
       throw new BadRequestException(
         `Wajah ini sudah terdaftar pada akun karyawan lain (${duplicate.nama} - NIK: ${duplicate.nik}). Satu wajah hanya dapat digunakan untuk satu akun dan tidak dapat didaftarkan berulang.`,
       );
+    }
+
+    try {
+      const uploadDir = './uploads/foto-wajah';
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const fileName = `face-${idKaryawan}-${Date.now()}.jpg`;
+      const filePath = path.join(uploadDir, fileName);
+      fs.writeFileSync(filePath, buffer);
+      karyawan.fotoWajahReferensi = `/uploads/foto-wajah/${fileName}`;
+    } catch (err) {
+      // Non-blocking jika gagal tulis file foto
     }
 
     karyawan.faceEmbedding = result.embedding;

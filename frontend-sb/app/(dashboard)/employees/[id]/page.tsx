@@ -333,7 +333,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               )}
 
-              {employee.fotoWajahReferensi ? (
+              {(employee.sudahRegistrasiWajah || Boolean(employee.faceEmbedding) || employee.fotoWajahReferensi) ? (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                   <span>Wajah Terdaftar</span>
