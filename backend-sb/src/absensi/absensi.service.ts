@@ -38,7 +38,17 @@ export class AbsensiService {
     karyawan: Karyawan,
     imageBase64?: string,
   ): Promise<void> {
-    if (!karyawan.faceEmbedding || karyawan.faceEmbedding.length === 0) {
+    const faceEmb = Array.isArray(karyawan.faceEmbedding)
+      ? karyawan.faceEmbedding
+      : typeof (karyawan.faceEmbedding as any) === 'string'
+      ? (karyawan.faceEmbedding as any)
+          .replace(/[\[\]]/g, '')
+          .split(',')
+          .map((v: string) => parseFloat(v.trim()))
+          .filter((n: number) => !isNaN(n))
+      : null;
+
+    if (!faceEmb || faceEmb.length === 0) {
       throw new BadRequestException(
         'Wajah Anda belum didaftarkan. Silakan daftarkan wajah terlebih dahulu.',
       );
@@ -62,7 +72,7 @@ export class AbsensiService {
     }
 
     const similarity = this.faceService.cosineSimilarity(
-      karyawan.faceEmbedding,
+      faceEmb,
       hasil.embedding,
     );
 

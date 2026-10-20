@@ -1,6 +1,7 @@
 "use client"
+import Link from "next/link"
 import { useState } from "react"
-import { Building2, User, Lock, Check, Eye, EyeOff } from "lucide-react"
+import { Building2, User, Lock, Check, Eye, EyeOff, Smartphone } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { LatticeLoader } from "@/components/atoms"
 

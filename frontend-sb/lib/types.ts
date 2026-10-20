@@ -123,6 +123,8 @@ export interface Karyawan {
   username: string | null
   emailTerverifikasi: boolean
   fotoWajahReferensi: string | null
+  sudahRegistrasiWajah?: boolean
+  faceEmbedding?: number[] | string | null
   fotoProfil?: string | null
   gajiPokok: number | null
   tunjanganKonsumsiHari?: number | null

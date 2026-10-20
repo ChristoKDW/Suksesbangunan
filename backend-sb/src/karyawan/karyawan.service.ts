@@ -24,6 +24,10 @@ export class KaryawanService {
 
   private enrichWithHakAkses(karyawanList: Karyawan[], users: User[]): Karyawan[] {
     for (const emp of karyawanList) {
+      (emp as any).sudahRegistrasiWajah = Boolean(
+        (emp.faceEmbedding && (emp.faceEmbedding as any).length > 0) ||
+        emp.fotoWajahReferensi,
+      );
       const matched = users.find((u) => matchUserName(emp.nama, u.nama));
       (emp as any).hakAkses = matched
         ? {

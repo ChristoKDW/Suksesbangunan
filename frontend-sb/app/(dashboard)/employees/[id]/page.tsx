@@ -194,6 +194,12 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
   const fotoProfilUrl = getPhotoUrl(employee.fotoProfil)
   const fotoKtpUrl = getPhotoUrl(employee.fotoKtp)
   const fotoKkUrl = getPhotoUrl(employee.fotoKartuKeluarga)
+  const isWajahTerdaftar = Boolean(
+    employee.sudahRegistrasiWajah ||
+    employee.fotoWajahReferensi ||
+    (Array.isArray(employee.faceEmbedding) && employee.faceEmbedding.length > 0) ||
+    (typeof employee.faceEmbedding === "string" && employee.faceEmbedding.length > 0)
+  )
 
   return (
     <div className="space-y-6 pb-12 max-w-6xl mx-auto">
@@ -243,21 +249,20 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      {/* Hero Profile Banner */}
-      <Card className="overflow-hidden border border-[var(--border-default)] shadow-xs">
-        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-purple-800 h-28 relative" />
-        <CardContent className="px-6 pb-6 pt-0 relative">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 -mt-14 mb-4">
-            <div className="flex items-end gap-4">
+      {/* Profile Overview Card (Tanpa Sampul / Cover Banner) */}
+      <Card className="border border-[var(--border-default)] shadow-xs">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
               {fotoProfilUrl ? (
                 <img
                   src={fotoProfilUrl}
                   alt={employee.nama}
-                  className="h-24 w-24 rounded-2xl object-cover border-4 border-[var(--bg-card)] shadow-md bg-white"
+                  className="h-20 w-20 rounded-2xl object-cover border-2 border-[var(--border-default)] shadow-xs bg-white flex-shrink-0"
                 />
               ) : (
                 <div
-                  className="flex h-24 w-24 items-center justify-center rounded-2xl text-2xl font-black text-white border-4 border-[var(--bg-card)] shadow-md"
+                  className="flex h-20 w-20 items-center justify-center rounded-2xl text-2xl font-black text-white border-2 border-[var(--border-default)] shadow-xs flex-shrink-0"
                   style={{ background: "var(--color-primary)" }}
                 >
                   {employee.nama
@@ -277,7 +282,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
                     </span>
                   )}
                 </h2>
-                <div className="text-xs text-[var(--text-muted)] flex items-center gap-2 font-mono mt-0.5">
+                <div className="text-xs text-[var(--text-muted)] flex items-center gap-2 font-mono mt-1">
                   <span>NIK: {employee.nik}</span>
                   {employee.username && (
                     <>
@@ -303,7 +308,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               )}
 
-              {employee.fotoWajahReferensi ? (
+              {isWajahTerdaftar ? (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                   <span>Wajah Terdaftar</span>

@@ -370,9 +370,11 @@ export class MobileAuthService {
     return {
       accessToken,
       // Flag untuk mobile: apakah wajah sudah didaftarkan?
-      sudahRegistrasiWajah:
-        Array.isArray(karyawan.faceEmbedding) &&
-        karyawan.faceEmbedding.length > 0,
+      sudahRegistrasiWajah: Boolean(
+        (karyawan.faceEmbedding &&
+          (karyawan.faceEmbedding as any).length > 0) ||
+          karyawan.fotoWajahReferensi,
+      ),
       sudahLengkapData: this.checkDataLengkap(karyawan),
       karyawan: {
         idKaryawan: karyawan.idKaryawan,
@@ -451,8 +453,10 @@ export class MobileAuthService {
       fotoProfil: k.fotoProfil
         ? (k.fotoProfil.startsWith('http') ? k.fotoProfil : `/uploads/foto-profil/${k.fotoProfil.split(/[\\/]/).pop()}`)
         : null,
-      sudahRegistrasiWajah:
-        Array.isArray(k.faceEmbedding) && k.faceEmbedding.length > 0,
+      sudahRegistrasiWajah: Boolean(
+        (k.faceEmbedding && (k.faceEmbedding as any).length > 0) ||
+          k.fotoWajahReferensi,
+      ),
       sudahLengkapData: this.checkDataLengkap(k),
     };
   }

@@ -175,6 +175,25 @@ export class Karyawan {
     name: 'face_embedding',
     length: 512,
     nullable: true,
+    transformer: {
+      to: (value: number[] | null) => {
+        if (!value) return null;
+        return Array.isArray(value) ? `[${value.join(',')}]` : value;
+      },
+      from: (value: string | number[] | null): number[] | null => {
+        if (!value) return null;
+        if (Array.isArray(value)) return value;
+        if (typeof value === 'string') {
+          const cleaned = value.replace(/[\[\]]/g, '').trim();
+          if (!cleaned) return null;
+          return cleaned
+            .split(',')
+            .map((v) => parseFloat(v.trim()))
+            .filter((n) => !isNaN(n));
+        }
+        return null;
+      },
+    },
   })
   faceEmbedding: number[] | null;
 
