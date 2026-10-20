@@ -122,4 +122,11 @@ export class KaryawanController {
     await this.karyawanService.saveEntity(karyawan);
     return { message: 'Foto wajah berhasil diupload', path: file.path };
   }
+  @Post(':id/reset-apk')
+  @Roles('Admin', 'HRD')
+  @ApiOperation({ summary: 'Hapus/reset data registrasi APK dan biometrik wajah karyawan' })
+  resetApk(@Param('id', ParseIntPipe) id: number) {
+    return this.karyawanService.resetApk(id);
+  }
+
 }

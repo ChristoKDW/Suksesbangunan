@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import { Badge, TableRowSkeleton } from "@/components/atoms"
-import { Search, Plus, Edit2, Trash2, Loader2, Key, Eye, ShieldCheck } from "lucide-react"
+import { Search, Plus, Edit2, Trash2, Smartphone, Loader2, Key, Eye, ShieldCheck } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import type { Karyawan } from "@/lib/types"
@@ -91,6 +91,27 @@ export default function EmployeesPage() {
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = Math.min(startIndex + pageSize, totalFiltered)
   const paginatedEmployees = filteredEmployees.slice(startIndex, endIndex)
+
+    const handleResetApk = async (id: number, nama: string) => {
+    if (user?.role !== "Admin" && user?.role !== "HRD") {
+      alert("Hanya Admin atau HRD yang berhak menghapus/mereset data APK karyawan.")
+      return
+    }
+    if (
+      !confirm(
+        `Apakah Anda yakin ingin menghapus data APK (biometrik wajah & akun mobile) untuk ${nama}?\n\nData akan direset sehingga karyawan dapat mendaftar ulang di aplikasi mobile.`
+      )
+    )
+      return
+
+    try {
+      const res: any = await api.post(`karyawan/${id}/reset-apk`)
+      alert(res?.message || `Data APK untuk ${nama} berhasil dihapus/direset.`)
+      fetchData()
+    } catch (err: any) {
+      alert(err instanceof Error ? err.message : "Gagal menghapus data APK karyawan.")
+    }
+  }
 
   const handleDeleteEmployee = async (id: number) => {
     if (user?.role !== "Admin") {
@@ -308,6 +329,15 @@ export default function EmployeesPage() {
                       >
                         <Edit2 className="w-4 h-4" />
                       </Link>
+                      {(user?.role === "Admin" || user?.role === "HRD") && (
+                        <button
+                          onClick={() => handleResetApk(emp.idKaryawan, emp.nama)}
+                          title="Hapus Data APK (Reset Biometrik Wajah & Akun Mobile)"
+                          className="flex h-8 w-8 items-center justify-center rounded-md transition-colors text-[var(--text-muted)] hover:bg-[var(--bg-page)] hover:text-amber-500"
+                        >
+                          <Smartphone className="w-4 h-4" />
+                        </button>
+                      )}
                       {user?.role === "Admin" && (
                         <button
                           onClick={() => handleDeleteEmployee(emp.idKaryawan)}

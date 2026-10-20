@@ -251,25 +251,10 @@ class CompleteProfileController extends GetxController {
 
   // --- Simpan dan Lanjut ke Registrasi Wajah ---
   Future<void> submitAndProceed() async {
-    // Validasi Foto KTP
-    if (fotoKtpPath.value == null && localKtpPath.value == null) {
-      Get.snackbar('Perhatian', 'Foto KTP wajib diupload');
-      return;
-    }
+    // Catatan: Foto KTP dan Foto KK bersifat fleksibel dan dapat diunggah nanti di halaman Profil
+    // agar tidak menghalangi proses verifikasi wajah dan absensi karyawan.
 
-    // Validasi Foto KK
-    if (fotoKkPath.value == null && localKkPath.value == null) {
-      Get.snackbar('Perhatian', 'Foto Kartu Keluarga (KK) wajib diupload');
-      return;
-    }
-
-    // Validasi Foto Profil
-    if (fotoProfilPath.value == null && localProfilPath.value == null) {
-      Get.snackbar('Perhatian', 'Foto profil formal wajib diupload');
-      return;
-    }
-
-    // Validasi Field Identitas
+    // Validasi Field Identitas Wajib
     if (namaPanggilanController.text.trim().isEmpty) {
       Get.snackbar('Perhatian', 'Nama panggilan wajib diisi');
       return;

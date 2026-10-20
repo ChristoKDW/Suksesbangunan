@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:skeletonizer/skeletonizer.dart';
 import '../../../core/theme/app_colors.dart';
@@ -53,7 +54,10 @@ class ProfileView extends GetView<ProfileController> {
                 style:
                     const TextStyle(color: AppColors.slateLight, fontSize: 14),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+              // -- Warning Data Dokumen Belum Lengkap --
+              if (!controller.isDokumenLengkap)
+                _buildIncompleteWarningCard(context),
               // -- Info Items --
               _buildInfoTile(Icons.badge_outlined, 'NIK',
                   user['nik']?.toString() ?? '-'),
@@ -283,5 +287,130 @@ class ProfileView extends GetView<ProfileController> {
     } catch (_) {
       return raw;
     }
+  }
+
+  Widget _buildIncompleteWarningCard(BuildContext context) {
+    final hasKtp = controller.hasKtp;
+    final hasKk = controller.hasKk;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded,
+                  color: Color(0xFFD97706), size: 22),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Data Dokumen Belum Lengkap',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Color(0xFFB45309),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Anda belum mengunggah ' +
+                (!hasKtp && !hasKk
+                    ? 'Foto KTP dan Kartu Keluarga (KK).'
+                    : !hasKtp
+                        ? 'Foto KTP.'
+                        : 'Foto Kartu Keluarga (KK).') +
+                ' Silakan unggah dokumen Anda agar data kepegawaian tuntas.',
+            style: const TextStyle(
+                fontSize: 12, color: Color(0xFF92400E), height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (!hasKtp)
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showUploadSheet(
+                        context, 'Foto KTP', controller.pickAndUploadKtp),
+                    icon: const Icon(Icons.upload_file, size: 16),
+                    label: const Text('Unggah KTP',
+                        style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFD97706),
+                      side: const BorderSide(color: Color(0xFFD97706)),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  ),
+                ),
+              if (!hasKtp && !hasKk) const SizedBox(width: 8),
+              if (!hasKk)
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showUploadSheet(
+                        context, 'Foto Kartu Keluarga', controller.pickAndUploadKk),
+                    icon: const Icon(Icons.upload_file, size: 16),
+                    label: const Text('Unggah KK',
+                        style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFD97706),
+                      side: const BorderSide(color: Color(0xFFD97706)),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showUploadSheet(BuildContext context, String title,
+      Function(ImageSource) onPick) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Unggah $title',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text('Ambil dari Kamera'),
+                onTap: () {
+                  Navigator.pop(context);
+                  onPick(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Pilih dari Galeri'),
+                onTap: () {
+                  Navigator.pop(context);
+                  onPick(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

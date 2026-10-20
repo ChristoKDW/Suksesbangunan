@@ -299,8 +299,38 @@ export default function EmployeeForm({ id }: { id?: string }) {
             <div className="space-y-1"><Label required>Nama</Label><input className={inputClass} value={form.nama} onChange={(e) => set("nama", e.target.value)} /></div>
             <div className="space-y-1"><Label required>Email</Label><input type="email" className={inputClass} value={form.email} onChange={(e) => set("email", e.target.value)} /></div>
             <div className="space-y-1"><Label required>Nomor Telepon</Label><input type="tel" className={inputClass} value={form.nomorTelepon} onChange={(e) => set("nomorTelepon", e.target.value)} /></div>
-            <div className="space-y-1"><Label>No. Rekening (BNI)</Label><input maxLength={34} className={inputClass} value={form.noRekening} onChange={(e) => set("noRekening", e.target.value)} /></div>
-            <div className="space-y-1"><Label>Nama Bank</Label><input maxLength={50} className={inputClass} value={form.namaBank} onChange={(e) => set("namaBank", e.target.value)} /></div>
+            <div className="space-y-1">
+              <Label>Nama Bank</Label>
+              <select
+                className={inputClass}
+                value={form.namaBank || "BNI"}
+                onChange={(e) => set("namaBank", e.target.value)}
+              >
+                <option value="BNI">BNI (Bank Negara Indonesia)</option>
+                <option value="BCA">BCA (Bank Central Asia)</option>
+                <option value="Mandiri">Bank Mandiri</option>
+                <option value="BRI">BRI (Bank Rakyat Indonesia)</option>
+                <option value="Lainnya">Bank Lainnya</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label>No. Rekening ({form.namaBank || "BNI"})</Label>
+              <input
+                maxLength={form.namaBank === "BNI" || !form.namaBank ? 10 : 34}
+                className={inputClass}
+                placeholder={form.namaBank === "BNI" || !form.namaBank ? "Contoh: 2091165610 (10 digit BNI)" : "Masukkan nomor rekening"}
+                value={form.noRekening}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, "")
+                  set("noRekening", val)
+                }}
+              />
+              <p className="text-[11px] text-[var(--text-muted)]">
+                {form.namaBank === "BNI" || !form.namaBank
+                  ? "Standar payroll CV Sukses Bangunan menggunakan rekening BNI (10 digit angka)."
+                  : "Pastikan nomor rekening sesuai dengan bank yang dipilih."}
+              </p>
+            </div>
             <div className="space-y-1"><Label>Departemen</Label><select className={inputClass} value={form.idDepartemen} onChange={(e) => set("idDepartemen", Number(e.target.value))}><option value={0}>Pilih departemen</option>{departments.map((d) => <option key={d.idDepartemen} value={d.idDepartemen}>{d.namaDepartemen}</option>)}</select></div>
             <div className="space-y-1"><Label>Jabatan</Label><select className={inputClass} value={form.idJabatan} onChange={(e) => set("idJabatan", Number(e.target.value))}><option value={0}>Pilih jabatan</option>{positions.map((j) => <option key={j.idJabatan} value={j.idJabatan}>{j.namaJabatan}</option>)}</select></div>
             <div className="space-y-1"><Label>Tanggal Masuk</Label><input type="date" className={inputClass} value={form.tanggalMasuk} onChange={(e) => set("tanggalMasuk", e.target.value)} /></div>

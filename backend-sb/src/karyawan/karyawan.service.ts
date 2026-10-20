@@ -291,4 +291,21 @@ export class KaryawanService {
       return null;
     }
   }
+  async resetApk(id: number): Promise<{ message: string }> {
+    const karyawan = await this.findOne(id);
+    karyawan.faceEmbedding = null;
+    karyawan.fotoWajahReferensi = null as any;
+    karyawan.password = null as any;
+    karyawan.username = null as any;
+    karyawan.token = null as any;
+    karyawan.tokenKadaluarsa = null as any;
+    karyawan.otpCode = null as any;
+    karyawan.otpKadaluarsa = null as any;
+    karyawan.resetPasswordStatus = 'none' as any;
+    await this.karyawanRepo.save(karyawan);
+    return {
+      message: `Data APK & biometrik wajah untuk ${karyawan.nama} berhasil dihapus. Karyawan dapat mendaftar ulang di aplikasi mobile.`,
+    };
+  }
+
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -83,5 +84,68 @@ class ProfileController extends GetxController {
   void logout() {
     Get.find<SessionService>().clear();
     Get.offAllNamed('/login');
+  }
+
+  bool get hasKtp {
+    final ktp = userProfile['fotoKtp']?.toString();
+    return ktp != null && ktp.trim().isNotEmpty;
+  }
+
+  bool get hasKk {
+    final kk = userProfile['fotoKartuKeluarga']?.toString();
+    return kk != null && kk.trim().isNotEmpty;
+  }
+
+  bool get isDokumenLengkap => hasKtp && hasKk;
+
+  final isUploadingKtp = false.obs;
+  final isUploadingKk = false.obs;
+
+  Future<void> pickAndUploadKtp(ImageSource source) async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: source,
+      maxWidth: 1600,
+      maxHeight: 1200,
+      imageQuality: 85,
+    );
+    if (image == null) return;
+
+    isUploadingKtp.value = true;
+    try {
+      final res = await _api.uploadKtpPhoto(image.path);
+      userProfile['fotoKtp'] = res['fotoKtp']?.toString() ?? image.path;
+      userProfile.refresh();
+      Get.snackbar('Berhasil', 'Foto KTP berhasil disimpan',
+          backgroundColor: const Color(0xFF16A34A), colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar('Gagal Upload', 'Foto KTP gagal disimpan: $e');
+    } finally {
+      isUploadingKtp.value = false;
+    }
+  }
+
+  Future<void> pickAndUploadKk(ImageSource source) async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: source,
+      maxWidth: 1600,
+      maxHeight: 1200,
+      imageQuality: 85,
+    );
+    if (image == null) return;
+
+    isUploadingKk.value = true;
+    try {
+      final res = await _api.uploadKkPhoto(image.path);
+      userProfile['fotoKartuKeluarga'] = res['fotoKartuKeluarga']?.toString() ?? image.path;
+      userProfile.refresh();
+      Get.snackbar('Berhasil', 'Foto Kartu Keluarga berhasil disimpan',
+          backgroundColor: const Color(0xFF16A34A), colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar('Gagal Upload', 'Foto Kartu Keluarga gagal disimpan: $e');
+    } finally {
+      isUploadingKk.value = false;
+    }
   }
 }

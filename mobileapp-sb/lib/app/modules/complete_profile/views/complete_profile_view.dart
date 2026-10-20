@@ -217,7 +217,7 @@ class CompleteProfileView extends GetView<CompleteProfileController> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Sesuai ketentuan, data diri & dokumen identitas wajib dilengkapi sebelum mendaftarkan biometrik wajah.',
+                          'Data diri wajib dilengkapi sebelum mendaftarkan biometrik wajah. Foto KTP & KK dapat diunggah sekarang atau menyusul di halaman profil.',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.redVariant.withOpacity(0.9),
@@ -230,9 +230,9 @@ class CompleteProfileView extends GetView<CompleteProfileController> {
                 ),
                 const SizedBox(height: 20),
 
-                // SECTION 1: FOTO KTP (DIDAHULUKAN)
+                // SECTION 1: FOTO KTP
                 const Text(
-                  '1. Foto Dokumen KTP',
+                  '1. Foto Dokumen KTP (Opsional / Bisa Menyusul)',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

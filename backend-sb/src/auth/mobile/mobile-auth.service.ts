@@ -57,6 +57,7 @@ export class MobileAuthService {
   checkDataLengkap(karyawan: any): boolean {
     if (!karyawan) return false;
     const isOk = (val?: string | null) => typeof val === 'string' && val.trim().length > 0;
+    // Data teks identitas wajib lengkap sebelum verifikasi wajah
     return !!(
       isOk(karyawan.nama) &&
       isOk(karyawan.namaPanggilan) &&
@@ -68,11 +69,14 @@ export class MobileAuthService {
       isOk(karyawan.kabupaten) &&
       isOk(karyawan.kecamatan) &&
       isOk(karyawan.kelurahan) &&
-      isOk(karyawan.rtRw) &&
-      isOk(karyawan.fotoKtp) &&
-      isOk(karyawan.fotoKartuKeluarga) &&
-      isOk(karyawan.fotoProfil)
+      isOk(karyawan.rtRw)
     );
+  }
+
+  checkDokumenLengkap(karyawan: any): boolean {
+    if (!karyawan) return false;
+    const isOk = (val?: string | null) => typeof val === 'string' && val.trim().length > 0;
+    return !!(isOk(karyawan.fotoKtp) && isOk(karyawan.fotoKartuKeluarga));
   }
 
   /**
@@ -84,7 +88,7 @@ export class MobileAuthService {
 
     if (!this.checkDataLengkap(karyawan)) {
       throw new BadRequestException(
-        'Data identitas, foto KTP, foto Kartu Keluarga, dan foto profil Anda wajib dilengkapi terlebih dahulu sebelum mendaftarkan biometrik wajah.',
+        'Data identitas Anda wajib dilengkapi terlebih dahulu sebelum mendaftarkan biometrik wajah.',
       );
     }
 
@@ -376,6 +380,8 @@ export class MobileAuthService {
           karyawan.fotoWajahReferensi,
       ),
       sudahLengkapData: this.checkDataLengkap(karyawan),
+        sudahLengkapDokumen: this.checkDokumenLengkap(karyawan),
+        dokumenBelumLengkap: !this.checkDokumenLengkap(karyawan),
       karyawan: {
         idKaryawan: karyawan.idKaryawan,
         nik: karyawan.nik,
@@ -458,6 +464,8 @@ export class MobileAuthService {
           k.fotoWajahReferensi,
       ),
       sudahLengkapData: this.checkDataLengkap(k),
+      sudahLengkapDokumen: this.checkDokumenLengkap(k),
+      dokumenBelumLengkap: !this.checkDokumenLengkap(k),
     };
   }
 
