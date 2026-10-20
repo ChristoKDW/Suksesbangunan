@@ -34,7 +34,13 @@ jobs:
           cd ..
 
       - name: Build iOS App (.app bundle)
-        run: flutter build ios --release --no-codesign
+        run: |
+          flutter build ios --release --no-codesign --verbose > build_ios.log 2>&1 || {
+            echo "================ BUILD FAILED - LOG TAIL ================"
+            tail -n 120 build_ios.log
+            echo "========================================================="
+            exit 1
+          }
 
       - name: Package to IPA Payload
         run: |
