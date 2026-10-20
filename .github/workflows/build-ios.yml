@@ -30,6 +30,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Patch camera_avfoundation for Xcode compatibility
+        run: |
+          find ~/.pub-cache/hosted/pub.dev/camera_avfoundation* -name "DefaultCamera.swift" -exec sed -i '' 's/AVCaptureSession\.wasInterruptedNotification/NSNotification.Name("AVCaptureSessionWasInterruptedNotification")/g' {} +
+          find ~/.pub-cache/hosted/pub.dev/camera_avfoundation* -name "DefaultCamera.swift" -exec sed -i '' 's/AVCaptureSession\.runtimeErrorNotification/NSNotification.Name("AVCaptureSessionRuntimeErrorNotification")/g' {} +
+
       - name: Install CocoaPods dependencies
         run: |
           cd ios
@@ -37,13 +42,7 @@ jobs:
           cd ..
 
       - name: Build iOS App (.app bundle)
-        run: |
-          flutter build ios --release --no-codesign --verbose > build_ios.log 2>&1 || {
-            echo "================ BUILD FAILED - LOG TAIL ================"
-            tail -n 120 build_ios.log
-            echo "========================================================="
-            exit 1
-          }
+        run: flutter build ios --release --no-codesign
 
       - name: Package to IPA Payload
         run: |
