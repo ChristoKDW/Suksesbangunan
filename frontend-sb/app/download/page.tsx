@@ -17,21 +17,35 @@ import {
   ArrowRight,
   ExternalLink,
   ChevronRight,
-  Info
+  Info,
+  Share2,
+  PlusSquare
 } from "lucide-react"
 
 export default function DownloadPage() {
   const [platform, setPlatform] = useState<"android" | "ios">("android")
-  const [copied, setCopied] = useState(false)
+  const [copiedAndroid, setCopiedAndroid] = useState(false)
+  const [copiedIos, setCopiedIos] = useState(false)
 
   const apkDownloadUrl = "https://larasbysuksesbangunan.my.id/apk/app-release.apk"
-  const qrDirectUrl = "/apk/qr-apk-direct.svg"
-  const qrDirectPngUrl = "/apk/qr-apk-direct.png"
+  const iosAccessUrl = "https://larasbysuksesbangunan.my.id/login?platform=ios"
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(apkDownloadUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2500)
+  const qrAndroidSvg = "/apk/qr-apk-direct.svg"
+  const qrAndroidPng = "/apk/qr-apk-direct.png"
+
+  const qrIosSvg = "/apk/qr-ios-mobile.svg"
+  const qrIosPng = "/apk/qr-ios-mobile.png"
+
+  const handleCopyLink = (target: "android" | "ios") => {
+    if (target === "android") {
+      navigator.clipboard.writeText(apkDownloadUrl)
+      setCopiedAndroid(true)
+      setTimeout(() => setCopiedAndroid(false), 2500)
+    } else {
+      navigator.clipboard.writeText(iosAccessUrl)
+      setCopiedIos(true)
+      setTimeout(() => setCopiedIos(false), 2500)
+    }
   }
 
   return (
@@ -87,7 +101,7 @@ export default function DownloadPage() {
             Unduh Aplikasi Absensi Mobile
           </h1>
           <p className="text-sm sm:text-base text-[var(--text-muted)] leading-relaxed">
-            Scan barcode atau unduh langsung file instalasi untuk absensi mandiri, verifikasi wajah AI (Anti-Spoofing), dan pengelolaan slip gaji.
+            Scan barcode atau unduh langsung file instalasi untuk absensi mandiri, verifikasi wajah AI (Anti-Spoofing), dan pengelolaan slip gaji di perangkat Anda.
           </p>
         </div>
 
@@ -113,14 +127,14 @@ export default function DownloadPage() {
               onClick={() => setPlatform("ios")}
               className={`flex items-center gap-2.5 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all ${
                 platform === "ios"
-                  ? "bg-gradient-to-r from-slate-800 to-slate-900 dark:from-slate-700 dark:to-slate-800 text-white shadow-md shadow-slate-900/25"
+                  ? "bg-gradient-to-r from-slate-900 to-blue-900 dark:from-slate-800 dark:to-blue-950 text-white shadow-md shadow-slate-900/25"
                   : "text-[var(--text-muted)] hover:text-[var(--text-default)]"
               }`}
             >
               <Apple className="w-4 h-4" />
               iPhone (iOS)
-              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-500">
-                Info
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400">
+                Barcode Siap
               </span>
             </button>
           </div>
@@ -136,7 +150,7 @@ export default function DownloadPage() {
               <div className="w-full flex items-center justify-between mb-4">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   <QrCode className="w-3.5 h-3.5" />
-                  Barcode Langsung
+                  Barcode Download APK
                 </span>
                 <span className="text-xs text-[var(--text-muted)]">v1.0.0 Release</span>
               </div>
@@ -145,8 +159,8 @@ export default function DownloadPage() {
               <div className="relative p-4 bg-white rounded-2xl shadow-inner border border-slate-200 mb-5 group">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={qrDirectUrl}
-                  alt="QR Code Download APK Sukses Bangunan"
+                  src={qrAndroidSvg}
+                  alt="QR Code Download APK Android"
                   className="w-56 h-56 object-contain"
                 />
                 <div className="absolute inset-0 rounded-2xl bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
@@ -156,7 +170,7 @@ export default function DownloadPage() {
                 </div>
               </div>
 
-              <h2 className="font-bold text-base mb-1">Arahkan Kamera HP Anda</h2>
+              <h2 className="font-bold text-base mb-1">Arahkan Kamera HP Android</h2>
               <p className="text-xs text-[var(--text-muted)] mb-5 max-w-xs">
                 Buka aplikasi Kamera atau Google Lens di HP Android Anda dan arahkan ke barcode di atas untuk langsung mendownload APK.
               </p>
@@ -164,7 +178,7 @@ export default function DownloadPage() {
               {/* QR Action Buttons */}
               <div className="w-full grid grid-cols-2 gap-2.5 pt-4 border-t border-[var(--border-default)]">
                 <a
-                  href={qrDirectPngUrl}
+                  href={qrAndroidPng}
                   download="Barcode-Download-APK-Sukses-Bangunan.png"
                   className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[var(--border-default)] text-xs font-medium hover:bg-[var(--bg-surface-hover)] transition-colors"
                 >
@@ -173,10 +187,10 @@ export default function DownloadPage() {
                 </a>
 
                 <button
-                  onClick={handleCopyLink}
+                  onClick={() => handleCopyLink("android")}
                   className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[var(--border-default)] text-xs font-medium hover:bg-[var(--bg-surface-hover)] transition-colors"
                 >
-                  {copied ? (
+                  {copiedAndroid ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-emerald-500" />
                       <span className="text-emerald-500 font-semibold">Tersalin!</span>
@@ -207,7 +221,7 @@ export default function DownloadPage() {
                     Aplikasi Absensi & Layanan Pegawai
                   </h3>
                   <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed mb-6">
-                    Mendukung absensi wajah biometrik, deteksi kedipan & gelengan kepala (Anti-Spoofing), geofence kantor, serta pengajuan cuti dan slip gaji harian.
+                    Mendukung absensi wajah biometrik AI, deteksi kedipan & gelengan kepala (Anti-Spoofing), geofence kantor, serta pengajuan cuti dan slip gaji harian.
                   </p>
 
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -227,7 +241,6 @@ export default function DownloadPage() {
                   </div>
                 </div>
 
-                {/* Subtle Decorative Icon */}
                 <Smartphone className="absolute -bottom-8 -right-8 w-44 h-44 text-white/5 pointer-events-none" />
               </div>
 
@@ -302,74 +315,160 @@ export default function DownloadPage() {
         {/* PLATFORM 2: IPHONE / IOS VIEW                                   */}
         {/* ============================================================== */}
         {platform === "ios" && (
-          <div className="max-w-3xl mx-auto space-y-6">
-            {/* iOS System Explanation Card */}
-            <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-3xl p-6 sm:p-8 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
-                  <Apple className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold">Tentang Aplikasi untuk iPhone (iOS)</h3>
-                  <div className="text-xs text-[var(--text-muted)]">Informasi Teknis Ekosistem Apple</div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Column: QR Code Card for iPhone */}
+            <div className="lg:col-span-5 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col items-center text-center">
+              <div className="w-full flex items-center justify-between mb-4">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <QrCode className="w-3.5 h-3.5" />
+                  Barcode Khusus iPhone (iOS)
+                </span>
+                <span className="text-xs text-[var(--text-muted)]">iOS 14.0+</span>
+              </div>
+
+              {/* QR Code Container */}
+              <div className="relative p-4 bg-white rounded-2xl shadow-inner border border-slate-200 mb-5 group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={qrIosSvg}
+                  alt="QR Code Akses Aplikasi iPhone Sukses Bangunan"
+                  className="w-56 h-56 object-contain"
+                />
+                <div className="absolute inset-0 rounded-2xl bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                  <span className="text-xs font-bold text-slate-800 bg-white/90 px-3 py-1 rounded-full shadow">
+                    Scan Kamera iPhone
+                  </span>
                 </div>
               </div>
 
-              {/* Informative Alert Box */}
-              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs sm:text-sm leading-relaxed mb-6 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div>
-                  <strong>Apakah iPhone bisa menginstal file APK?</strong>
-                  <p className="mt-1">
-                    Tidak bisa. File berekstensi <strong>.APK</strong> adalah format eksklusif sistem operasi <strong>Android</strong>. Perangkat iPhone (iOS) menggunakan format instalasi <strong>.IPA</strong> yang wajib melalui penandatanganan sertifikat Apple Developer atau distribusi resmi via <strong>Apple TestFlight / App Store</strong>.
-                  </p>
-                </div>
+              <h2 className="font-bold text-base mb-1">Arahkan Kamera iPhone Anda</h2>
+              <p className="text-xs text-[var(--text-muted)] mb-5 max-w-xs">
+                Buka aplikasi Kamera bawaan iPhone Anda dan arahkan ke barcode di atas untuk langsung membuka dan menginstal aplikasi Sukses Bangunan.
+              </p>
+
+              {/* QR Action Buttons */}
+              <div className="w-full grid grid-cols-2 gap-2.5 pt-4 border-t border-[var(--border-default)]">
+                <a
+                  href={qrIosPng}
+                  download="Barcode-Akses-iPhone-Sukses-Bangunan.png"
+                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[var(--border-default)] text-xs font-medium hover:bg-[var(--bg-surface-hover)] transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Simpan Barcode
+                </a>
+
+                <button
+                  onClick={() => handleCopyLink("ios")}
+                  className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[var(--border-default)] text-xs font-medium hover:bg-[var(--bg-surface-hover)] transition-colors"
+                >
+                  {copiedIos ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-blue-500" />
+                      <span className="text-blue-500 font-semibold">Tersalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      Salin Link
+                    </>
+                  )}
+                </button>
               </div>
+            </div>
 
-              {/* Current iOS Status & Solutions */}
-              <div className="space-y-4">
-                <h4 className="font-bold text-sm">Status & Solusi untuk Karyawan Pengguna iPhone:</h4>
-
-                {/* Option 1: Web App Mobile */}
-                <div className="p-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500/50 transition-all">
-                  <div className="flex items-start justify-between gap-4 mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-500 text-white font-bold text-[10px] uppercase">
-                        Solusi Langsung
-                      </span>
-                      <h5 className="font-bold text-sm sm:text-base">Gunakan Web Portal Mobile (Safari / Chrome)</h5>
-                    </div>
-                  </div>
-
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-4">
-                    Sistem web dashboard kami sudah 100% responsif untuk browser HP iPhone. Anda dapat mengakses akun, jadwal kerja, riwayat kehadiran, dan pengajuan izin tanpa perlu instalasi aplikasi tambahan.
-                  </p>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Link
-                      href="/login"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-colors"
-                    >
-                      Buka Web Portal di Safari
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-
-                    <div className="text-[11px] text-[var(--text-muted)]">
-                      Tips: Tap tombol <strong>Share</strong> di Safari &gt; <strong>Add to Home Screen</strong> agar tampil seperti aplikasi di iPhone Anda.
-                    </div>
-                  </div>
-                </div>
-
-                {/* Option 2: TestFlight / App Store Status */}
-                <div className="p-5 rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-[var(--text-default)] font-bold text-[10px] uppercase">
-                      Dalam Proses
+            {/* Right Column: Direct Launch & iPhone PWA Steps */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Primary Launch Banner for iPhone */}
+              <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-800 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold uppercase tracking-wider">
+                      Ekosistem Apple iOS
                     </span>
-                    <h5 className="font-bold text-sm sm:text-base">Distribusi IPA via Apple TestFlight</h5>
+                    <span className="text-xs text-blue-200">Format: Mobile Web App (PWA)</span>
                   </div>
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
-                    Build versi iOS (Flutter IPA) sedang dalam peninjauan akun Apple Developer Organisasi. Segera setelah rilis di TestFlight, link undangan instalasi untuk iPhone akan diperbarui di halaman ini.
+
+                  <h3 className="text-xl sm:text-2xl font-bold mb-2">
+                    Aplikasi Absensi & Layanan di iPhone
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-200/90 leading-relaxed mb-6">
+                    Aplikasi web mobile responsif 1-tap siap pasang di layar utama iPhone Anda tanpa perlu melalui App Store yang rumit. Lengkap dengan fitur absensi, jadwal kerja, dan slip gaji.
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <a
+                      href={iosAccessUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white text-slate-900 font-bold text-sm shadow-lg hover:bg-slate-100 transition-all"
+                    >
+                      <ExternalLink className="w-4 h-4 text-blue-600" />
+                      Buka Aplikasi di iPhone Sekarang
+                    </a>
+
+                    <div className="text-center sm:text-left text-xs text-slate-300">
+                      <div>Kompatibilitas: <strong>iOS 14.0+</strong></div>
+                      <div>Safari / Chrome iPhone</div>
+                    </div>
+                  </div>
+                </div>
+
+                <Apple className="absolute -bottom-8 -right-8 w-44 h-44 text-white/5 pointer-events-none" />
+              </div>
+
+              {/* iPhone Step-by-Step Installation Guide */}
+              <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-3xl p-6 sm:p-7 shadow-sm">
+                <h4 className="font-bold text-sm sm:text-base mb-4 flex items-center gap-2">
+                  <Info className="w-4 h-4 text-blue-500" />
+                  Cara Memasang Aplikasi ke Layar Utama iPhone (Home Screen)
+                </h4>
+
+                <ol className="space-y-4 text-xs sm:text-sm">
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                      1
+                    </span>
+                    <div>
+                      <strong>Scan Barcode iPhone</strong> dengan kamera iPhone Anda atau tap tombol <em>&ldquo;Buka Aplikasi di iPhone&rdquo;</em> di atas melalui browser <strong>Safari</strong>.
+                    </div>
+                  </li>
+
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                      2
+                    </span>
+                    <div>
+                      Di browser Safari, tekan ikon <strong>Share</strong> (ikon kotak dengan panah menghadap ke atas di bilah bawah Safari).
+                    </div>
+                  </li>
+
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                      3
+                    </span>
+                    <div>
+                      Gulir ke bawah dan pilih opsi <strong>&ldquo;Add to Home Screen&rdquo; (Tambahkan ke Layar Utama)</strong>, lalu tekan <strong>Add (Tambah)</strong> di pojok kanan atas.
+                    </div>
+                  </li>
+
+                  <li className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                      4
+                    </span>
+                    <div>
+                      Selesai! Ikon aplikasi <strong>Sukses Bangunan</strong> kini muncul di layar utama iPhone Anda dan dapat dibuka 1-tap seperti aplikasi native App Store.
+                    </div>
+                  </li>
+                </ol>
+              </div>
+
+              {/* Technical Note on iOS App Store & Native Build */}
+              <div className="p-4 rounded-2xl bg-slate-500/5 border border-[var(--border-default)] text-xs text-[var(--text-muted)] flex items-start gap-3">
+                <AlertCircle className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                <div>
+                  <strong>Catatan Khusus Instalasi Format .IPA (Native iOS):</strong>
+                  <p className="mt-1">
+                    Sistem keamanan Apple melarang penginstalan langsung file mentah seperti Android APK. Untuk build IPA native Flutter, kode project telah disiapkan dengan pipeline otomatis di GitHub Actions (runner macOS). Distribusi langsung ke perangkat iPhone non-jailbreak memerlukan undangan Apple TestFlight atau sertifikat Apple Developer.
                   </p>
                 </div>
               </div>
