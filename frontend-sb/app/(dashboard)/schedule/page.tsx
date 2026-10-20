@@ -266,9 +266,9 @@ export default function SchedulePage() {
   // Shifts available for current user/department, ordered by start time (Pagi -> Middle -> Siang)
   const departmentShifts = useMemo(() => {
     return shiftList
-      .filter(s => s.idDepartemen === null || s.idDepartemen === undefined || (isSPV && s.idDepartemen === user?.idDepartemen))
+      .filter(s => isSPV ? s.idDepartemen === user?.idDepartemen : (selectedDeptFilter === "all" ? true : s.idDepartemen === Number(selectedDeptFilter)))
       .sort((a, b) => (a.jamMulai || "").localeCompare(b.jamMulai || ""))
-  }, [shiftList, isSPV, user?.idDepartemen])
+  }, [shiftList, isSPV, user?.idDepartemen, selectedDeptFilter])
 
   // Karyawan yang dapat diedit oleh user login
   const editableEmployees = useMemo(() => {
@@ -493,10 +493,8 @@ export default function SchedulePage() {
 
     if (isFixedLibur || isBlockedLibur) return
 
-    // Available shifts for this employee: matching department or general (null)
-    const empShifts = shiftList.filter(s =>
-      s.idDepartemen === null || s.idDepartemen === undefined || s.idDepartemen === emp.idDepartemen
-    )
+    // Available shifts for this employee: strictly matching their department
+    const empShifts = shiftList.filter(s => s.idDepartemen === emp.idDepartemen)
 
     const key = `${idKaryawan}-${date}`
     const currentVal = schedule[key]

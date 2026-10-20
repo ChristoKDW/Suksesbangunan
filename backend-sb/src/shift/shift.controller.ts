@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   UseGuards,
   Req,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ShiftService } from './shift.service.js';
@@ -35,8 +36,12 @@ export class ShiftController {
   @Get()
   @Roles('Admin', 'HRD', 'SPV')
   @ApiOperation({ summary: 'Ambil semua shift' })
-  findAll(@Req() req: any) {
-    return this.shiftService.findAll(req.user?.role, req.user?.idDepartemen);
+  findAll(@Req() req: any, @Query('idDepartemen') idDeptQuery?: string) {
+    return this.shiftService.findAll(
+      req.user?.role,
+      req.user?.idDepartemen,
+      idDeptQuery ? Number(idDeptQuery) : undefined,
+    );
   }
 
   @Get(':id')

@@ -62,10 +62,14 @@ export class ShiftService {
     return this.shiftRepo.save(shift);
   }
 
-  async findAll(userRole?: string, idDepartemen?: number): Promise<Shift[]> {
+  async findAll(
+    userRole?: string,
+    idDepartemen?: number,
+    queryDeptId?: number,
+  ): Promise<Shift[]> {
     const allShifts = await this.shiftRepo.find({
       relations: { departemen: { pengelola: true } },
-      order: { idShift: 'ASC' },
+      order: { idDepartemen: 'ASC', jamMulai: 'ASC' },
     });
 
     // Departemen yang dikelola Admin & HRD tidak memiliki daftar shift
@@ -75,12 +79,11 @@ export class ShiftService {
 
     if (userRole === 'SPV') {
       if (!idDepartemen) return [];
-      return nonAdminHrdShifts.filter(
-        (s) =>
-          s.idDepartemen === idDepartemen ||
-          s.idDepartemen === null ||
-          s.idDepartemen === undefined,
-      );
+      return nonAdminHrdShifts.filter((s) => s.idDepartemen === idDepartemen);
+    }
+
+    if (queryDeptId) {
+      return nonAdminHrdShifts.filter((s) => s.idDepartemen === queryDeptId);
     }
 
     return nonAdminHrdShifts;
