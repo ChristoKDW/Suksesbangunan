@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Building2, User, Lock, Check, Eye, EyeOff, Smartphone } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { LatticeLoader } from "@/components/atoms"
@@ -12,6 +12,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // ponytail: Set judul halaman login menjadi LARAS
+  useEffect(() => {
+    document.title = "LARAS"
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,8 +63,8 @@ export default function LoginPage() {
             <Building2 className="text-white h-8 w-8" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">HR Core</h1>
-            <p className="text-sm text-[var(--text-muted)]">Sign in to access the administrative panel</p>
+            <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">LARAS</h1>
+            <p className="text-sm text-[var(--text-muted)]">Sign in to access the management panel</p>
           </div>
         </div>
 
@@ -149,7 +154,7 @@ export default function LoginPage() {
 
         {/* Footer info */}
         <div className="pt-6 mt-2 border-t border-[var(--border-default)] flex flex-col items-center justify-center gap-2">
-          <p className="text-[10px] text-[var(--text-muted)]">Sukses Bangunan — HR Management System</p>
+          <p className="text-[10px] text-[var(--text-muted)]">LARAS — HR & Attendance Management System</p>
         </div>
       </div>
     </div>

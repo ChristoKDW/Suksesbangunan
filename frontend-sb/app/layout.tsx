@@ -5,8 +5,8 @@ import { AuthProvider } from "@/lib/auth-context";
 
 // ponytail: Eliminasi dependensi eksternal Google Fonts yang rentan gagal build saat offline/proxy
 export const metadata: Metadata = {
-  title: "Sukses Bangunan - HR & Attendance Management",
-  description: "Management Panel for Sukses Bangunan Attendance System",
+  title: "LARAS",
+  description: "Management Panel for LARAS Attendance System",
 };
 
 export default function RootLayout({

@@ -104,6 +104,19 @@ export function Sidebar() {
 
   const currentUserRole = user?.role || "Admin"
 
+  // ponytail: Dynamic title website & sidebar berdasarkan role pengguna
+  const roleDisplay = {
+    SPV: { title: "LARAS SuperVisor", subtitle: "SuperVisor Panel", badge: "SPV" },
+    HRD: { title: "LARAS Human Resource", subtitle: "Human Resource Panel", badge: "HR" },
+    Admin: { title: "LARAS Administrator", subtitle: "Admin Panel", badge: "ADM" },
+  }[currentUserRole] || { title: "LARAS", subtitle: "Admin Panel", badge: "L" }
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.title = roleDisplay.title
+    }
+  }, [roleDisplay.title])
+
   const isActive = (href: string, exact?: boolean) => {
     if (exact) return pathname === href
     return pathname === href || (pathname?.startsWith(`${href}/`) && href !== "/")
@@ -137,12 +150,14 @@ export function Sidebar() {
         <div
           className="flex h-8 w-8 items-center justify-center rounded-lg text-white text-xs font-bold flex-shrink-0 bg-red-600 dark:bg-red-500"
         >
-          HR
+          {roleDisplay.badge}
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-bold leading-tight truncate text-slate-900 dark:text-slate-50">Core Enterprise</div>
+          <div className="text-sm font-bold leading-tight truncate text-slate-900 dark:text-slate-50">
+            {roleDisplay.title}
+          </div>
           <div className="text-xs truncate text-slate-500 dark:text-slate-400">
-            Admin Panel
+            {roleDisplay.subtitle}
           </div>
         </div>
       </div>
