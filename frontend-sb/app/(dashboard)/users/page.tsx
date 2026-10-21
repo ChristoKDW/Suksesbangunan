@@ -13,7 +13,7 @@ import type { Departemen } from "@/lib/types"
 export default function UsersPage() {
   const { user: currentUser } = useAuth()
   // ponytail: SWR caching - instan 0ms saat navigasi
-  const { data: users = [], isLoading: loadingUsers, mutate: mutateUsers } = useSWR<User[]>("users")
+  const { data: users = [], isLoading: loadingUsers, mutate: mutateUsers } = useSWR<User[]>("user")
   const { data: departments = [], isLoading: loadingDepts, mutate: mutateDepts } = useSWR<Departemen[]>("departemen")
   const loading = loadingUsers && loadingDepts
   const refreshAll = () => { mutateUsers(); mutateDepts(); }
