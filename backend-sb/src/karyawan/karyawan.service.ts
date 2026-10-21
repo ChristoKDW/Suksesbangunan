@@ -163,6 +163,29 @@ export class KaryawanService {
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
     }
+
+    // Sinkronisasi relasi foreign key Jabatan agar tidak tertimpa objek relasi lama
+    if (dto.idJabatan !== undefined) {
+      if (dto.idJabatan) {
+        karyawan.idJabatan = dto.idJabatan;
+        karyawan.jabatan = { idJabatan: dto.idJabatan } as any;
+      } else {
+        karyawan.idJabatan = null as any;
+        karyawan.jabatan = null as any;
+      }
+    }
+
+    // Sinkronisasi relasi foreign key Departemen agar tidak tertimpa objek relasi lama
+    if (dto.idDepartemen !== undefined) {
+      if (dto.idDepartemen) {
+        karyawan.idDepartemen = dto.idDepartemen;
+        karyawan.departemen = { idDepartemen: dto.idDepartemen } as any;
+      } else {
+        karyawan.idDepartemen = null as any;
+        karyawan.departemen = null as any;
+      }
+    }
+
     Object.assign(karyawan, dto);
     return this.karyawanRepo.save(karyawan);
   }
