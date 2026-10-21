@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import useSWR from "swr"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import { LatticeLoader, TableRowSkeleton } from "@/components/atoms"
@@ -11,12 +12,15 @@ import type { Departemen } from "@/lib/types"
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth()
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
+  // ponytail: SWR caching - instan 0ms saat navigasi
+  const { data: users = [], isLoading: loadingUsers, mutate: mutateUsers } = useSWR<User[]>("users")
+  const { data: departments = [], isLoading: loadingDepts, mutate: mutateDepts } = useSWR<Departemen[]>("departemen")
+  const loading = loadingUsers && loadingDepts
+  const refreshAll = () => { mutateUsers(); mutateDepts(); }
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
-  const [departments, setDepartments] = useState<Departemen[]>([])
   
   const [newUser, setNewUser] = useState<Partial<User>>({ nama: "", username: "", password: "", role: "HRD" })
   const [editingUser, setEditingUser] = useState<Partial<User> | null>(null)
@@ -27,23 +31,6 @@ export default function UsersPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
-  const fetchUsers = async () => {
-    try {
-      const [data, depts] = await Promise.all([
-        userApi.getAll(),
-        api.get<Departemen[]>("departemen")
-      ])
-      setUsers(data)
-      setDepartments(depts)
-    } catch (err) {
-      console.error("Failed to fetch users:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchUsers() }, [])
-
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
@@ -52,7 +39,7 @@ export default function UsersPage() {
       setIsModalOpen(false)
       setShowNewPassword(false)
       setNewUser({ nama: "", username: "", password: "", role: "HRD" })
-      await fetchUsers()
+      refreshAll()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menambahkan user")
     } finally {
@@ -64,7 +51,7 @@ export default function UsersPage() {
     if (!confirm("Apakah Anda yakin ingin menghapus akun ini?")) return
     try {
       await userApi.delete(id)
-      await fetchUsers()
+      refreshAll()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menghapus user")
     }
@@ -112,7 +99,7 @@ export default function UsersPage() {
       }
       setIsEditModalOpen(false)
       setEditingUser(null)
-      await fetchUsers()
+      refreshAll()
       alert("Data pengguna berhasil diperbarui.")
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal mengupdate user")

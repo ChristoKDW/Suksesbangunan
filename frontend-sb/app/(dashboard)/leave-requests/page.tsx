@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import useSWR from "swr"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import { Badge, TableRowSkeleton } from "@/components/atoms"
@@ -107,9 +108,8 @@ export default function LeaveRequestsPage() {
   // Main Mode: "izin" | "pertukaran"
   const [mainMode, setMainMode] = useState<"izin" | "pertukaran">("izin")
 
-  // Izin State
-  const [requests, setRequests] = useState<PengajuanIzin[]>([])
-  const [loadingIzin, setLoadingIzin] = useState(true)
+  // ponytail: SWR caching + background live sync (polling tiap 20s untuk approval perizinan)
+  const { data: requests = [], isLoading: loadingIzin, mutate: mutateIzin } = useSWR<PengajuanIzin[]>("pengajuan-izin", { refreshInterval: 20000 })
   const [activeTabIzin, setActiveTabIzin] = useState("Semua")
   const [currentPageIzin, setCurrentPageIzin] = useState(1)
   const [pageSizeIzin, setPageSizeIzin] = useState(10)
@@ -117,8 +117,7 @@ export default function LeaveRequestsPage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
   // Pertukaran State
-  const [swaps, setSwaps] = useState<PengajuanPertukaran[]>([])
-  const [loadingSwaps, setLoadingSwaps] = useState(true)
+  const { data: swaps = [], isLoading: loadingSwaps, mutate: mutateSwaps } = useSWR<PengajuanPertukaran[]>("pengajuan-pertukaran", { refreshInterval: 20000 })
   const [activeTabSwap, setActiveTabSwap] = useState("Semua")
   const [currentPageSwap, setCurrentPageSwap] = useState(1)
   const [pageSizeSwap, setPageSizeSwap] = useState(10)
@@ -127,33 +126,6 @@ export default function LeaveRequestsPage() {
 
   const [searchQuery, setSearchQuery] = useState("")
   const [submitting, setSubmitting] = useState(false)
-
-  const fetchIzinData = async () => {
-    try {
-      const data = await api.get<PengajuanIzin[]>("pengajuan-izin")
-      setRequests(data)
-    } catch (err) {
-      console.error("Failed to fetch pengajuan izin:", err)
-    } finally {
-      setLoadingIzin(false)
-    }
-  }
-
-  const fetchSwapData = async () => {
-    try {
-      const data = await api.get<PengajuanPertukaran[]>("pengajuan-pertukaran")
-      setSwaps(data)
-    } catch (err) {
-      console.error("Failed to fetch pengajuan pertukaran:", err)
-    } finally {
-      setLoadingSwaps(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchIzinData()
-    fetchSwapData()
-  }, [])
 
   // Counts
   const pendingIzinCount = requests.filter((r) => {
@@ -173,7 +145,7 @@ export default function LeaveRequestsPage() {
     setSubmitting(true)
     try {
       await api.patch(`pengajuan-izin/${id}/approval-spv`, { setuju: true, status: "disetujui" })
-      await fetchIzinData()
+      mutateIzin()
       if (selectedRequest?.idIzin === id) {
         setSelectedRequest(prev => prev ? { ...prev, status: "menunggu_hrd" } : null)
       }
@@ -191,7 +163,7 @@ export default function LeaveRequestsPage() {
     setSubmitting(true)
     try {
       await api.patch(`pengajuan-izin/${id}/approval-spv`, { setuju: false, status: "ditolak", catatan: catatan || "" })
-      await fetchIzinData()
+      mutateIzin()
       if (selectedRequest?.idIzin === id) {
         setSelectedRequest(prev => prev ? { ...prev, status: "ditolak_spv", catatanSpv: catatan } : null)
       }
@@ -210,7 +182,7 @@ export default function LeaveRequestsPage() {
     setSubmitting(true)
     try {
       await api.patch(`pengajuan-izin/${id}/approval-hrd`, { setuju: true, status: "disetujui" })
-      await fetchIzinData()
+      mutateIzin()
       if (selectedRequest?.idIzin === id) {
         setSelectedRequest(prev => prev ? { ...prev, status: "disetujui" } : null)
       }
@@ -228,7 +200,7 @@ export default function LeaveRequestsPage() {
     setSubmitting(true)
     try {
       await api.patch(`pengajuan-izin/${id}/approval-hrd`, { setuju: false, status: "ditolak", catatan: catatan || "" })
-      await fetchIzinData()
+      mutateIzin()
       if (selectedRequest?.idIzin === id) {
         setSelectedRequest(prev => prev ? { ...prev, status: "ditolak_hrd", catatanHrd: catatan } : null)
       }
@@ -245,7 +217,7 @@ export default function LeaveRequestsPage() {
     setSubmitting(true)
     try {
       await api.patch(`pengajuan-pertukaran/${id}/approval-spv`, { setuju: true, status: "disetujui" })
-      await fetchSwapData()
+      mutateSwaps()
       if (selectedSwap?.idPertukaran === id) {
         setSelectedSwap(prev => prev ? { ...prev, status: "menunggu_hrd" } : null)
       }
@@ -263,7 +235,7 @@ export default function LeaveRequestsPage() {
     setSubmitting(true)
     try {
       await api.patch(`pengajuan-pertukaran/${id}/approval-spv`, { setuju: false, status: "ditolak", catatan: catatan || "" })
-      await fetchSwapData()
+      mutateSwaps()
       if (selectedSwap?.idPertukaran === id) {
         setSelectedSwap(prev => prev ? { ...prev, status: "ditolak_spv", catatanSpv: catatan } : null)
       }
@@ -282,7 +254,7 @@ export default function LeaveRequestsPage() {
     setSubmitting(true)
     try {
       await api.patch(`pengajuan-pertukaran/${id}/approval-hrd`, { setuju: true, status: "disetujui" })
-      await fetchSwapData()
+      mutateSwaps()
       if (selectedSwap?.idPertukaran === id) {
         setSelectedSwap(prev => prev ? { ...prev, status: "disetujui" } : null)
       }
@@ -300,7 +272,7 @@ export default function LeaveRequestsPage() {
     setSubmitting(true)
     try {
       await api.patch(`pengajuan-pertukaran/${id}/approval-hrd`, { setuju: false, status: "ditolak", catatan: catatan || "" })
-      await fetchSwapData()
+      mutateSwaps()
       if (selectedSwap?.idPertukaran === id) {
         setSelectedSwap(prev => prev ? { ...prev, status: "ditolak_hrd", catatanHrd: catatan } : null)
       }

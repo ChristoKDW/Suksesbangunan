@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import useSWR from "swr"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
 import { Badge, LatticeLoader, TableRowSkeleton } from "@/components/atoms"
@@ -57,8 +58,13 @@ export default function RegularOffTab() {
   const isSpv = user?.role === "SPV"
   const isHrdOrAdmin = user?.role === "HRD" || user?.role === "Admin"
 
-  const [roList, setRoList] = useState<PengajuanRo[]>([])
-  const [loading, setLoading] = useState(true)
+  // ponytail: SWR caching + background live sync
+  const roKey = isSpv ? "pengajuan-ro/spv" : "pengajuan-ro/hrd"
+  const { data: roList = [], isLoading: loading, mutate } = useSWR<PengajuanRo[]>(
+    roKey,
+    () => (isSpv ? regularOffApi.getForSpv() : regularOffApi.getForHrd()),
+    { refreshInterval: 20000 }
+  )
   const [activeFilter, setActiveFilter] = useState("Semua")
   const [searchQuery, setSearchQuery] = useState("")
   const [submittingId, setSubmittingId] = useState<number | null>(null)
@@ -81,27 +87,6 @@ export default function RegularOffTab() {
     karyawanNama: "",
     tanggalList: [],
   })
-
-  const fetchRoList = async () => {
-    try {
-      setLoading(true)
-      let data: PengajuanRo[] = []
-      if (isSpv) {
-        data = await regularOffApi.getForSpv()
-      } else {
-        data = await regularOffApi.getForHrd()
-      }
-      setRoList(data)
-    } catch (err) {
-      console.error("Gagal mengambil data Regular Off:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchRoList()
-  }, [isSpv, isHrdOrAdmin])
 
   const handleOpenAction = (
     item: PengajuanRo,
@@ -139,7 +124,7 @@ export default function RegularOffTab() {
         await regularOffApi.respondHrd(id, { setuju, catatan })
       }
       setActionModal((prev) => ({ ...prev, open: false }))
-      await fetchRoList()
+      mutate()
     } catch (err: any) {
       alert(`Gagal memproses persetujuan: ${err?.message || "Terjadi kesalahan"}`)
     } finally {

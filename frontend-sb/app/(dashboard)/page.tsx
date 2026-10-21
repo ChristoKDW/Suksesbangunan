@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import useSWR from "swr"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules"
 import { Badge, Skeleton } from "@/components/atoms"
 import {
@@ -14,7 +14,6 @@ import {
   ArrowDownRight,
   Loader2,
 } from "lucide-react"
-import { api } from "@/lib/api"
 import type { Karyawan, Absensi, PengajuanIzin } from "@/lib/types"
 
 const statusVariantMap: Record<string, "success" | "warning" | "destructive" | "secondary"> = {
@@ -47,30 +46,11 @@ function formatTime(isoString: string | null): string {
 }
 
 export default function DashboardPage() {
-  const [karyawanList, setKaryawanList] = useState<Karyawan[]>([])
-  const [absensiList, setAbsensiList] = useState<Absensi[]>([])
-  const [pendingIzin, setPendingIzin] = useState<PengajuanIzin[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [karyawan, absensi, izin] = await Promise.all([
-          api.get<Karyawan[]>("karyawan"),
-          api.get<Absensi[]>("absensi"),
-          api.get<PengajuanIzin[]>("pengajuan-izin?status=menunggu"),
-        ])
-        setKaryawanList(karyawan)
-        setAbsensiList(absensi)
-        setPendingIzin(izin)
-      } catch (err) {
-        console.error("Failed to fetch dashboard data:", err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
-  }, [])
+  // ponytail: SWR caching + background live sync (polling tiap 20s untuk absensi real-time)
+  const { data: karyawanList = [], isLoading: loadingKaryawan } = useSWR<Karyawan[]>("karyawan")
+  const { data: absensiList = [], isLoading: loadingAbsensi } = useSWR<Absensi[]>("absensi", { refreshInterval: 20000 })
+  const { data: pendingIzin = [], isLoading: loadingIzin } = useSWR<PengajuanIzin[]>("pengajuan-izin?status=menunggu", { refreshInterval: 30000 })
+  const loading = loadingKaryawan && loadingAbsensi && loadingIzin
 
   // Compute stats from real data
   const today = new Date()

@@ -1,5 +1,6 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import useSWR from "swr"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import { Badge, Skeleton, TableRowSkeleton } from "@/components/atoms"
@@ -26,30 +27,17 @@ function getStatusBadge(status: string | null): { label: string; variant: "succe
 }
 
 export default function AttendancePage() {
-  const [attendance, setAttendance] = useState<Absensi[]>([])
-  const [loading, setLoading] = useState(true)
+  // ponytail: SWR caching + background live sync (refreshInterval 15s)
+  const { data: attendance = [], isLoading: loading, mutate } = useSWR<Absensi[]>("absensi", { refreshInterval: 15000 })
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-
-  const fetchData = async () => {
-    try {
-      const data = await api.get<Absensi[]>("absensi")
-      setAttendance(data)
-    } catch (err) {
-      console.error("Failed to fetch absensi:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchData() }, [])
 
   const handleDelete = async (id: number) => {
     if (!confirm("Hapus record absensi ini?")) return
     try {
       await api.delete(`absensi/${id}`)
-      await fetchData()
+      await mutate()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menghapus")
     }

@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import useSWR from "swr"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import { LatticeLoader, TableRowSkeleton, Skeleton } from "@/components/atoms"
@@ -8,12 +9,15 @@ import { api, userApi, User } from "@/lib/api"
 import type { Departemen } from "@/lib/types"
 
 export default function DepartmentsPage() {
-  const [departments, setDepartments] = useState<Departemen[]>([])
-  const [users, setUsers] = useState<User[]>([])
+  // ponytail: SWR caching - instan 0ms saat navigasi
+  const { data: departments = [], isLoading: loadingDept, mutate: mutateDept } = useSWR<Departemen[]>("departemen")
+  const { data: users = [], isLoading: loadingUsers, mutate: mutateUsers } = useSWR<User[]>("users")
+  const loading = loadingDept && loadingUsers
+  const refreshAll = () => { mutateDept(); mutateUsers(); }
+
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [newDept, setNewDept] = useState<{ namaDepartemen: string; idPengelola: number[] }>({
@@ -32,23 +36,6 @@ export default function DepartmentsPage() {
     if (Array.isArray(dept.pengelola)) return dept.pengelola
     return [dept.pengelola]
   }
-
-  const fetchDepartments = async () => {
-    try {
-      const [data, userList] = await Promise.all([
-        api.get<Departemen[]>("departemen"),
-        userApi.getAll().catch(() => []),
-      ])
-      setDepartments(data)
-      setUsers(userList)
-    } catch (err) {
-      console.error("Failed to fetch departemen:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchDepartments() }, [])
 
   const isUserDisabled = (targetUser: User, selectedIds: number[]) => {
     if (selectedIds.includes(targetUser.idUser)) return false
@@ -118,7 +105,7 @@ export default function DepartmentsPage() {
       })
       setIsModalOpen(false)
       setNewDept({ namaDepartemen: "", idPengelola: [] })
-      await fetchDepartments()
+      refreshAll()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menambahkan departemen")
     } finally {
@@ -130,7 +117,7 @@ export default function DepartmentsPage() {
     if (!confirm("Apakah Anda yakin ingin menghapus departemen ini?")) return
     try {
       await api.delete(`departemen/${id}`)
-      await fetchDepartments()
+      refreshAll()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menghapus departemen")
     }
@@ -164,7 +151,7 @@ export default function DepartmentsPage() {
       })
       setIsEditModalOpen(false)
       setEditingDept(null)
-      await fetchDepartments()
+      refreshAll()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal mengupdate departemen")
     } finally {

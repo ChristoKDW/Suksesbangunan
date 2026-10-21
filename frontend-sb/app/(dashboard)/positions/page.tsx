@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import useSWR from "swr"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import { LatticeLoader, TableRowSkeleton } from "@/components/atoms"
@@ -8,29 +9,16 @@ import { api } from "@/lib/api"
 import type { Jabatan } from "@/lib/types"
 
 export default function PositionsPage() {
-  const [positions, setPositions] = useState<Jabatan[]>([])
+  // ponytail: SWR caching - instan 0ms saat navigasi
+  const { data: positions = [], isLoading: loading, mutate } = useSWR<Jabatan[]>("jabatan")
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [newPosition, setNewPosition] = useState({ namaJabatan: "" })
   const [editingPosition, setEditingPosition] = useState<Jabatan | null>(null)
   const [submitting, setSubmitting] = useState(false)
-
-  const fetchPositions = async () => {
-    try {
-      const data = await api.get<Jabatan[]>("jabatan")
-      setPositions(data)
-    } catch (err) {
-      console.error("Failed to fetch jabatan:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchPositions() }, [])
 
   const handleAddPosition = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,7 +27,7 @@ export default function PositionsPage() {
       await api.post("jabatan", { namaJabatan: newPosition.namaJabatan })
       setIsModalOpen(false)
       setNewPosition({ namaJabatan: "" })
-      await fetchPositions()
+      mutate()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menambahkan jabatan")
     } finally {
@@ -51,7 +39,7 @@ export default function PositionsPage() {
     if (!confirm("Apakah Anda yakin ingin menghapus jabatan ini?")) return
     try {
       await api.delete(`jabatan/${id}`)
-      await fetchPositions()
+      mutate()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menghapus jabatan")
     }
@@ -70,7 +58,7 @@ export default function PositionsPage() {
       await api.patch(`jabatan/${editingPosition.idJabatan}`, { namaJabatan: editingPosition.namaJabatan })
       setIsEditModalOpen(false)
       setEditingPosition(null)
-      await fetchPositions()
+      mutate()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal mengupdate jabatan")
     } finally {

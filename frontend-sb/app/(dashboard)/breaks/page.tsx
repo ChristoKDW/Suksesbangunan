@@ -1,5 +1,6 @@
 "use client"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo } from "react"
+import useSWR from "swr"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
 import { Badge, Skeleton, TableRowSkeleton } from "@/components/atoms"
@@ -13,36 +14,18 @@ function formatTime(iso: string | null): string {
 }
 
 export default function BreaksPage() {
-  const [breaks, setBreaks] = useState<Istirahat[]>([])
-  const [absensiList, setAbsensiList] = useState<Absensi[]>([])
-  const [karyawanList, setKaryawanList] = useState<Karyawan[]>([])
-  const [loading, setLoading] = useState(true)
+  // ponytail: SWR caching + background live sync (istirahat & absensi auto-sync)
+  const { data: breaks = [], isLoading: loadingBreaks, mutate } = useSWR<Istirahat[]>("istirahat", { refreshInterval: 15000 })
+  const { data: absensiList = [], isLoading: loadingAbsensi } = useSWR<Absensi[]>("absensi", { refreshInterval: 15000 })
+  const { data: karyawanList = [], isLoading: loadingKaryawan } = useSWR<Karyawan[]>("karyawan")
+  const loading = loadingBreaks && loadingAbsensi && loadingKaryawan
   const [searchQuery, setSearchQuery] = useState("")
-
-  const fetchData = async () => {
-    try {
-      const [ist, abs, kar] = await Promise.all([
-        api.get<Istirahat[]>("istirahat"),
-        api.get<Absensi[]>("absensi"),
-        api.get<Karyawan[]>("karyawan"),
-      ])
-      setBreaks(ist)
-      setAbsensiList(abs)
-      setKaryawanList(kar)
-    } catch (err) {
-      console.error("Failed to fetch break data:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchData() }, [])
 
   const handleDelete = async (id: number) => {
     if (!confirm("Hapus record istirahat ini?")) return
     try {
       await api.delete(`istirahat/${id}`)
-      await fetchData()
+      await mutate()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menghapus")
     }

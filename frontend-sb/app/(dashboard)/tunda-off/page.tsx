@@ -1,7 +1,8 @@
 "use client"
 
 import { confirmDialog, showError, showSuccess } from "@/lib/swal"
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import useSWR from "swr"
 import { Check, X, Search, Loader2, ArrowRight } from "lucide-react"
 import { Card, CardContent } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
@@ -35,33 +36,29 @@ const fmt = (d: string) => new Date(d).toLocaleDateString("id-ID", { day: "numer
 
 export default function TundaOffPage() {
   const { user } = useAuth()
-  const [items, setItems] = useState<TundaOff[]>([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [submittingId, setSubmittingId] = useState<number | null>(null)
 
-  const load = async () => {
-    try {
-      setLoading(true)
-      if (user?.role === "Admin") {
-        const [spv, hrd] = await Promise.all([
-          api.get<TundaOff[]>("tunda-off/pengajuan/spv"),
-          api.get<TundaOff[]>("tunda-off/pengajuan/hrd"),
-        ])
-        setItems([...spv, ...hrd.filter((h) => !spv.some((s) => s.idTundaOff === h.idTundaOff))])
-      } else if (user?.role === "SPV") {
-        setItems(await api.get<TundaOff[]>("tunda-off/pengajuan/spv"))
-      } else {
-        setItems(await api.get<TundaOff[]>("tunda-off/pengajuan/hrd"))
-      }
-    } catch (err) {
-      showError(err instanceof Error ? err.message : "Gagal memuat pengajuan tunda off")
-    } finally {
-      setLoading(false)
+  // ponytail: SWR caching + background live sync
+  const fetchTundaOff = async () => {
+    if (user?.role === "Admin") {
+      const [spv, hrd] = await Promise.all([
+        api.get<TundaOff[]>("tunda-off/pengajuan/spv"),
+        api.get<TundaOff[]>("tunda-off/pengajuan/hrd"),
+      ])
+      return [...spv, ...hrd.filter((h) => !spv.some((s) => s.idTundaOff === h.idTundaOff))]
+    } else if (user?.role === "SPV") {
+      return api.get<TundaOff[]>("tunda-off/pengajuan/spv")
+    } else {
+      return api.get<TundaOff[]>("tunda-off/pengajuan/hrd")
     }
   }
 
-  useEffect(() => { if (user) load() }, [user])
+  const { data: items = [], isLoading: loading, mutate } = useSWR<TundaOff[]>(
+    user ? `tunda-off/${user.role}` : null,
+    fetchTundaOff,
+    { refreshInterval: 20000 }
+  )
 
   const respond = async (item: TundaOff, setuju: boolean) => {
     const roleTarget = item.status === "menunggu_spv" ? "spv" : "hrd"
@@ -70,7 +67,7 @@ export default function TundaOffPage() {
     setSubmittingId(item.idTundaOff)
     try {
       await api.patch(`tunda-off/pengajuan/${item.idTundaOff}/approval-${roleTarget}`, { setuju, catatan })
-      await load()
+      mutate()
       showSuccess(setuju ? "Pengajuan disetujui." : "Pengajuan ditolak.")
     } catch (err) {
       showError(err instanceof Error ? err.message : "Gagal memproses pengajuan")

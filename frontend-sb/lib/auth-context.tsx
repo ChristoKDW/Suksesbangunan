@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
+import { SWRConfig, mutate as globalMutate } from "swr"
 import { api } from "@/lib/api"
 import type { AuthUser, LoginResponse } from "@/lib/types"
 
@@ -78,6 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("accessToken")
     localStorage.removeItem("userData")
     document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax"
+    // ponytail: Bersihkan seluruh cache SWR saat logout dalam 1 baris
+    globalMutate(() => true, undefined, { revalidate: false })
     setToken(null)
     setUser(null)
     router.push("/login")
@@ -94,7 +97,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
       }}
     >
-      {children}
+      {/* ponytail: Global SWR Config - zero boilerplate fetcher & instant cache revalidation */}
+      <SWRConfig
+        value={{
+          fetcher: (url: string) => api.get(url),
+          revalidateOnFocus: true,
+          dedupingInterval: 5000,
+        }}
+      >
+        {children}
+      </SWRConfig>
     </AuthContext.Provider>
   )
 }

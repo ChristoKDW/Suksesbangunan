@@ -1,32 +1,22 @@
 "use client"
 
-import Swal from "sweetalert2"
+// ponytail: Native browser alert/confirm - zero external bundle dependency & instant execution
+export const showSuccess = (message: string, title = "Berhasil") => {
+  if (typeof window !== "undefined") window.alert(`${title}: ${message}`)
+}
 
-const confirmButtonColor = "#2563eb"
-const cancelButtonColor = "#64748b"
+export const showError = (message: string, title = "Gagal") => {
+  if (typeof window !== "undefined") window.alert(`${title}: ${message}`)
+}
 
-export const showSuccess = (message: string, title = "Berhasil") =>
-  Swal.fire({ icon: "success", title, text: message, confirmButtonColor })
-
-export const showError = (message: string, title = "Gagal") =>
-  Swal.fire({ icon: "error", title, text: message, confirmButtonColor })
-
-export const showWarning = (message: string, title = "Perhatian") =>
-  Swal.fire({ icon: "warning", title, text: message, confirmButtonColor })
+export const showWarning = (message: string, title = "Perhatian") => {
+  if (typeof window !== "undefined") window.alert(`${title}: ${message}`)
+}
 
 export const confirmDialog = async (
   message: string,
-  { title = "Konfirmasi", confirmText = "Ya", cancelText = "Batal" } = {},
+  _options?: { title?: string; confirmText?: string; cancelButtonText?: string },
 ) => {
-  const result = await Swal.fire({
-    icon: "question",
-    title,
-    text: message,
-    showCancelButton: true,
-    confirmButtonText: confirmText,
-    cancelButtonText: cancelText,
-    confirmButtonColor,
-    cancelButtonColor,
-  })
-  return result.isConfirmed
+  if (typeof window === "undefined") return false
+  return window.confirm(message)
 }

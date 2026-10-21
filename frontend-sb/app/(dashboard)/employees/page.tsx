@@ -1,6 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import useSWR from "swr"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Pagination } from "@/components/molecules"
 import { Badge, TableRowSkeleton } from "@/components/atoms"
@@ -48,27 +49,12 @@ function formatTanggal(dateStr?: string | null) {
 
 
 export default function EmployeesPage() {
-  const [employees, setEmployees] = useState<Karyawan[]>([])
-  const [loading, setLoading] = useState(true)
+  // ponytail: SWR caching - instan 0ms saat navigasi bolak-balik & auto-revalidate
+  const { data: employees = [], isLoading: loading, mutate } = useSWR<Karyawan[]>("karyawan")
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const { user } = useAuth()
-
-  const fetchData = async () => {
-    try {
-      const emp = await api.get<Karyawan[]>("karyawan")
-      setEmployees(emp)
-    } catch (err) {
-      console.error("Failed to fetch data:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchData()
-  }, [])
 
   useEffect(() => {
     setCurrentPage(1)
@@ -107,7 +93,7 @@ export default function EmployeesPage() {
     try {
       const res: any = await api.post(`karyawan/${id}/reset-apk`)
       alert(res?.message || `Data APK untuk ${nama} berhasil dihapus/direset.`)
-      fetchData()
+      mutate()
     } catch (err: any) {
       alert(err instanceof Error ? err.message : "Gagal menghapus data APK karyawan.")
     }
@@ -126,7 +112,7 @@ export default function EmployeesPage() {
       return
     try {
       await api.delete(`karyawan/${id}`)
-      await fetchData()
+      await mutate()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menghapus karyawan")
     }
@@ -138,7 +124,7 @@ export default function EmployeesPage() {
     try {
       await api.patch(`karyawan/${id}/approve-reset`, {})
       alert("Permintaan reset password disetujui.")
-      await fetchData()
+      await mutate()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menyetujui reset password")
     }

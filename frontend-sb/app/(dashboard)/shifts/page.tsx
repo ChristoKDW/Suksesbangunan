@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import useSWR from "swr"
 import {
   Card,
   CardContent,
@@ -33,9 +34,12 @@ import type { Shift, Departemen } from "@/lib/types"
 
 export default function ShiftsPage() {
   const { user } = useAuth()
-  const [shifts, setShifts] = useState<Shift[]>([])
-  const [departments, setDepartments] = useState<Departemen[]>([])
-  const [loading, setLoading] = useState(true)
+  // ponytail: SWR caching - instan 0ms saat navigasi
+  const { data: shifts = [], isLoading: loadingShifts, mutate: mutateShifts } = useSWR<Shift[]>("shift")
+  const { data: departments = [], isLoading: loadingDepts, mutate: mutateDepts } = useSWR<Departemen[]>("departemen")
+  const loading = loadingShifts && loadingDepts
+  const refreshAll = () => { mutateShifts(); mutateDepts(); }
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>("all")
@@ -78,25 +82,6 @@ export default function ShiftsPage() {
   const operationalDepartments = useMemo(() => {
     return departments.filter((d) => !isDeptManagedByAdminOrHrd(d))
   }, [departments])
-
-  const fetchData = async () => {
-    try {
-      const [shiftData, deptData] = await Promise.all([
-        api.get<Shift[]>("shift"),
-        api.get<Departemen[]>("departemen").catch(() => []),
-      ])
-      setShifts(shiftData)
-      setDepartments(deptData)
-    } catch (err) {
-      console.error("Failed to fetch shift:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchData()
-  }, [])
 
   // Lock SPV to their own department
   useEffect(() => {
@@ -146,7 +131,7 @@ export default function ShiftsPage() {
       }
       await api.post("shift", payload)
       setIsModalOpen(false)
-      await fetchData()
+      refreshAll()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menambahkan shift")
     } finally {
@@ -176,7 +161,7 @@ export default function ShiftsPage() {
       })
       setIsEditModalOpen(false)
       setEditingShift(null)
-      await fetchData()
+      refreshAll()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal mengupdate shift")
     } finally {
@@ -188,7 +173,7 @@ export default function ShiftsPage() {
     if (!confirm("Apakah Anda yakin ingin menghapus shift ini?")) return
     try {
       await api.delete(`shift/${id}`)
-      await fetchData()
+      refreshAll()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menghapus shift")
     }

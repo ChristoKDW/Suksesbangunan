@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import useSWR from "swr"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/molecules"
 import { LatticeLoader, TableRowSkeleton } from "@/components/atoms"
@@ -8,9 +9,12 @@ import { api } from "@/lib/api"
 import type { HariLibur, Shift } from "@/lib/types"
 
 export default function HolidaysPage() {
-  const [holidays, setHolidays] = useState<HariLibur[]>([])
-  const [shifts, setShifts] = useState<Shift[]>([])
-  const [loading, setLoading] = useState(true)
+  // ponytail: SWR caching - instan 0ms saat navigasi
+  const { data: holidays = [], isLoading: loadingHolidays, mutate: mutateHolidays } = useSWR<HariLibur[]>("hari-libur")
+  const { data: shifts = [], isLoading: loadingShifts, mutate: mutateShifts } = useSWR<Shift[]>("shift")
+  const loading = loadingHolidays && loadingShifts
+  const refreshAll = () => { mutateHolidays(); mutateShifts(); }
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [newHoliday, setNewHoliday] = useState<{
@@ -37,31 +41,6 @@ export default function HolidaysPage() {
   const [submitting, setSubmitting] = useState(false)
   const [search, setSearch] = useState("")
 
-  const fetchHolidays = async () => {
-    try {
-      const [holidayData, shiftData] = await Promise.all([
-        api.get<HariLibur[]>("hari-libur"),
-        api.get<Shift[]>("shift").catch(() => []),
-      ])
-      setHolidays(holidayData)
-      setShifts(shiftData)
-      if (shiftData.length > 0) {
-        setNewHoliday(prev => ({
-          ...prev,
-          idShift: prev.idShift || shiftData[0].idShift,
-        }))
-      }
-    } catch (err) {
-      console.error("Failed to fetch data:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchHolidays()
-  }, [])
-
   const handleAddHoliday = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newHoliday.isLibur && !newHoliday.idShift) {
@@ -86,7 +65,7 @@ export default function HolidaysPage() {
         idShift: shifts.length > 0 ? shifts[0].idShift : "",
         isLibur: true,
       })
-      await fetchHolidays()
+      refreshAll()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menambahkan hari penting")
     } finally {
@@ -101,7 +80,7 @@ export default function HolidaysPage() {
     try {
       const res: any = await api.delete(`hari-libur/${id}`)
       alert(res.message || "Hari penting berhasil dihapus")
-      await fetchHolidays()
+      refreshAll()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menghapus hari penting")
     }
@@ -138,7 +117,7 @@ export default function HolidaysPage() {
       alert(res.message || "Hari penting berhasil diperbarui")
       setIsEditModalOpen(false)
       setEditingHoliday(null)
-      await fetchHolidays()
+      refreshAll()
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal memperbarui hari penting")
     } finally {
