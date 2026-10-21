@@ -74,8 +74,8 @@ export default function DownloadPage() {
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-bold text-base tracking-tight leading-tight">Sukses Bangunan</div>
-              <div className="text-xs text-[var(--text-muted)]">Portal Unduh Aplikasi Mobile</div>
+              <div className="font-bold text-base tracking-tight leading-tight">LARAS</div>
+              <div className="text-xs text-[var(--text-muted)]">Portal Unduh Aplikasi Mobile &bull; Sukses Bangunan</div>
             </div>
           </div>
 
@@ -95,13 +95,13 @@ export default function DownloadPage() {
         <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-4">
             <Sparkles className="w-3.5 h-3.5" />
-            Aplikasi Resmi Pegawai
+            Aplikasi Resmi Pegawai &bull; LARAS
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight mb-3">
-            Unduh Aplikasi Absensi Mobile
+            Unduh Aplikasi Mobile LARAS
           </h1>
           <p className="text-sm sm:text-base text-[var(--text-muted)] leading-relaxed">
-            Scan barcode atau unduh langsung file instalasi untuk absensi mandiri, verifikasi wajah AI (Anti-Spoofing), dan pengelolaan slip gaji di perangkat Anda.
+            Scan barcode atau unduh langsung file instalasi aplikasi LARAS untuk absensi mandiri, verifikasi wajah AI (Anti-Spoofing), geofencing, dan pengelolaan slip gaji di perangkat Anda.
           </p>
         </div>
 
@@ -150,7 +150,7 @@ export default function DownloadPage() {
               <div className="w-full flex items-center justify-between mb-4">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                   <QrCode className="w-3.5 h-3.5" />
-                  Barcode Download APK
+                  Barcode Download APK LARAS
                 </span>
                 <span className="text-xs text-[var(--text-muted)]">v1.0.0 Release</span>
               </div>
@@ -160,7 +160,7 @@ export default function DownloadPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={qrAndroidSvg}
-                  alt="QR Code Download APK Android"
+                  alt="QR Code Download APK LARAS Android"
                   className="w-56 h-56 object-contain"
                 />
                 <div className="absolute inset-0 rounded-2xl bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
@@ -172,14 +172,14 @@ export default function DownloadPage() {
 
               <h2 className="font-bold text-base mb-1">Arahkan Kamera HP Android</h2>
               <p className="text-xs text-[var(--text-muted)] mb-5 max-w-xs">
-                Buka aplikasi Kamera atau Google Lens di HP Android Anda dan arahkan ke barcode di atas untuk langsung mendownload APK.
+                Buka aplikasi Kamera atau Google Lens di HP Android Anda dan arahkan ke barcode di atas untuk langsung mendownload APK LARAS.
               </p>
 
               {/* QR Action Buttons */}
               <div className="w-full grid grid-cols-2 gap-2.5 pt-4 border-t border-[var(--border-default)]">
                 <a
                   href={qrAndroidPng}
-                  download="Barcode-Download-APK-Sukses-Bangunan.png"
+                  download="Barcode-Download-APK-LARAS.png"
                   className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[var(--border-default)] text-xs font-medium hover:bg-[var(--bg-surface-hover)] transition-colors"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -218,7 +218,7 @@ export default function DownloadPage() {
                   </div>
 
                   <h3 className="text-xl sm:text-2xl font-bold mb-2">
-                    Aplikasi Absensi & Layanan Pegawai
+                    Aplikasi LARAS &bull; Layanan & Presensi Pegawai
                   </h3>
                   <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed mb-6">
                     Mendukung absensi wajah biometrik AI, deteksi kedipan & gelengan kepala (Anti-Spoofing), geofence kantor, serta pengajuan cuti dan slip gaji harian.
@@ -227,11 +227,11 @@ export default function DownloadPage() {
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <a
                       href={apkDownloadUrl}
-                      download="absensi-sukses-bangunan.apk"
+                      download="LARAS.apk"
                       className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white text-emerald-800 font-bold text-sm shadow-lg hover:bg-emerald-50 hover:shadow-xl transition-all"
                     >
                       <Download className="w-4 h-4 text-emerald-700" />
-                      Unduh APK Sekarang (83.3 MB)
+                      Unduh APK LARAS (83.3 MB)
                     </a>
 
                     <div className="text-center sm:text-left text-xs text-emerald-200">
@@ -293,7 +293,7 @@ export default function DownloadPage() {
                       2
                     </span>
                     <div>
-                      Buka notifikasi unduhan atau buka aplikasi <strong>File Manager &gt; Unduhan (Download)</strong>, lalu klik file <code>absensi-sukses-bangunan.apk</code>.
+                      Buka notifikasi unduhan atau buka aplikasi <strong>File Manager &gt; Unduhan (Download)</strong>, lalu klik file <code>LARAS.apk</code> (atau <code>app-release.apk</code>).
                     </div>
                   </li>
 
@@ -321,7 +321,7 @@ export default function DownloadPage() {
               <div className="w-full flex items-center justify-between mb-4">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
                   <QrCode className="w-3.5 h-3.5" />
-                  Barcode Khusus iPhone (iOS)
+                  Barcode Akses iPhone (iOS) &bull; LARAS
                 </span>
                 <span className="text-xs text-[var(--text-muted)]">iOS 14.0+</span>
               </div>
@@ -331,7 +331,7 @@ export default function DownloadPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={qrIosSvg}
-                  alt="QR Code Akses Aplikasi iPhone Sukses Bangunan"
+                  alt="QR Code Akses Aplikasi LARAS iPhone"
                   className="w-56 h-56 object-contain"
                 />
                 <div className="absolute inset-0 rounded-2xl bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
@@ -343,14 +343,14 @@ export default function DownloadPage() {
 
               <h2 className="font-bold text-base mb-1">Arahkan Kamera iPhone Anda</h2>
               <p className="text-xs text-[var(--text-muted)] mb-5 max-w-xs">
-                Buka aplikasi Kamera bawaan iPhone Anda dan arahkan ke barcode di atas untuk langsung membuka dan menginstal aplikasi Sukses Bangunan.
+                Buka aplikasi Kamera bawaan iPhone Anda dan arahkan ke barcode di atas untuk langsung membuka dan memasang aplikasi LARAS.
               </p>
 
               {/* QR Action Buttons */}
               <div className="w-full grid grid-cols-2 gap-2.5 pt-4 border-t border-[var(--border-default)]">
                 <a
                   href={qrIosPng}
-                  download="Barcode-Akses-iPhone-Sukses-Bangunan.png"
+                  download="Barcode-Akses-iPhone-LARAS.png"
                   className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[var(--border-default)] text-xs font-medium hover:bg-[var(--bg-surface-hover)] transition-colors"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -389,7 +389,7 @@ export default function DownloadPage() {
                   </div>
 
                   <h3 className="text-xl sm:text-2xl font-bold mb-2">
-                    Aplikasi Absensi & Layanan di iPhone
+                    Aplikasi LARAS di iPhone
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-200/90 leading-relaxed mb-6">
                     Aplikasi web mobile responsif 1-tap siap pasang di layar utama iPhone Anda tanpa perlu melalui App Store yang rumit. Lengkap dengan fitur absensi, jadwal kerja, dan slip gaji.
@@ -403,7 +403,7 @@ export default function DownloadPage() {
                       className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white text-slate-900 font-bold text-sm shadow-lg hover:bg-slate-100 transition-all"
                     >
                       <ExternalLink className="w-4 h-4 text-blue-600" />
-                      Buka Aplikasi di iPhone Sekarang
+                      Buka Aplikasi LARAS di iPhone
                     </a>
 
                     <div className="text-center sm:text-left text-xs text-slate-300">
@@ -420,7 +420,7 @@ export default function DownloadPage() {
               <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-3xl p-6 sm:p-7 shadow-sm">
                 <h4 className="font-bold text-sm sm:text-base mb-4 flex items-center gap-2">
                   <Info className="w-4 h-4 text-blue-500" />
-                  Cara Memasang Aplikasi ke Layar Utama iPhone (Home Screen)
+                  Cara Memasang Aplikasi LARAS ke Layar Utama iPhone (Home Screen)
                 </h4>
 
                 <ol className="space-y-4 text-xs sm:text-sm">
@@ -429,7 +429,7 @@ export default function DownloadPage() {
                       1
                     </span>
                     <div>
-                      <strong>Scan Barcode iPhone</strong> dengan kamera iPhone Anda atau tap tombol <em>&ldquo;Buka Aplikasi di iPhone&rdquo;</em> di atas melalui browser <strong>Safari</strong>.
+                      <strong>Scan Barcode iPhone</strong> dengan kamera iPhone Anda atau tap tombol <em>&ldquo;Buka Aplikasi LARAS di iPhone&rdquo;</em> di atas melalui browser <strong>Safari</strong>.
                     </div>
                   </li>
 
@@ -456,7 +456,7 @@ export default function DownloadPage() {
                       4
                     </span>
                     <div>
-                      Selesai! Ikon aplikasi <strong>Sukses Bangunan</strong> kini muncul di layar utama iPhone Anda dan dapat dibuka 1-tap seperti aplikasi native App Store.
+                      Selesai! Ikon aplikasi <strong>LARAS</strong> kini muncul di layar utama iPhone Anda dan dapat dibuka 1-tap seperti aplikasi native App Store.
                     </div>
                   </li>
                 </ol>
@@ -468,7 +468,7 @@ export default function DownloadPage() {
                 <div>
                   <strong>Catatan Khusus Instalasi Format .IPA (Native iOS):</strong>
                   <p className="mt-1">
-                    Sistem keamanan Apple melarang penginstalan langsung file mentah seperti Android APK. Untuk build IPA native Flutter, kode project telah disiapkan dengan pipeline otomatis di GitHub Actions (runner macOS). Distribusi langsung ke perangkat iPhone non-jailbreak memerlukan undangan Apple TestFlight atau sertifikat Apple Developer.
+                    Untuk instalasi paket binary native iOS (<code>SuksesBangunan-iOS.ipa</code>), file dapat ditandatangani menggunakan sertifikat pengembang via Sideloadly atau Xcode ke perangkat iPhone Anda.
                   </p>
                 </div>
               </div>

@@ -42,7 +42,7 @@ void main() async {
         ),
       ),
       child: GetMaterialApp(
-        title: "Company Attendance",
+        title: "LARAS",
         initialRoute: AppPages.INITIAL,
         getPages: AppPages.routes,
         theme: AppTheme.lightTheme,
