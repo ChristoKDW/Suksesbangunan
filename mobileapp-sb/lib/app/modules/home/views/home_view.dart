@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:skeletonizer/skeletonizer.dart';
 import '../../../core/theme/app_colors.dart';
@@ -26,7 +27,14 @@ class HomeView extends GetView<HomeController> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildProfileCard(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
+                  Obx(() {
+                    if (controller.isDokumenLengkap) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _buildIncompleteWarningCard(context),
+                    );
+                  }),
                   Text(
                     'Selamat Datang! 👋',
                     style: Theme.of(context).textTheme.titleLarge,
@@ -594,6 +602,294 @@ class HomeView extends GetView<HomeController> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildIncompleteWarningCard(BuildContext context) {
+    return Obx(() {
+      final bool hasKtp = controller.hasKtp;
+      final bool hasKk = controller.hasKk;
+      final bool uploadingKtp = controller.isUploadingKtp.value;
+      final bool uploadingKk = controller.isUploadingKk.value;
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB), // Amber 50
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFDE68A)), // Amber 200
+          boxShadow: [
+            BoxShadow(
+              color: Colors.amber.withValues(alpha: 0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.assignment_late_outlined,
+                    color: Color(0xFFD97706),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Kelengkapan Dokumen Karyawan',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Color(0xFF92400E),
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Wajib upload KTP & KK untuk verifikasi HRD',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFFB45309),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                // Tombol Upload KTP
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: uploadingKtp
+                        ? null
+                        : () => _showUploadSheet(
+                              context,
+                              'Upload Foto KTP',
+                              (source) => controller.pickAndUploadKtp(source),
+                            ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: hasKtp
+                          ? const Color(0xFFF0FDF4)
+                          : Colors.white,
+                      side: BorderSide(
+                        color: hasKtp
+                            ? const Color(0xFF86EFAC)
+                            : const Color(0xFFFBBF24),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 10, horizontal: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: uploadingKtp
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                hasKtp
+                                    ? Icons.check_circle_rounded
+                                    : Icons.add_a_photo_outlined,
+                                size: 16,
+                                color: hasKtp
+                                    ? const Color(0xFF16A34A)
+                                    : const Color(0xFFD97706),
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  hasKtp ? 'KTP Terupload' : 'Upload KTP',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: hasKtp
+                                        ? const Color(0xFF15803D)
+                                        : const Color(0xFFB45309),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Tombol Upload KK
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: uploadingKk
+                        ? null
+                        : () => _showUploadSheet(
+                              context,
+                              'Upload Foto Kartu Keluarga',
+                              (source) => controller.pickAndUploadKk(source),
+                            ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: hasKk
+                          ? const Color(0xFFF0FDF4)
+                          : Colors.white,
+                      side: BorderSide(
+                        color: hasKk
+                            ? const Color(0xFF86EFAC)
+                            : const Color(0xFFFBBF24),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 10, horizontal: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: uploadingKk
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                hasKk
+                                    ? Icons.check_circle_rounded
+                                    : Icons.add_a_photo_outlined,
+                                size: 16,
+                                color: hasKk
+                                    ? const Color(0xFF16A34A)
+                                    : const Color(0xFFD97706),
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  hasKk ? 'KK Terupload' : 'Upload KK',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: hasKk
+                                        ? const Color(0xFF15803D)
+                                        : const Color(0xFFB45309),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  void _showUploadSheet(
+    BuildContext context,
+    String title,
+    Function(ImageSource) onPick,
+  ) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.slateDark,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Get.back(),
+                    icon: const Icon(Icons.close, size: 20),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Pilih sumber foto dokumen. Pastikan tulisan terbaca jelas.',
+                style: TextStyle(fontSize: 12, color: AppColors.slateLight),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.redContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt, color: AppColors.redPrimary),
+                ),
+                title: const Text('Ambil Foto Kamera',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text(
+                    'Foto dokumen langsung secara vertikal/horizontal'),
+                onTap: () {
+                  Get.back();
+                  onPick(ImageSource.camera);
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library,
+                      color: Color(0xFF2563EB)),
+                ),
+                title: const Text('Pilih dari Galeri',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle:
+                    const Text('Gunakan foto dokumen yang sudah ada di HP'),
+                onTap: () {
+                  Get.back();
+                  onPick(ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
     );
   }
 }
