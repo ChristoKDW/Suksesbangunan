@@ -98,6 +98,22 @@ class ProfileController extends GetxController {
 
   bool get isDokumenLengkap => hasKtp && hasKk;
 
+  String? get ktpPhotoUrl {
+    final path = userProfile['fotoKtp']?.toString();
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    final clean = path.replaceAll('\\', '/');
+    return '${AppConfig.baseUrl}${clean.startsWith('/') ? '' : '/'}$clean';
+  }
+
+  String? get kkPhotoUrl {
+    final path = userProfile['fotoKartuKeluarga']?.toString();
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    final clean = path.replaceAll('\\', '/');
+    return '${AppConfig.baseUrl}${clean.startsWith('/') ? '' : '/'}$clean';
+  }
+
   final isUploadingKtp = false.obs;
   final isUploadingKk = false.obs;
 
@@ -116,6 +132,11 @@ class ProfileController extends GetxController {
       final res = await _api.uploadKtpPhoto(image.path);
       userProfile['fotoKtp'] = res['fotoKtp']?.toString() ?? image.path;
       userProfile.refresh();
+
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().fetchData();
+      }
+
       Get.snackbar('Berhasil', 'Foto KTP berhasil disimpan',
           backgroundColor: const Color(0xFF16A34A), colorText: Colors.white);
     } catch (e) {
@@ -140,6 +161,11 @@ class ProfileController extends GetxController {
       final res = await _api.uploadKkPhoto(image.path);
       userProfile['fotoKartuKeluarga'] = res['fotoKartuKeluarga']?.toString() ?? image.path;
       userProfile.refresh();
+
+      if (Get.isRegistered<HomeController>()) {
+        Get.find<HomeController>().fetchData();
+      }
+
       Get.snackbar('Berhasil', 'Foto Kartu Keluarga berhasil disimpan',
           backgroundColor: const Color(0xFF16A34A), colorText: Colors.white);
     } catch (e) {
