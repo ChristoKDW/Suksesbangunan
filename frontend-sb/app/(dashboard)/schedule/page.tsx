@@ -486,15 +486,22 @@ export default function SchedulePage() {
       return
     }
 
-    if (!isSPV || emp.idDepartemen !== user?.idDepartemen) {
-      alert(`Jadwal karyawan departemen ${emp.departemen?.namaDepartemen || "ini"} dikelola secara mandiri oleh Supervisor. Admin dan HRD hanya dapat melihat (Read-Only) dan tidak dapat mengubahnya.`)
+    if (!canUserEditEmployee(emp)) {
+      if (isAdminOrHrd) {
+        alert(`Jadwal staf operasional ${emp.nama} dikelola oleh Supervisor departemen bersangkutan. Untuk mengatur jadwal Supervisor, silakan buka menu "Jadwal Supervisor".`)
+      } else {
+        alert(`Anda tidak memiliki wewenang untuk mengubah jadwal karyawan ini.`)
+      }
       return
     }
 
     if (isFixedLibur || isBlockedLibur) return
 
-    // Available shifts for this employee: strictly matching their department
-    const empShifts = shiftList.filter(s => s.idDepartemen === emp.idDepartemen)
+    // Available shifts for this employee: matching their department or fallback to all shifts
+    let empShifts = shiftList.filter(s => !s.idDepartemen || s.idDepartemen === emp.idDepartemen)
+    if (empShifts.length === 0) {
+      empShifts = shiftList
+    }
 
     const key = `${idKaryawan}-${date}`
     const currentVal = schedule[key]

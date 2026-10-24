@@ -1,16 +1,18 @@
 "use client"
 
 import Link from "next/link"
-import { Search, ChevronDown, Moon, Sun, Eye, EyeOff } from "lucide-react"
+import { Search, ChevronDown, Moon, Sun, Eye, EyeOff, Menu } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
+import { useSidebar } from "@/lib/sidebar-context"
 import { userApi } from "@/lib/api"
 import { NotificationDropdown } from "./NotificationDropdown"
 
 export function TopBar() {
   const { theme, setTheme } = useTheme()
   const { user, logout } = useAuth()
+  const { toggleMobile } = useSidebar()
   const [mounted, setMounted] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
@@ -120,16 +122,23 @@ export function TopBar() {
   return (
     <>
       <header
-        className="fixed right-0 top-0 z-30 flex items-center justify-between px-6 bg-white/90 dark:bg-[#0B0F17]/90 backdrop-blur-md border-b border-slate-200 dark:border-white/10"
+        className="fixed right-0 top-0 z-30 flex items-center justify-between px-3 sm:px-6 bg-white/90 dark:bg-[#0B0F17]/90 backdrop-blur-md border-b border-slate-200 dark:border-white/10 left-0 md:left-[var(--sidebar-width)]"
         style={{
           height: "var(--topbar-height)",
-          left: "var(--sidebar-width)",
         }}
       >
-        {/* Search */}
-        <div className="flex items-center gap-3 flex-1 max-w-sm">
+        {/* Mobile Hamburger & Search */}
+        <div className="flex items-center gap-2 flex-1 max-w-sm">
+          <button
+            type="button"
+            onClick={toggleMobile}
+            className="md:hidden flex items-center justify-center p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 focus:outline-none flex-shrink-0"
+            aria-label="Toggle navigation menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
           <div
-            className="flex items-center gap-2 rounded-lg px-3 py-2 w-full bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-white/10"
+            className="hidden sm:flex items-center gap-2 rounded-lg px-3 py-2 w-full bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-white/10"
           >
             <Search
               className="flex-shrink-0 text-slate-500 dark:text-slate-400"
