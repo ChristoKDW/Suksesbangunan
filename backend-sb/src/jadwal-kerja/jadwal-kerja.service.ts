@@ -172,22 +172,28 @@ export class JadwalKerjaService {
     });
 
     if (existing) {
-      Object.assign(existing, {
-        ...dto,
+      await this.jadwalRepo.update(existing.idJadwal, {
+        idShift: dto.idShift || null,
+        isCuti: dto.isCuti || false,
         isLibur: isLiburExplicit,
         keterangan: holiday ? holiday.nama : dto.keterangan || null,
         idUser: user.idUser,
         sumberUpload: dto.sumberUpload || 'manual',
       });
-      return this.jadwalRepo.save(existing);
+      return (await this.jadwalRepo.findOne({
+        where: { idJadwal: existing.idJadwal },
+        relations: { karyawan: true, shift: true },
+      }))!;
     }
 
-    const jadwal = new JadwalKerja();
-    Object.assign(jadwal, {
-      ...dto,
+    const jadwal = this.jadwalRepo.create({
+      idKaryawan: dto.idKaryawan,
+      idShift: dto.idShift || null,
+      isCuti: dto.isCuti || false,
       isLibur: isLiburExplicit,
       keterangan: holiday ? holiday.nama : dto.keterangan || null,
       idUser: user.idUser,
+      tanggal: dto.tanggal as any,
       sumberUpload: dto.sumberUpload || 'manual',
     });
     return this.jadwalRepo.save(jadwal);
@@ -218,18 +224,23 @@ export class JadwalKerjaService {
       });
 
       if (existing) {
-        existing.idShift = item.idShift || (null as any);
-        existing.isCuti = item.isCuti || false;
-        existing.isLibur = isLiburExplicit;
-        existing.keterangan =
-          item.keterangan || (holiday ? holiday.nama : null);
-        existing.idUser = user.idUser;
-        existing.sumberUpload = 'manual';
-        results.push(await this.jadwalRepo.save(existing));
+        await this.jadwalRepo.update(existing.idJadwal, {
+          idShift: item.idShift || null,
+          isCuti: item.isCuti || false,
+          isLibur: isLiburExplicit,
+          keterangan: item.keterangan || (holiday ? holiday.nama : null),
+          idUser: user.idUser,
+          sumberUpload: 'manual',
+        });
+        const updated = await this.jadwalRepo.findOne({
+          where: { idJadwal: existing.idJadwal },
+          relations: { karyawan: true, shift: true },
+        });
+        if (updated) results.push(updated);
       } else {
         const created = this.jadwalRepo.create({
           idKaryawan: item.idKaryawan,
-          idShift: item.idShift || (null as any),
+          idShift: item.idShift || null,
           isCuti: item.isCuti || false,
           isLibur: isLiburExplicit,
           keterangan: item.keterangan || (holiday ? holiday.nama : null),
@@ -676,8 +687,12 @@ export class JadwalKerjaService {
       await this.validateKaryawanAccess([dto.idKaryawan], user);
     }
 
-    Object.assign(jadwal, dto);
-    return this.jadwalRepo.save(jadwal);
+    const updateData: any = { ...dto };
+    if (dto.idShift !== undefined) {
+      updateData.idShift = dto.idShift || null;
+    }
+    await this.jadwalRepo.update(id, updateData);
+    return this.findOne(id);
   }
 
   async remove(
