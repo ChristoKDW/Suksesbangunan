@@ -588,13 +588,13 @@ export default function SupervisorSchedulePage() {
         </div>
 
         {/* Action Buttons Header */}
-        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
           {/* Tombol Export Jadwal Lengkap ke Excel */}
           <button
             type="button"
             onClick={handleExportExcel}
             disabled={exporting}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 text-xs font-bold transition-all disabled:opacity-50"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 text-xs font-bold transition-all disabled:opacity-50 w-full sm:w-auto"
             title="Export jadwal kerja lengkap (gabungan Supervisor dan Karyawan) per Departemen ke file Excel"
           >
             {exporting ? (
@@ -614,7 +614,7 @@ export default function SupervisorSchedulePage() {
                   setShowDeleteModal(true)
                 }}
                 disabled={loading || displayedSupervisors.length === 0}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 bg-rose-50/80 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-950/40 text-xs font-bold transition-all disabled:opacity-50"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 bg-rose-50/80 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-950/40 text-xs font-bold transition-all disabled:opacity-50 w-full sm:w-auto"
                 title="Hapus jadwal kerja supervisor (1 bulan penuh, 1 minggu, atau rentang tanggal)"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -629,7 +629,7 @@ export default function SupervisorSchedulePage() {
                   setShowAutoModal(true)
                 }}
                 disabled={loading || displayedSupervisors.length === 0}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold shadow-xs hover:shadow transition-all disabled:opacity-50"
+                className="col-span-2 sm:col-auto flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold shadow-xs hover:shadow transition-all disabled:opacity-50 w-full sm:w-auto"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Generate Rotasi Shift</span>
@@ -641,7 +641,7 @@ export default function SupervisorSchedulePage() {
                   type="button"
                   onClick={handleSaveAll}
                   disabled={saving}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all animate-pulse"
+                  className="col-span-2 sm:col-auto flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all animate-pulse w-full sm:w-auto"
                 >
                   {saving ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1039,9 +1039,12 @@ export default function SupervisorSchedulePage() {
                         const isSelected = currentVal === s.idShift
 
                         return (
-                          <div
+                          <button
+                            type="button"
                             key={s.idShift}
-                            className={`flex items-center justify-between p-3 rounded-lg border text-left transition-all ${
+                            disabled={savingSingle}
+                            onClick={() => handleSelectDayValue(s.idShift, true)}
+                            className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition-all cursor-pointer ${
                               isSelected ? "ring-2 ring-blue-500 bg-blue-50/30" : "border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5"
                             }`}
                           >
@@ -1063,17 +1066,13 @@ export default function SupervisorSchedulePage() {
 
                             {/* Tombol Simpan Cepat */}
                             <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                disabled={savingSingle}
-                                onClick={() => handleSelectDayValue(s.idShift, true)}
-                                className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-2xs transition-all disabled:opacity-50"
-                                title="Simpan langsung ke server"
+                              <span
+                                className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-2xs transition-all"
                               >
                                 Pilih & Simpan
-                              </button>
+                              </span>
                             </div>
-                          </div>
+                          </button>
                         )
                       })}
                     </div>

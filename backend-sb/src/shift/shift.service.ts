@@ -72,21 +72,11 @@ export class ShiftService {
       order: { idDepartemen: 'ASC', jamMulai: 'ASC' },
     });
 
-    // Departemen yang dikelola Admin & HRD tidak memiliki daftar shift
-    const nonAdminHrdShifts = allShifts.filter(
-      (s) => !this.isManagedByAdminOrHrd(s.departemen),
-    );
-
-    if (userRole === 'SPV') {
-      if (!idDepartemen) return [];
-      return nonAdminHrdShifts.filter((s) => s.idDepartemen === idDepartemen || !s.idDepartemen);
-    }
-
     if (queryDeptId) {
-      return nonAdminHrdShifts.filter((s) => s.idDepartemen === queryDeptId);
+      return allShifts.filter((s) => s.idDepartemen === queryDeptId);
     }
 
-    return nonAdminHrdShifts;
+    return allShifts;
   }
 
   async findOne(id: number): Promise<Shift> {

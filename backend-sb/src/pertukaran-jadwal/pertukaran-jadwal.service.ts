@@ -5,12 +5,13 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository, In } from 'typeorm';
 import { PengajuanPertukaran } from './entities/pengajuan-pertukaran.entity.js';
 import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
 import { JadwalKerja } from '../jadwal-kerja/entities/jadwal-kerja.entity.js';
 import { Shift } from '../shift/entities/shift.entity.js';
 import { User } from '../user/entities/user.entity.js';
+import { Departemen } from '../departemen/entities/departemen.entity.js';
 import { NotificationService } from '../notification/notification.service.js';
 import { CreatePertukaranDto } from './dto/create-pertukaran.dto.js';
 import { RespondPeerDto } from './dto/respond-peer.dto.js';
@@ -38,11 +39,61 @@ export class PertukaranJadwalService {
   ) {}
 
   /**
-   * Validasi bahwa karyawan berasal dari divisi operasional yang dikelola oleh Supervisor (SPV).
-   * Karyawan kantor (Backoffice / dikelola langsung oleh Admin atau HRD) memiliki jam kerja tetap
-   * dan tidak menggunakan sistem pertukaran shift / off.
+   * Cek apakah karyawan adalah seorang Supervisor (SPV) atau Leader
    */
-  private validateKaryawanOperasional(karyawan: Karyawan) {
+  async isKaryawanSpv(karyawan: Karyawan): Promise<boolean> {
+    const jabatanName = (karyawan.jabatan?.namaJabatan || '').toLowerCase();
+    if (
+      jabatanName.includes('supervisor') ||
+      jabatanName.includes('spv') ||
+      jabatanName.includes('leader')
+    ) {
+      return true;
+    }
+    const cleanKaryawanName = karyawan.nama.trim().toLowerCase();
+    const userMatch = await this.userRepo
+      .createQueryBuilder('u')
+      .where('LOWER(TRIM(u.nama)) = :name', { name: cleanKaryawanName })
+      .getOne();
+    return userMatch?.role === 'SPV';
+  }
+
+  /**
+   * Mengambil semua ID departemen yang dikelola oleh karyawan (jika SPV)
+   */
+  async getManagedDeptIdsForKaryawan(karyawan: Karyawan): Promise<Set<number>> {
+    const deptIds = new Set<number>();
+    if (karyawan.idDepartemen) {
+      deptIds.add(Number(karyawan.idDepartemen));
+    }
+    const cleanKaryawanName = karyawan.nama.trim().toLowerCase();
+    const userMatch = await this.userRepo
+      .createQueryBuilder('u')
+      .where('LOWER(TRIM(u.nama)) = :name', { name: cleanKaryawanName })
+      .getOne();
+    if (userMatch) {
+      if (userMatch.idDepartemen) {
+        deptIds.add(Number(userMatch.idDepartemen));
+      }
+      const deptRepo = this.dataSource.getRepository(Departemen);
+      const allDepts = await deptRepo.find({ relations: { pengelola: true } });
+      allDepts.forEach((d) => {
+        if (
+          (d.idPengelola && Number(d.idPengelola) === Number(userMatch.idUser)) ||
+          d.pengelola?.some((p) => Number(p.idUser) === Number(userMatch.idUser))
+        ) {
+          deptIds.add(Number(d.idDepartemen));
+        }
+      });
+    }
+    return deptIds;
+  }
+
+  /**
+   * Validasi bahwa karyawan berasal dari divisi operasional yang dikelola oleh Supervisor (SPV)
+   * atau karyawan tersebut adalah SPV itu sendiri.
+   */
+  private async validateKaryawanOperasional(karyawan: Karyawan) {
     if (!karyawan.departemen) {
       throw new BadRequestException('Departemen karyawan tidak ditemukan');
     }
@@ -57,10 +108,16 @@ export class PertukaranJadwalService {
         ? [(karyawan.departemen as any).pengelola]
         : [];
 
-    const hasSpv = managers.some((m: any) => m.role === 'SPV');
-    const isManagedByAdminOrHrd = managers.some(
-      (m: any) => m.role === 'Admin' || m.role === 'HRD',
-    );
+    const isSpv = await this.isKaryawanSpv(karyawan);
+    const hasSpv =
+      isSpv ||
+      managers.some((m: any) => m.role === 'SPV') ||
+      Boolean(karyawan.departemen?.idPengelola);
+
+    const isManagedByAdminOrHrd =
+      !isSpv &&
+      managers.some((m: any) => m.role === 'Admin' || m.role === 'HRD') &&
+      !managers.some((m: any) => m.role === 'SPV');
 
     if (
       !hasSpv ||
@@ -80,7 +137,7 @@ export class PertukaranJadwalService {
   async checkEligibility(idKaryawan: number) {
     const k = await this.karyawanRepo.findOne({
       where: { idKaryawan },
-      relations: { departemen: { pengelola: true } },
+      relations: { departemen: { pengelola: true }, jabatan: true },
     });
     if (!k || !k.departemen) {
       return {
@@ -90,33 +147,110 @@ export class PertukaranJadwalService {
       };
     }
 
-    const deptName = (k.departemen.namaDepartemen || '')
-      .toLowerCase()
-      .replace(/[\s\-_]/g, '');
+    try {
+      await this.validateKaryawanOperasional(k);
+      return {
+        isOperasional: true,
+        namaDepartemen: k.departemen.namaDepartemen,
+        reason: null,
+      };
+    } catch (e: any) {
+      return {
+        isOperasional: false,
+        namaDepartemen: k.departemen.namaDepartemen,
+        reason: e.message || 'Hanya untuk karyawan operasional',
+      };
+    }
+  }
 
-    const managers = Array.isArray(k.departemen.pengelola)
-      ? k.departemen.pengelola
-      : (k.departemen as any).pengelola
-        ? [(k.departemen as any).pengelola]
-        : [];
+  /**
+   * Mengambil jadwal nyata karyawan pada tanggal tertentu (mobile)
+   */
+  async getMyScheduleOnDate(idKaryawan: number, tanggalStr: string) {
+    const emp = await this.karyawanRepo.findOne({
+      where: { idKaryawan },
+      relations: { departemen: { pengelola: true }, jabatan: true },
+    });
+    if (!emp) {
+      throw new NotFoundException('Data karyawan tidak ditemukan');
+    }
 
-    const hasSpv = managers.some((m: any) => m.role === 'SPV');
-    const isManagedByAdminOrHrd = managers.some(
-      (m: any) => m.role === 'Admin' || m.role === 'HRD',
-    );
+    const jadwal = await this.jadwalRepo.findOne({
+      where: {
+        idKaryawan,
+        tanggal: tanggalStr as any,
+      },
+      relations: { shift: true },
+    });
 
-    const isOperasional =
-      hasSpv &&
-      !isManagedByAdminOrHrd &&
-      deptName !== 'backoffice' &&
-      deptName !== 'kantor';
+    if (jadwal) {
+      if (jadwal.isCuti) {
+        return {
+          tanggal: tanggalStr,
+          isCuti: true,
+          isOff: false,
+          hasSchedule: true,
+          idShift: null,
+          shift: null,
+          statusLabel: 'Cuti Tahunan / Izin',
+        };
+      }
+      if (jadwal.isLibur || !jadwal.idShift) {
+        return {
+          tanggal: tanggalStr,
+          isCuti: false,
+          isOff: true,
+          hasSchedule: true,
+          idShift: null,
+          shift: null,
+          statusLabel: 'Hari Libur (OFF)',
+        };
+      }
+      if (jadwal.shift) {
+        return {
+          tanggal: tanggalStr,
+          isCuti: false,
+          isOff: false,
+          hasSchedule: true,
+          idShift: jadwal.shift.idShift,
+          shift: {
+            idShift: jadwal.shift.idShift,
+            namaShift: jadwal.shift.namaShift,
+            jamMulai: jadwal.shift.jamMulai,
+            jamSelesai: jadwal.shift.jamSelesai,
+          },
+          statusLabel: `${jadwal.shift.namaShift} (${jadwal.shift.jamMulai?.slice(0, 5)} - ${jadwal.shift.jamSelesai?.slice(0, 5)})`,
+        };
+      }
+    }
+
+    // Cek hari libur rutin jika tidak ada jadwal tertulis di tabel jadwal_kerja
+    const parts = tanggalStr.split('-');
+    const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const dayName = dayNames[dateObj.getDay()];
+    const empOffDay = emp.hariLibur?.trim() || 'Minggu';
+
+    if (empOffDay.toLowerCase() === dayName.toLowerCase()) {
+      return {
+        tanggal: tanggalStr,
+        isCuti: false,
+        isOff: true,
+        hasSchedule: true,
+        idShift: null,
+        shift: null,
+        statusLabel: 'Hari Libur Rutin (OFF)',
+      };
+    }
 
     return {
-      isOperasional,
-      namaDepartemen: k.departemen.namaDepartemen,
-      reason: isOperasional
-        ? null
-        : 'Pengajuan pertukaran shift & off hanya berlaku untuk karyawan operasional (SPV). Karyawan kantor memiliki jadwal kerja tetap yang dikelola oleh Admin & HRD.',
+      tanggal: tanggalStr,
+      isCuti: false,
+      isOff: false,
+      hasSchedule: false,
+      idShift: null,
+      shift: null,
+      statusLabel: 'Belum Ada Jadwal Tertulis',
     };
   }
 
@@ -166,26 +300,41 @@ export class PertukaranJadwalService {
 
     const pemohon = await this.karyawanRepo.findOne({
       where: { idKaryawan: idKaryawanPemohon },
-      relations: { departemen: { pengelola: true } },
+      relations: { departemen: { pengelola: true }, jabatan: true },
     });
     if (!pemohon) {
       throw new NotFoundException('Data karyawan pemohon tidak ditemukan');
     }
-    this.validateKaryawanOperasional(pemohon);
+    await this.validateKaryawanOperasional(pemohon);
 
     const target = await this.karyawanRepo.findOne({
       where: { idKaryawan: dto.idKaryawanTarget },
-      relations: { departemen: { pengelola: true } },
+      relations: { departemen: { pengelola: true }, jabatan: true },
     });
     if (!target) {
       throw new NotFoundException('Data rekan kerja tujuan tidak ditemukan');
     }
-    this.validateKaryawanOperasional(target);
+    await this.validateKaryawanOperasional(target);
 
-    // Aturan ketat: Pertukaran hanya bisa terjadi dalam 1 departemen / 1 SPV yang sama
-    if (pemohon.idDepartemen !== target.idDepartemen) {
+    // Pertukaran dapat dilakukan antar sesama staf di departemen yang sama,
+    // ATAU antara SPV dan staf di bawah pengawasannya
+    const isSameDept = pemohon.idDepartemen === target.idDepartemen;
+    const isPemohonSpv = await this.isKaryawanSpv(pemohon);
+    const isTargetSpv = await this.isKaryawanSpv(target);
+    const pemohonManagedDepts = isPemohonSpv
+      ? await this.getManagedDeptIdsForKaryawan(pemohon)
+      : new Set<number>();
+    const targetManagedDepts = isTargetSpv
+      ? await this.getManagedDeptIdsForKaryawan(target)
+      : new Set<number>();
+
+    const isSpvStaffRelation =
+      (isPemohonSpv && target.idDepartemen && pemohonManagedDepts.has(Number(target.idDepartemen))) ||
+      (isTargetSpv && pemohon.idDepartemen && targetManagedDepts.has(Number(pemohon.idDepartemen)));
+
+    if (!isSameDept && !isSpvStaffRelation) {
       throw new BadRequestException(
-        `Pertukaran jadwal hanya dapat dilakukan antar rekan kerja dalam satu departemen/bidang yang sama (${pemohon.departemen?.namaDepartemen || 'Departemen Anda'})`,
+        `Pertukaran jadwal hanya dapat dilakukan antar rekan kerja dalam satu departemen atau dengan Supervisor (${pemohon.departemen?.namaDepartemen || 'Departemen Anda'})`,
       );
     }
 
@@ -444,27 +593,66 @@ export class PertukaranJadwalService {
   ) {
     const pemohon = await this.karyawanRepo.findOne({
       where: { idKaryawan: idKaryawanPemohon },
-      relations: { departemen: { pengelola: true } },
+      relations: { departemen: { pengelola: true }, jabatan: true },
     });
     if (!pemohon || !pemohon.idDepartemen) {
       return [];
     }
     try {
-      this.validateKaryawanOperasional(pemohon);
+      await this.validateKaryawanOperasional(pemohon);
     } catch {
       return [];
     }
 
-    // Ambil rekan sebidang yang aktif
-    const peers = await this.karyawanRepo.find({
+    const isPemohonSpv = await this.isKaryawanSpv(pemohon);
+    const managedDeptIds = isPemohonSpv
+      ? await this.getManagedDeptIdsForKaryawan(pemohon)
+      : new Set<number>([Number(pemohon.idDepartemen)]);
+
+    // Ambil semua karyawan aktif dalam lingkup departemen pemohon
+    let candidates = await this.karyawanRepo.find({
       where: {
-        idDepartemen: pemohon.idDepartemen,
+        idDepartemen: In(Array.from(managedDeptIds)),
         statusAktif: 'aktif',
       },
-      relations: { jabatan: true },
+      relations: { jabatan: true, departemen: true },
     });
 
-    const otherPeers = peers.filter((p) => p.idKaryawan !== idKaryawanPemohon);
+    // Jika pemohon adalah staf biasa, tambahkan juga Supervisor yang mengelola departemen staf ini
+    if (!isPemohonSpv) {
+      const deptRepo = this.dataSource.getRepository(Departemen);
+      const curDept = await deptRepo.findOne({
+        where: { idDepartemen: pemohon.idDepartemen },
+        relations: { pengelola: true },
+      });
+      const spvUserIds: number[] = [];
+      if (curDept?.idPengelola) spvUserIds.push(Number(curDept.idPengelola));
+      curDept?.pengelola?.forEach((p) => {
+        if (p.role === 'SPV') spvUserIds.push(Number(p.idUser));
+      });
+      if (spvUserIds.length > 0) {
+        const spvUsers = await this.userRepo.find({
+          where: { idUser: In(spvUserIds) },
+        });
+        const spvNames = spvUsers.map((u) => u.nama.trim().toLowerCase());
+        const allKaryawan = await this.karyawanRepo.find({
+          where: { statusAktif: 'aktif' },
+          relations: { jabatan: true, departemen: true },
+        });
+        const matchedSpvKaryawan = allKaryawan.filter((k) =>
+          spvNames.includes(k.nama.trim().toLowerCase()),
+        );
+        matchedSpvKaryawan.forEach((spvK) => {
+          if (!candidates.some((c) => c.idKaryawan === spvK.idKaryawan)) {
+            candidates.push(spvK);
+          }
+        });
+      }
+    }
+
+    const otherPeers = candidates.filter(
+      (p) => p.idKaryawan !== idKaryawanPemohon,
+    );
     if (otherPeers.length === 0) return [];
 
     // Jika pertukaran off, cek kuota pemohon terlebih dahulu
@@ -481,7 +669,12 @@ export class PertukaranJadwalService {
       }
     }
 
-    const dateObj = new Date(tanggalTarget);
+    const parts = tanggalTarget.split('-');
+    const dateObj = new Date(
+      Number(parts[0]),
+      Number(parts[1]) - 1,
+      Number(parts[2]),
+    );
     const dayNames = [
       'Minggu',
       'Senin',
@@ -558,11 +751,11 @@ export class PertukaranJadwalService {
             idKaryawan: peer.idKaryawan,
             nama: peer.nama,
             nik: peer.nik,
-            jabatan: peer.jabatan?.namaJabatan,
+            jabatan: peer.jabatan?.namaJabatan || 'Staf',
             fotoProfil: peer.fotoProfil,
             currentShift: null,
             isOff: true,
-            statusLabel: 'Hari Libur (Off)',
+            statusLabel: 'Hari Libur (OFF)',
           });
         }
       } else {
@@ -573,7 +766,7 @@ export class PertukaranJadwalService {
               idKaryawan: peer.idKaryawan,
               nama: peer.nama,
               nik: peer.nik,
-              jabatan: peer.jabatan?.namaJabatan,
+              jabatan: peer.jabatan?.namaJabatan || 'Staf',
               fotoProfil: peer.fotoProfil,
               currentShift,
               isOff: false,
@@ -614,7 +807,14 @@ export class PertukaranJadwalService {
     const isApproved = dto.setuju === true || dto.status === 'disetujui';
 
     if (isApproved) {
-      pertukaran.status = 'menunggu_spv';
+      const isPemohonSpv = await this.isKaryawanSpv(pertukaran.karyawanPemohon);
+      const isTargetSpv = await this.isKaryawanSpv(pertukaran.karyawanTarget);
+
+      if (isPemohonSpv || isTargetSpv) {
+        pertukaran.status = 'menunggu_hrd';
+      } else {
+        pertukaran.status = 'menunggu_spv';
+      }
       await this.pertukaranRepo.save(pertukaran);
 
       // Notifikasi ke pemohon
@@ -622,24 +822,41 @@ export class PertukaranJadwalService {
         await this.notificationService.createNotification({
           idKaryawan: pertukaran.idKaryawanPemohon,
           title: 'Permintaan Tukar Disetujui Rekan',
-          message: `${pertukaran.karyawanTarget?.nama} telah menyetujui permintaan tukar jadwal Anda. Pengajuan diteruskan ke Supervisor untuk persetujuan.`,
+          message:
+            pertukaran.status === 'menunggu_hrd'
+              ? `${pertukaran.karyawanTarget?.nama} telah menyetujui permintaan tukar jadwal Anda. Pengajuan langsung diteruskan ke HRD untuk verifikasi akhir.`
+              : `${pertukaran.karyawanTarget?.nama} telah menyetujui permintaan tukar jadwal Anda. Pengajuan diteruskan ke Supervisor untuk persetujuan.`,
           type: 'pertukaran_jadwal',
         });
 
-        // Notifikasi ke SPV departemen
-        const spvUsers = await this.userRepo.find({
-          where: {
-            role: 'SPV',
-            idDepartemen: pertukaran.karyawanPemohon?.idDepartemen,
-          },
-        });
-        for (const spv of spvUsers) {
-          await this.notificationService.createNotification({
-            idUser: spv.idUser,
-            title: 'Pengajuan Tukar Jadwal Menunggu Persetujuan',
-            message: `${pertukaran.karyawanPemohon?.nama} dan ${pertukaran.karyawanTarget?.nama} mengajukan pertukaran ${pertukaran.jenisPertukaran} dan memerlukan persetujuan Anda.`,
-            type: 'pertukaran_jadwal',
+        if (pertukaran.status === 'menunggu_hrd') {
+          const hrdUsers = await this.userRepo.find({
+            where: [{ role: 'HRD' }, { role: 'Admin' }],
           });
+          for (const hrd of hrdUsers) {
+            await this.notificationService.createNotification({
+              idUser: hrd.idUser,
+              title: 'Persetujuan Akhir Pertukaran Jadwal (HRD)',
+              message: `Pertukaran jadwal ${pertukaran.karyawanPemohon?.nama} & ${pertukaran.karyawanTarget?.nama} telah disetujui dan menunggu verifikasi akhir HRD.`,
+              type: 'pertukaran_jadwal',
+            });
+          }
+        } else {
+          // Notifikasi ke SPV departemen
+          const spvUsers = await this.userRepo.find({
+            where: {
+              role: 'SPV',
+              idDepartemen: pertukaran.karyawanPemohon?.idDepartemen,
+            },
+          });
+          for (const spv of spvUsers) {
+            await this.notificationService.createNotification({
+              idUser: spv.idUser,
+              title: 'Pengajuan Tukar Jadwal Menunggu Persetujuan',
+              message: `${pertukaran.karyawanPemohon?.nama} dan ${pertukaran.karyawanTarget?.nama} mengajukan pertukaran ${pertukaran.jenisPertukaran} dan memerlukan persetujuan Anda.`,
+              type: 'pertukaran_jadwal',
+            });
+          }
         }
       } catch (err) {
         console.error('Failed to send notification after peer approval:', err);
@@ -680,15 +897,27 @@ export class PertukaranJadwalService {
       );
     }
 
-    if (
-      userSpv.role === 'SPV' &&
-      (!userSpv.idDepartemen ||
-        pertukaran.karyawanPemohon?.idDepartemen !== userSpv.idDepartemen ||
-        pertukaran.karyawanTarget?.idDepartemen !== userSpv.idDepartemen)
-    ) {
-      throw new ForbiddenException(
-        'Anda hanya dapat memproses pertukaran karyawan di departemen Anda sendiri',
-      );
+    if (userSpv.role === 'SPV') {
+      const deptRepo = this.dataSource.getRepository(Departemen);
+      const allDepts = await deptRepo.find({ relations: { pengelola: true } });
+      const allowedDeptIds = new Set<number>();
+      if (userSpv.idDepartemen) allowedDeptIds.add(Number(userSpv.idDepartemen));
+      allDepts.forEach((d) => {
+        if (
+          (d.idPengelola && Number(d.idPengelola) === Number(userSpv.idUser)) ||
+          d.pengelola?.some((p) => Number(p.idUser) === Number(userSpv.idUser))
+        ) {
+          allowedDeptIds.add(Number(d.idDepartemen));
+        }
+      });
+
+      const pemohonDept = Number(pertukaran.karyawanPemohon?.idDepartemen);
+      const targetDept = Number(pertukaran.karyawanTarget?.idDepartemen);
+      if (!allowedDeptIds.has(pemohonDept) && !allowedDeptIds.has(targetDept)) {
+        throw new ForbiddenException(
+          'Anda hanya dapat memproses pertukaran karyawan di departemen yang Anda kelola',
+        );
+      }
     }
 
     pertukaran.idUserSpv = userSpv.idUser;

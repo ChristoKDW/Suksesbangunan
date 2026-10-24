@@ -98,17 +98,33 @@ export class JadwalKerjaService {
 
     const users = await this.userRepo.find({ relations: { departemen: true } });
 
-    // Ambil semua ID departemen yang dikelola oleh user SPV ini (dari user.idDepartemen dan departemen_pengelola)
+    // Ambil semua ID departemen yang dikelola oleh user SPV ini (dari user.idDepartemen, departemen_pengelola, dan karyawan linked)
     const managedDepts = await this.deptRepo.find({
       relations: { pengelola: true },
     });
     const allowedDeptIds = new Set<number>();
-    if (user.idDepartemen) allowedDeptIds.add(user.idDepartemen);
+    if (user.idDepartemen) allowedDeptIds.add(Number(user.idDepartemen));
     managedDepts.forEach((d) => {
-      if (d.pengelola?.some((p) => p.idUser === user.idUser)) {
-        allowedDeptIds.add(d.idDepartemen);
+      if (
+        (d.idPengelola && Number(d.idPengelola) === Number(user.idUser)) ||
+        d.pengelola?.some((p) => Number(p.idUser) === Number(user.idUser))
+      ) {
+        allowedDeptIds.add(Number(d.idDepartemen));
       }
     });
+
+    if (user.idUser) {
+      const userInDb = await this.userRepo.findOne({
+        where: { idUser: user.idUser },
+      });
+      if (userInDb?.nama) {
+        const allKaryawan = await this.karyawanRepo.find();
+        const matched = allKaryawan.find((k) => matchUserName(k.nama, userInDb.nama));
+        if (matched?.idDepartemen) {
+          allowedDeptIds.add(Number(matched.idDepartemen));
+        }
+      }
+    }
 
     for (const emp of karyawanList) {
       const matchedUser = users.find((u) => matchUserName(emp.nama, u.nama));
@@ -128,7 +144,7 @@ export class JadwalKerjaService {
       }
 
       // Validasi departemen: Staf harus berada di departemen yang dikelola oleh SPV ini
-      if (!emp.idDepartemen || !allowedDeptIds.has(emp.idDepartemen)) {
+      if (!emp.idDepartemen || !allowedDeptIds.has(Number(emp.idDepartemen))) {
         throw new ForbiddenException(
           `Supervisor hanya dapat mengatur jadwal staf di departemen yang Anda kelola (${emp.nama} bukan di departemen yang Anda pimpin).`,
         );
@@ -289,12 +305,37 @@ export class JadwalKerjaService {
       .orderBy('j.tanggal', 'DESC');
 
     if (user?.role === 'SPV') {
-      if (!user.idDepartemen) {
-        return [];
-      }
-      query.where('karyawan.id_departemen = :idDepartemen', {
-        idDepartemen: user.idDepartemen,
+      const managedDepts = await this.deptRepo.find({
+        relations: { pengelola: true },
       });
+      const allowedDeptIds = new Set<number>();
+      if (user.idDepartemen) allowedDeptIds.add(Number(user.idDepartemen));
+      managedDepts.forEach((d) => {
+        if (
+          (d.idPengelola && Number(d.idPengelola) === Number((user as any)?.idUser)) ||
+          d.pengelola?.some((p) => Number(p.idUser) === Number((user as any)?.idUser))
+        ) {
+          allowedDeptIds.add(Number(d.idDepartemen));
+        }
+      });
+      if ((user as any)?.idUser) {
+        const userInDb = await this.userRepo.findOne({
+          where: { idUser: (user as any).idUser },
+        });
+        if (userInDb?.nama) {
+          const allKaryawan = await this.karyawanRepo.find();
+          const matched = allKaryawan.find((k) => matchUserName(k.nama, userInDb.nama));
+          if (matched?.idDepartemen) {
+            allowedDeptIds.add(Number(matched.idDepartemen));
+          }
+        }
+      }
+
+      if (allowedDeptIds.size > 0) {
+        query.where('karyawan.id_departemen IN (:...deptIds)', {
+          deptIds: Array.from(allowedDeptIds),
+        });
+      }
     }
 
     const results = await query.getMany();

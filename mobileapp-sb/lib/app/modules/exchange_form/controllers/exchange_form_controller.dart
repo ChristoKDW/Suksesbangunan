@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
+
 class ExchangeFormController extends GetxController {
   final ApiService _api = Get.find<ApiService>();
 
@@ -13,6 +14,10 @@ class ExchangeFormController extends GetxController {
 
   final idShiftPemohon = RxnInt();
   final idShiftTarget = RxnInt();
+
+  // Jadwal nyata milik user pemohon pada tanggalPemohon
+  final mySchedule = Rxn<Map<String, dynamic>>();
+  final isLoadingMySchedule = false.obs;
 
   final availableShifts = <Map<String, dynamic>>[].obs;
   final peerCandidates = <Map<String, dynamic>>[].obs;
@@ -57,7 +62,8 @@ class ExchangeFormController extends GetxController {
         return;
       }
     } catch (_) {}
-    fetchShifts();
+    await fetchMySchedule();
+    fetchPeers();
   }
 
   @override
@@ -66,39 +72,44 @@ class ExchangeFormController extends GetxController {
     super.onClose();
   }
 
-  Future<void> fetchShifts() async {
-    isLoadingShifts.value = true;
+  /// Mengambil jadwal nyata pemohon pada tanggal yang dipilih
+  Future<void> fetchMySchedule() async {
+    if (tanggalPemohon.value == null) return;
+    isLoadingMySchedule.value = true;
     try {
-      final res = await _api.getShifts();
-      availableShifts.value = res.cast<Map<String, dynamic>>();
-      if (availableShifts.isNotEmpty) {
-        idShiftPemohon.value = availableShifts[0]['idShift'];
-        if (availableShifts.length > 1) {
-          idShiftTarget.value = availableShifts[1]['idShift'];
+      final tglStr = dateFormat.format(tanggalPemohon.value!);
+      final res = await _api.getMySchedule(tanggal: tglStr);
+      mySchedule.value = res;
+
+      if (jenisPertukaran.value == 'shift') {
+        if (res['isOff'] == true || res['isCuti'] == true) {
+          idShiftPemohon.value = null;
+        } else if (res['idShift'] != null) {
+          idShiftPemohon.value = res['idShift'] as int;
         } else {
-          idShiftTarget.value = availableShifts[0]['idShift'];
+          idShiftPemohon.value = null;
         }
       }
-      fetchPeers();
     } catch (e) {
-      Get.snackbar('Perhatian', 'Gagal memuat daftar shift: $e',
-          backgroundColor: AppColors.redContainer, colorText: AppColors.redPrimary);
+      mySchedule.value = null;
+      idShiftPemohon.value = null;
     } finally {
-      isLoadingShifts.value = false;
+      isLoadingMySchedule.value = false;
     }
   }
 
+  /// Mengambil kandidat rekan kerja pada tanggalTarget
   Future<void> fetchPeers() async {
     if (tanggalTarget.value == null) return;
     isLoadingPeers.value = true;
     selectedPeer.value = null;
+    idShiftTarget.value = null;
 
     try {
       final tglStr = dateFormat.format(tanggalTarget.value!);
       final res = await _api.getAvailablePeers(
         tanggalTarget: tglStr,
         jenisPertukaran: jenisPertukaran.value,
-        idShiftTarget: jenisPertukaran.value == 'shift' ? idShiftTarget.value : null,
       );
       peerCandidates.value = res.cast<Map<String, dynamic>>();
     } catch (e) {
@@ -113,6 +124,12 @@ class ExchangeFormController extends GetxController {
   void setJenisPertukaran(String jenis) {
     if (jenisPertukaran.value == jenis) return;
     jenisPertukaran.value = jenis;
+    selectedPeer.value = null;
+    idShiftTarget.value = null;
+    if (jenis == 'shift') {
+      tanggalTarget.value = tanggalPemohon.value;
+    }
+    fetchMySchedule();
     fetchPeers();
   }
 
@@ -121,6 +138,7 @@ class ExchangeFormController extends GetxController {
     if (jenisPertukaran.value == 'shift') {
       tanggalTarget.value = picked;
     }
+    fetchMySchedule();
     fetchPeers();
   }
 
@@ -131,18 +149,44 @@ class ExchangeFormController extends GetxController {
 
   void selectPeer(Map<String, dynamic> peer) {
     selectedPeer.value = peer;
+    if (jenisPertukaran.value == 'shift') {
+      final currentShift = peer['currentShift'];
+      if (currentShift != null && currentShift['idShift'] != null) {
+        idShiftTarget.value = currentShift['idShift'] as int;
+      } else {
+        idShiftTarget.value = null;
+      }
+    } else {
+      idShiftTarget.value = null;
+    }
+  }
+
+  /// Cek validasi form sebelum tombol submit aktif
+  bool get canSubmit {
+    if (isSubmitting.value) return false;
+    if (selectedPeer.value == null) return false;
+    if (tanggalPemohon.value == null || tanggalTarget.value == null) return false;
+
+    if (jenisPertukaran.value == 'shift') {
+      if (mySchedule.value?['isOff'] == true || mySchedule.value?['isCuti'] == true) return false;
+      if (idShiftPemohon.value == null) return false;
+      if (idShiftTarget.value == null) return false;
+    } else if (jenisPertukaran.value == 'off') {
+      if (mySchedule.value?['isOff'] != true) return false;
+      if (selectedPeer.value?['isOff'] != true) return false;
+    }
+    return true;
   }
 
   Future<void> submitPertukaran() async {
-    if (selectedPeer.value == null) {
-      Get.snackbar('Validasi', 'Silakan pilih rekan kerja yang ingin diajak bertukar',
-          backgroundColor: AppColors.redContainer, colorText: AppColors.redPrimary);
-      return;
-    }
-
-    if (tanggalPemohon.value == null || tanggalTarget.value == null) {
-      Get.snackbar('Validasi', 'Silakan tentukan tanggal pertukaran',
-          backgroundColor: AppColors.redContainer, colorText: AppColors.redPrimary);
+    if (!canSubmit) {
+      if (selectedPeer.value == null) {
+        Get.snackbar('Validasi', 'Silakan pilih rekan kerja yang ingin diajak bertukar',
+            backgroundColor: AppColors.redContainer, colorText: AppColors.redPrimary);
+      } else if (jenisPertukaran.value == 'shift' && mySchedule.value?['isOff'] == true) {
+        Get.snackbar('Validasi', 'Anda berstatus libur pada tanggal ini, pilih tanggal saat Anda bertugas',
+            backgroundColor: AppColors.redContainer, colorText: AppColors.redPrimary);
+      }
       return;
     }
 

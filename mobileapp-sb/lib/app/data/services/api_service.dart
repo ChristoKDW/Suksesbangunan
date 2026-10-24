@@ -523,6 +523,26 @@ class ApiService extends GetConnect {
     return [];
   }
 
+  /// Mengambil jadwal nyata karyawan pemohon pada tanggal tertentu
+  Future<Map<String, dynamic>> getMySchedule({
+    required String tanggal,
+  }) async {
+    final res = await get(
+      '/pengajuan-pertukaran/my-schedule',
+      query: {'tanggal': tanggal},
+    );
+    if (!res.isOk) {
+      throw ApiException(
+        res.body?['message'] ?? 'Gagal memuat jadwal Anda pada tanggal ini',
+        res.statusCode,
+      );
+    }
+    if (res.body is Map) {
+      return Map<String, dynamic>.from(res.body as Map);
+    }
+    return {};
+  }
+
   /// Cari rekan sebidang yang memiliki shift/off yang cocok pada tanggalTarget
   Future<List<dynamic>> getAvailablePeers({
     required String tanggalTarget,

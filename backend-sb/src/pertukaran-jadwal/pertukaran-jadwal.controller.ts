@@ -55,6 +55,20 @@ export class PertukaranJadwalController {
     return this.pertukaranService.checkEligibility(idKaryawan);
   }
 
+  @Get('my-schedule')
+  @UseGuards(JwtMobileGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Cek jadwal nyata karyawan pemohon pada tanggal tertentu',
+  })
+  @ApiQuery({ name: 'tanggal', required: true })
+  getMySchedule(
+    @CurrentUser('idKaryawan') idKaryawan: number,
+    @Query('tanggal') tanggal: string,
+  ) {
+    return this.pertukaranService.getMyScheduleOnDate(idKaryawan, tanggal);
+  }
+
   @Get('shifts')
   @UseGuards(JwtMobileGuard)
   @ApiBearerAuth()

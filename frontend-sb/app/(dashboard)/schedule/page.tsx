@@ -264,21 +264,10 @@ export default function SchedulePage() {
       return false
     }
 
-    // Admin & HRD berhak mengatur seluruh staf (operasional maupun staf kantor)
-    if (user?.role === "Admin" || user?.role === "HRD") {
+    // Admin & HRD berhak mengatur seluruh staf (operasional maupun staf kantor).
+    // SPV berhak mengatur seluruh staf yang tampil di hadapannya (karena sudah difilter departemen yang dipimpinnya).
+    if (user?.role === "Admin" || user?.role === "HRD" || isSPV) {
       return true
-    }
-
-    // SPV mengatur staf di departemennya sendiri atau departemen yang dikelolanya
-    if (isSPV) {
-      if (emp.idDepartemen === user?.idDepartemen) return true
-      const dept = departemenList.find(d => d.idDepartemen === emp.idDepartemen)
-      const managers = Array.isArray(dept?.pengelola)
-        ? dept.pengelola
-        : dept?.pengelola
-        ? [dept.pengelola]
-        : []
-      return managers.some(m => m.idUser === user?.idUser)
     }
 
     return false
@@ -1330,9 +1319,12 @@ export default function SchedulePage() {
                         const isSelected = currentVal === s.idShift
 
                         return (
-                          <div
+                          <button
+                            type="button"
                             key={s.idShift}
-                            className={`flex items-center justify-between p-3 rounded-lg border text-left transition-all ${
+                            disabled={savingSingle}
+                            onClick={() => handleSelectDayValue(s.idShift, true)}
+                            className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition-all cursor-pointer ${
                               isSelected ? "ring-2 ring-blue-500 bg-blue-50/30" : "border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5"
                             }`}
                           >
@@ -1354,17 +1346,13 @@ export default function SchedulePage() {
 
                             {/* Tombol Simpan Cepat */}
                             <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                disabled={savingSingle}
-                                onClick={() => handleSelectDayValue(s.idShift, true)}
-                                className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-2xs transition-all disabled:opacity-50"
-                                title="Simpan langsung ke server"
+                              <span
+                                className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-2xs transition-all"
                               >
                                 Pilih & Simpan
-                              </button>
+                              </span>
                             </div>
-                          </div>
+                          </button>
                         )
                       })}
                     </div>
