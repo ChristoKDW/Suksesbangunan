@@ -25,6 +25,7 @@ import { JadwalKerjaService } from './jadwal-kerja.service.js';
 import { CreateJadwalKerjaDto } from './dto/create-jadwal-kerja.dto.js';
 import { UpdateJadwalKerjaDto } from './dto/update-jadwal-kerja.dto.js';
 import { BulkJadwalKerjaItemDto } from './dto/bulk-jadwal-kerja.dto.js';
+import { DeleteRangeJadwalDto } from './dto/delete-range-jadwal.dto.js';
 import { JwtWebGuard } from '../common/guards/jwt-web.guard.js';
 import { JwtMobileGuard } from '../common/guards/jwt-mobile.guard.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
@@ -61,6 +62,21 @@ export class JadwalKerjaController {
     @Req() req: any,
   ) {
     return this.jadwalKerjaService.createBulk(items, req.user);
+  }
+
+  @Post('delete-range')
+  @ApiBearerAuth()
+  @UseGuards(JwtWebGuard, RolesGuard)
+  @Roles('Admin', 'HRD', 'SPV')
+  @ApiOperation({
+    summary: 'Hapus jadwal kerja berdasarkan rentang tanggal dan daftar karyawan',
+  })
+  @ApiBody({ type: DeleteRangeJadwalDto })
+  deleteRange(
+    @Body() dto: DeleteRangeJadwalDto,
+    @Req() req: any,
+  ) {
+    return this.jadwalKerjaService.deleteRange(dto, req.user);
   }
 
   @Post('import-excel')

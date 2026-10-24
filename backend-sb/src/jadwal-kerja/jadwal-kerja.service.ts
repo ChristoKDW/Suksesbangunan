@@ -87,14 +87,20 @@ export class JadwalKerjaService {
 
     const karyawanList = await this.karyawanRepo.find({
       where: { idKaryawan: In(karyawanIds) },
-      relations: { departemen: { pengelola: true } },
+      relations: { departemen: { pengelola: true }, jabatan: true },
     });
 
     const users = await this.userRepo.find({ relations: { departemen: true } });
 
     for (const emp of karyawanList) {
       const matchedUser = users.find((u) => matchUserName(emp.nama, u.nama));
-      const isEmpSpv = matchedUser?.role === 'SPV';
+      const isRoleSpv = matchedUser?.role === 'SPV';
+      const jabatanName = emp.jabatan?.namaJabatan?.toLowerCase() || '';
+      const isJabatanSpv =
+        jabatanName.includes('supervisor') ||
+        jabatanName.includes('spv') ||
+        jabatanName.includes('leader');
+      const isEmpSpv = isRoleSpv || isJabatanSpv;
 
       if (isEmpSpv) {
         // Karyawan adalah SPV: HRD dan Admin yang berhak mengatur jadwalnya.
@@ -628,5 +634,35 @@ export class JadwalKerjaService {
     const jadwal = await this.findOne(id);
     await this.validateKaryawanAccess([jadwal.idKaryawan], user);
     await this.jadwalRepo.remove(jadwal);
+  }
+
+  async deleteRange(
+    dto: { idKaryawan: number[]; startDate: string; endDate: string },
+    user: { idUser: number; role: string; idDepartemen?: number },
+  ): Promise<{ deletedCount: number; message: string }> {
+    if (!dto.idKaryawan || dto.idKaryawan.length === 0) {
+      throw new BadRequestException('Daftar ID Karyawan tidak boleh kosong');
+    }
+    if (!dto.startDate || !dto.endDate) {
+      throw new BadRequestException('Rentang tanggal (startDate & endDate) wajib diisi');
+    }
+
+    await this.validateKaryawanAccess(dto.idKaryawan, user);
+
+    const deleteRes = await this.jadwalRepo
+      .createQueryBuilder()
+      .delete()
+      .from(JadwalKerja)
+      .where('id_karyawan IN (:...empIds)', { empIds: dto.idKaryawan })
+      .andWhere('tanggal BETWEEN :startDate AND :endDate', {
+        startDate: dto.startDate,
+        endDate: dto.endDate,
+      })
+      .execute();
+
+    return {
+      deletedCount: deleteRes.affected || 0,
+      message: `${deleteRes.affected || 0} jadwal kerja berhasil dihapus dari rentang ${dto.startDate} s/d ${dto.endDate}`,
+    };
   }
 }

@@ -2,7 +2,8 @@
 import { useState, useEffect, useMemo, Fragment } from "react"
 import { Card, CardContent, CardHeader, Pagination } from "@/components/molecules"
 import { LatticeLoader, Skeleton } from "@/components/atoms"
-import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Save, Filter, Building2, UserCheck, CalendarRange, Sparkles, AlertCircle, Shuffle, RotateCw, CheckCircle2, X, Info } from "lucide-react"
+import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Save, Filter, Building2, UserCheck, CalendarRange, Sparkles, AlertCircle, Shuffle, RotateCw, CheckCircle2, X, Info, Trash2 } from "lucide-react"
+import { DeleteScheduleModal } from "@/components/organisms/DeleteScheduleModal/DeleteScheduleModal"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { getIndonesianHolidayForDate, type HolidayItem } from "@/lib/indonesia-holidays"
@@ -37,6 +38,8 @@ export default function SchedulePage() {
   const [saving, setSaving] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState<number | "all">("all")
 
   const [cutOffSettings, setCutOffSettings] = useState<PengaturanPenggajian>({
     id: 1,
@@ -216,8 +219,20 @@ export default function SchedulePage() {
         ...colors,
       }
     })
+    jadwalList.forEach((j) => {
+      if (j.idShift && j.shift && !map[j.idShift]) {
+        const colors = shiftColors[Object.keys(map).length % shiftColors.length]
+        const jamMulai = j.shift.jamMulai?.substring(0, 5) || "—"
+        const jamSelesai = j.shift.jamSelesai?.substring(0, 5) || "—"
+        map[j.idShift] = {
+          label: j.shift.namaShift,
+          time: `${jamMulai}–${jamSelesai}`,
+          ...colors,
+        }
+      }
+    })
     return map
-  }, [shiftList])
+  }, [shiftList, jadwalList])
 
   const isDeptManagedByAdminOrHrd = (idDepartemen?: number | null) => {
     if (!idDepartemen) return true
@@ -681,6 +696,22 @@ export default function SchedulePage() {
             </div>
           )}
 
+          {/* Tombol Hapus Jadwal untuk SPV / HRD */}
+          {editableEmployees.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteTargetId("all")
+                setShowDeleteModal(true)
+              }}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
+              title="Hapus jadwal kerja (1 bulan penuh, 1 minggu, atau rentang tanggal)"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Hapus Jadwal</span>
+            </button>
+          )}
+
           {/* Tombol Generate Otomatis untuk SPV */}
           {editableEmployees.length > 0 && (
             <button
@@ -1017,6 +1048,19 @@ export default function SchedulePage() {
                                 {emp.jabatan && (
                                   <span className="text-[var(--text-secondary)]">· {emp.jabatan.namaJabatan}</span>
                                 )}
+                                {canEdit && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDeleteTargetId(emp.idKaryawan)
+                                      setShowDeleteModal(true)
+                                    }}
+                                    className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0 ml-auto"
+                                    title={`Hapus jadwal untuk ${emp.nama}`}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
                               </div>
                             </td>
                             {days.map(d => {
@@ -1140,6 +1184,20 @@ export default function SchedulePage() {
           itemLabel="karyawan"
         />
       </Card>
+      {/* MODAL HAPUS JADWAL KERJA */}
+      <DeleteScheduleModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        year={year}
+        month={month}
+        employees={editableEmployees}
+        initialTargetId={deleteTargetId}
+        deptName={selectedDeptFilter !== "all" ? departemenList.find(d => String(d.idDepartemen) === selectedDeptFilter)?.namaDepartemen : undefined}
+        onSuccess={async () => {
+          await fetchData()
+        }}
+      />
+
       {/* MODAL GENERATE JADWAL OTOMATIS (SISTEM ROLLING SHIFT) */}
       {showAutoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">

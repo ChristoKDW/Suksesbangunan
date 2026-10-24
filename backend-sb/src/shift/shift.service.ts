@@ -79,7 +79,7 @@ export class ShiftService {
 
     if (userRole === 'SPV') {
       if (!idDepartemen) return [];
-      return nonAdminHrdShifts.filter((s) => s.idDepartemen === idDepartemen);
+      return nonAdminHrdShifts.filter((s) => s.idDepartemen === idDepartemen || !s.idDepartemen);
     }
 
     if (queryDeptId) {
