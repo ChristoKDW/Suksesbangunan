@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, Fragment } from "react"
 import { Card, CardContent, CardHeader, Pagination } from "@/components/molecules"
 import { LatticeLoader, Skeleton } from "@/components/atoms"
-import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Save, Filter, Building2, UserCheck, CalendarRange, Sparkles, AlertCircle, Shuffle, RotateCw, CheckCircle2, X, Info, Trash2, FileSpreadsheet, Download } from "lucide-react"
+import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Save, Filter, Building2, UserCheck, CalendarRange, Sparkles, AlertCircle, Shuffle, RotateCw, CheckCircle2, X, Info, Trash2, FileSpreadsheet, Download, Calendar, Clock, Coffee } from "lucide-react"
 import { DeleteScheduleModal } from "@/components/organisms/DeleteScheduleModal/DeleteScheduleModal"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -41,6 +41,12 @@ export default function SchedulePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<number | "all">("all")
   const [exporting, setExporting] = useState(false)
+  const [selectedCell, setSelectedCell] = useState<{
+    idKaryawan: number
+    date: number
+    karyawan: Karyawan
+  } | null>(null)
+  const [savingSingle, setSavingSingle] = useState(false)
 
   const [cutOffSettings, setCutOffSettings] = useState<PengaturanPenggajian>({
     id: 1,
@@ -173,22 +179,13 @@ export default function SchedulePage() {
         const date = getDateOnlyParts(j.tanggal)
         if (date.year === year && date.month === month) {
           const key = `${j.idKaryawan}-${date.day}`
-          const emp = karyawan.find(k => k.idKaryawan === j.idKaryawan)
-          const isEmpAdmin = checkIsAdminDept(emp?.idDepartemen)
-
-          if (isEmpAdmin) {
-            if (j.isCuti) {
-              schedMap[key] = "cuti"
-            }
+          if (j.isCuti) {
+            schedMap[key] = "cuti"
+          } else if (j.idShift) {
+            schedMap[key] = j.idShift
           } else {
-            if (j.isCuti) {
-              schedMap[key] = "cuti"
-            } else if (j.idShift) {
-              schedMap[key] = j.idShift
-            } else {
-              schedMap[key] = "libur"
-              initLiburMap[key] = true
-            }
+            schedMap[key] = "libur"
+            initLiburMap[key] = true
           }
         }
       })
@@ -249,38 +246,6 @@ export default function SchedulePage() {
     return hasAdminOrHrd || isBackoffice
   }
 
-  // Cek apakah user yang sedang login berhak mengubah jadwal karyawan tertentu
-  // Sesuai ketentuan:
-  // 1. Departemen yang dikelola Admin & HRD: TIDAK PERLU diatur lagi dan TIDAK BISA diubah manual (sudah otomatis permanen: 08:45-17:00, Minggu & Libur Nasional Libur).
-  // 2. Karyawan yang berstatus SPV: Jadwal kerjanya diatur oleh HRD / Admin. SPV TIDAK BISA mengatur jadwal dirinya sendiri.
-  // 3. Staf operasional di departemen SPV: Diatur secara mandiri oleh SPV departemen bersangkutan.
-  const canUserEditEmployee = (emp: Karyawan) => {
-    const isManaged = isDeptManagedByAdminOrHrd(emp.idDepartemen)
-    if (isManaged) {
-      // Departemen Admin & HRD: Tidak perlu dan tidak bisa diubah (permanen default)
-      return false
-    }
-
-    const isEmpSpv = emp.hakAkses?.role === "SPV"
-
-    if (user?.role === "Admin" || user?.role === "HRD") {
-      // HRD & Admin berhak mengatur jadwal karyawan yang berstatus SPV!
-      return isEmpSpv
-    }
-
-    if (isSPV) {
-      // SPV tidak boleh mengatur jadwal dirinya sendiri (atau sesama SPV).
-      // Jadwal SPV diatur oleh HRD.
-      if (isEmpSpv) {
-        return false
-      }
-      // SPV mengatur jadwal staf di departemennya sendiri
-      return emp.idDepartemen === user?.idDepartemen
-    }
-
-    return false
-  }
-
   // Helper: mendeteksi apakah karyawan adalah Supervisor (SPV)
   const isEmployeeSupervisor = (emp: Karyawan) => {
     const isRoleSpv = emp.hakAkses?.role === "SPV"
@@ -292,18 +257,62 @@ export default function SchedulePage() {
     return isRoleSpv || isJabatanSpv
   }
 
+  // Cek apakah user yang sedang login berhak mengubah jadwal karyawan tertentu
+  const canUserEditEmployee = (emp: Karyawan) => {
+    // Karyawan Supervisor sudah memiliki halaman khusus /supervisor-schedule
+    if (isEmployeeSupervisor(emp)) {
+      return false
+    }
+
+    // Admin & HRD berhak mengatur seluruh staf (operasional maupun staf kantor)
+    if (user?.role === "Admin" || user?.role === "HRD") {
+      return true
+    }
+
+    // SPV mengatur staf di departemennya sendiri atau departemen yang dikelolanya
+    if (isSPV) {
+      if (emp.idDepartemen === user?.idDepartemen) return true
+      const dept = departemenList.find(d => d.idDepartemen === emp.idDepartemen)
+      const managers = Array.isArray(dept?.pengelola)
+        ? dept.pengelola
+        : dept?.pengelola
+        ? [dept.pengelola]
+        : []
+      return managers.some(m => m.idUser === user?.idUser)
+    }
+
+    return false
+  }
+
+  // Ambil daftar shift yang valid untuk seorang karyawan
+  const getShiftsForEmployee = (emp: Karyawan) => {
+    let empShifts = shiftList.filter(s => s.idDepartemen === emp.idDepartemen)
+    if (empShifts.length === 0) {
+      const generalShifts = shiftList.filter(s => !s.idDepartemen)
+      empShifts = generalShifts.length > 0 ? generalShifts : shiftList
+    }
+    return empShifts.sort((a, b) => (a.jamMulai || "").localeCompare(b.jamMulai || ""))
+  }
+
   // Filtered karyawan list: Supervisor TIDAK DIGABUNG di sini (sudah ada halaman khusus /supervisor-schedule)
   const displayedKaryawan = useMemo(() => {
     const stafOnlyList = karyawanList.filter(k => !isEmployeeSupervisor(k))
     if (isSPV) {
-      // SPV only sees their own department's employees and NEVER Admin/HRD managed employees
-      return stafOnlyList.filter(k => !isDeptManagedByAdminOrHrd(k.idDepartemen) && k.idDepartemen === user?.idDepartemen)
+      const managedDeptIds = new Set<number>()
+      if (user?.idDepartemen) managedDeptIds.add(user.idDepartemen)
+      departemenList.forEach(d => {
+        const managers = Array.isArray(d.pengelola) ? d.pengelola : d.pengelola ? [d.pengelola] : []
+        if (managers.some(m => m.idUser === user?.idUser)) {
+          managedDeptIds.add(d.idDepartemen)
+        }
+      })
+      return stafOnlyList.filter(k => k.idDepartemen && managedDeptIds.has(k.idDepartemen))
     }
     if (selectedDeptFilter === "all") {
       return stafOnlyList
     }
     return stafOnlyList.filter(k => k.idDepartemen === Number(selectedDeptFilter))
-  }, [karyawanList, isSPV, user?.idDepartemen, selectedDeptFilter, departemenList])
+  }, [karyawanList, isSPV, user?.idDepartemen, user?.idUser, selectedDeptFilter, departemenList])
 
   const totalPages = Math.max(1, Math.ceil(displayedKaryawan.length / pageSize))
   const startIndex = (currentPage - 1) * pageSize
@@ -314,9 +323,22 @@ export default function SchedulePage() {
   // Shifts available for current user/department, ordered by start time (Pagi -> Middle -> Siang)
   const departmentShifts = useMemo(() => {
     return shiftList
-      .filter(s => isSPV ? s.idDepartemen === user?.idDepartemen : (selectedDeptFilter === "all" ? true : s.idDepartemen === Number(selectedDeptFilter)))
+      .filter(s => {
+        if (isSPV) {
+          const managedDeptIds = new Set<number>()
+          if (user?.idDepartemen) managedDeptIds.add(user.idDepartemen)
+          departemenList.forEach(d => {
+            const managers = Array.isArray(d.pengelola) ? d.pengelola : d.pengelola ? [d.pengelola] : []
+            if (managers.some(m => m.idUser === user?.idUser)) {
+              managedDeptIds.add(d.idDepartemen)
+            }
+          })
+          return s.idDepartemen && managedDeptIds.has(s.idDepartemen)
+        }
+        return selectedDeptFilter === "all" ? true : s.idDepartemen === Number(selectedDeptFilter)
+      })
       .sort((a, b) => (a.jamMulai || "").localeCompare(b.jamMulai || ""))
-  }, [shiftList, isSPV, user?.idDepartemen, selectedDeptFilter])
+  }, [shiftList, isSPV, user?.idDepartemen, user?.idUser, selectedDeptFilter, departemenList])
 
   // Karyawan yang dapat diedit oleh user login
   const editableEmployees = useMemo(() => {
@@ -524,130 +546,125 @@ export default function SchedulePage() {
     })
   }, [paginatedKaryawan, departemenList])
 
-  const handleCellClick = (idKaryawan: number, date: number, isFixedLibur: boolean, isBlockedLibur: boolean) => {
-    const emp = karyawanList.find(k => k.idKaryawan === idKaryawan)
-    if (!emp) return
-
-    const isManaged = isDeptManagedByAdminOrHrd(emp.idDepartemen)
-    if (isManaged) {
-      alert(`Jadwal kerja karyawan di departemen ${emp.departemen?.namaDepartemen || "Office"} sudah default otomatis (08:45–17:00, Minggu & Libur Nasional Libur). Tidak perlu diatur dan tidak bisa diubah.`)
-      return
-    }
-
+  // Buka dialog untuk edit 1 sel hari
+  const handleOpenCell = (emp: Karyawan, date: number) => {
     if (!canUserEditEmployee(emp)) {
-      if (isAdminOrHrd) {
-        alert(`Jadwal staf operasional ${emp.nama} dikelola oleh Supervisor departemen bersangkutan. Untuk mengatur jadwal Supervisor, silakan buka menu "Jadwal Supervisor".`)
-      } else {
-        alert(`Anda tidak memiliki wewenang untuk mengubah jadwal karyawan ini.`)
-      }
+      alert(`Anda tidak memiliki wewenang untuk mengubah jadwal karyawan ${emp.nama}.`)
       return
     }
+    setSelectedCell({
+      idKaryawan: emp.idKaryawan,
+      date,
+      karyawan: emp,
+    })
+  }
 
-    if (isFixedLibur || isBlockedLibur) return
+  // Pilih nilai shift / libur / cuti / kosong untuk 1 hari
+  const handleSelectDayValue = async (value: number | "cuti" | "libur" | undefined, saveNow: boolean = false) => {
+    if (!selectedCell) return
 
-    // Available shifts for this employee: matching their department or fallback to all shifts
-    let empShifts = shiftList.filter(s => !s.idDepartemen || s.idDepartemen === emp.idDepartemen)
-    if (empShifts.length === 0) {
-      empShifts = shiftList
-    }
+    const key = `${selectedCell.idKaryawan}-${selectedCell.date}`
+    const tanggal = `${year}-${String(month + 1).padStart(2, "0")}-${String(selectedCell.date).padStart(2, "0")}`
 
-    const key = `${idKaryawan}-${date}`
-    const currentVal = schedule[key]
+    if (saveNow) {
+      setSavingSingle(true)
+      try {
+        if (value === undefined) {
+          // Hapus jadwal hari ini via delete-range
+          await api.post("jadwal-kerja/delete-range", {
+            idKaryawan: [selectedCell.idKaryawan],
+            startDate: tanggal,
+            endDate: tanggal,
+          })
+          const { [key]: _, ...rest } = schedule
+          setSchedule(rest)
+        } else {
+          const item: { idKaryawan: number; tanggal: string; idShift?: number; isCuti?: boolean; isLibur?: boolean } = {
+            idKaryawan: selectedCell.idKaryawan,
+            tanggal,
+          }
+          if (value === "cuti") {
+            item.isCuti = true
+          } else if (value === "libur") {
+            item.isLibur = true
+          } else if (typeof value === "number") {
+            item.idShift = value
+          }
 
-    const shiftIds: (number | "cuti" | "libur")[] = empShifts.map(s => s.idShift)
-    if (emp.hakCuti) {
-      shiftIds.push("cuti")
-    }
-
-    const hasCuti = Object.entries(schedule).some(([k, v]) => k.startsWith(`${idKaryawan}-`) && v === "cuti")
-    if (!hasCuti || currentVal === "cuti") {
-      shiftIds.push("libur")
-    }
-
-    let nextVal: number | "cuti" | "libur" | undefined
-
-    if (!currentVal) {
-      nextVal = shiftIds.length > 0 ? shiftIds[0] : undefined
+          await api.post("jadwal-kerja/bulk", [item])
+          setSchedule({ ...schedule, [key]: value })
+        }
+        await fetchData()
+        setSelectedCell(null)
+      } catch (err: any) {
+        alert(err instanceof Error ? err.message : "Gagal menyimpan jadwal hari ini")
+      } finally {
+        setSavingSingle(false)
+      }
     } else {
-      const idx = shiftIds.indexOf(currentVal)
-      if (idx !== -1 && idx < shiftIds.length - 1) {
-        nextVal = shiftIds[idx + 1]
+      if (value === undefined) {
+        const { [key]: _, ...rest } = schedule
+        setSchedule(rest)
       } else {
-        nextVal = undefined
+        setSchedule({ ...schedule, [key]: value })
       }
+      setHasChanges(true)
+      setSelectedCell(null)
     }
-
-    // Periksa batas cuti tahunan (maksimal 12 hari)
-    if (nextVal === "cuti") {
-      let cutiCount = jadwalList.filter(j => {
-        const date = getDateOnlyParts(j.tanggal)
-        return j.idKaryawan === idKaryawan && j.isCuti && date.year === year && date.month !== month
-      }).length
-
-      Object.entries(schedule).forEach(([k, v]) => {
-        if (k.startsWith(`${idKaryawan}-`) && v === "cuti") cutiCount++
-      })
-
-      if (cutiCount >= 12) {
-        alert(`Jatah cuti (12 hari) untuk ${emp?.nama || "karyawan ini"} sudah habis di tahun ${year}.`)
-        nextVal = undefined
-      }
-    }
-
-    if (nextVal === undefined) {
-      const { [key]: _, ...rest } = schedule
-      setSchedule(rest)
-    } else {
-      setSchedule({ ...schedule, [key]: nextVal })
-    }
-    setHasChanges(true)
   }
 
   const handleSave = async () => {
     setSaving(true)
     try {
       const items: { idKaryawan: number; tanggal: string; idShift?: number; isCuti?: boolean; isLibur?: boolean }[] = []
+      const deletedDays: { idKaryawan: number; tanggal: string }[] = []
+
+      // Deteksi hari yang dihapus (sebelumnya ada di initialSchedule, tapi sekarang tidak ada di schedule)
+      Object.entries(initialSchedule).forEach(([key]) => {
+        if (schedule[key] === undefined) {
+          const [idKaryawanStr, dateStr] = key.split("-")
+          const idKaryawan = Number(idKaryawanStr)
+          const emp = karyawanList.find(k => k.idKaryawan === idKaryawan)
+          if (!emp || !canUserEditEmployee(emp)) return
+          const tanggal = `${year}-${String(month + 1).padStart(2, "0")}-${String(dateStr).padStart(2, "0")}`
+          deletedDays.push({ idKaryawan, tanggal })
+        }
+      })
+
+      for (const d of deletedDays) {
+        await api.post("jadwal-kerja/delete-range", {
+          idKaryawan: [d.idKaryawan],
+          startDate: d.tanggal,
+          endDate: d.tanggal,
+        }).catch(console.error)
+      }
+
+      // Deteksi hari yang diubah atau baru ditambahkan
       Object.entries(schedule).forEach(([key, val]) => {
         if (initialSchedule[key] === val) return
 
         const [idKaryawanStr, dateStr] = key.split("-")
         const idKaryawan = Number(idKaryawanStr)
         const emp = karyawanList.find(k => k.idKaryawan === idKaryawan)
-        if (!emp) return
-
-        // Hanya simpan jadwal karyawan yang berhak dikelola oleh user yang login!
-        if (!canUserEditEmployee(emp)) {
-          return
-        }
+        if (!emp || !canUserEditEmployee(emp)) return
 
         const tanggal = `${year}-${String(month + 1).padStart(2, "0")}-${String(dateStr).padStart(2, "0")}`
         if (val === "cuti") {
           items.push({ idKaryawan, tanggal, isCuti: true })
         } else if (val === "libur") {
           items.push({ idKaryawan, tanggal, isCuti: false, isLibur: true })
-        } else {
+        } else if (typeof val === "number") {
           items.push({ idKaryawan, tanggal, idShift: val })
         }
       })
-      if (items.length === 0) {
-        setHasChanges(false)
-        return
-      }
 
-      const saved = await api.post<JadwalKerja[]>("jadwal-kerja/bulk", items)
-      const allSaved = items.every(item => saved.some(result =>
-        result.idKaryawan === item.idKaryawan &&
-        result.tanggal.slice(0, 10) === item.tanggal &&
-        (item.idShift === undefined || result.idShift === item.idShift) &&
-        (item.isCuti === undefined || result.isCuti === item.isCuti)
-      ))
-      if (!allSaved) {
-        throw new Error("Backend tidak mengembalikan jadwal yang sesuai dengan perubahan. Silakan muat ulang dan coba lagi.")
+      if (items.length > 0) {
+        await api.post("jadwal-kerja/bulk", items)
       }
 
       setHasChanges(false)
       await fetchData()
-      alert(`${items.length} perubahan jadwal berhasil disimpan!`)
+      alert(`Berhasil! Perubahan jadwal telah tersimpan ke sistem.`)
     } catch (err) {
       alert(err instanceof Error ? err.message : "Gagal menyimpan jadwal")
     } finally {
@@ -1135,36 +1152,7 @@ export default function SchedulePage() {
 
                               // Tampilan badge jadwal
                               let displayBadge = null
-                              if (isEmpAdminDept) {
-                                if (val === "cuti") {
-                                  displayBadge = (
-                                    <div
-                                      className="rounded px-1 py-1 text-[10px] font-semibold leading-tight mx-auto"
-                                      style={{ background: "#fff7ed", color: "#ea580c", border: `1px solid #fed7aa` }}
-                                    >
-                                      Cuti
-                                    </div>
-                                  )
-                                } else if (holiday && holiday.isLibur !== false) {
-                                  displayBadge = (
-                                    <div className="rounded px-1 py-1 text-[9px] font-bold leading-tight mx-auto bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 border border-red-200 dark:border-red-800 truncate max-w-[65px]">
-                                      {holiday.isCollectiveLeave ? "Cuti Bersama" : "Libur"}
-                                    </div>
-                                  )
-                                } else if (isSunday) {
-                                  displayBadge = (
-                                    <div className="rounded px-1 py-1 text-[10px] font-medium leading-tight mx-auto text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                                      Libur
-                                    </div>
-                                  )
-                                } else {
-                                  displayBadge = (
-                                    <div className="rounded px-1 py-1 text-[10px] font-semibold leading-tight mx-auto bg-purple-100/80 text-purple-700 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60">
-                                      08:45–17:00
-                                    </div>
-                                  )
-                                }
-                              } else if (val === "cuti") {
+                              if (val === "cuti") {
                                 displayBadge = (
                                   <div
                                     className="rounded px-1 py-1 text-[10px] font-semibold leading-tight mx-auto"
@@ -1188,6 +1176,27 @@ export default function SchedulePage() {
                                     {config.label}
                                   </div>
                                 )
+                              } else if (isEmpAdminDept) {
+                                // Default jadwal kantor jika belum ada shift khusus
+                                if (holiday && holiday.isLibur !== false) {
+                                  displayBadge = (
+                                    <div className="rounded px-1 py-1 text-[9px] font-bold leading-tight mx-auto bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 border border-red-200 dark:border-red-800 truncate max-w-[65px]">
+                                      {holiday.isCollectiveLeave ? "Cuti Bersama" : "Libur"}
+                                    </div>
+                                  )
+                                } else if (isSunday) {
+                                  displayBadge = (
+                                    <div className="rounded px-1 py-1 text-[10px] font-medium leading-tight mx-auto text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                                      Libur
+                                    </div>
+                                  )
+                                } else {
+                                  displayBadge = (
+                                    <div className="rounded px-1 py-1 text-[10px] font-semibold leading-tight mx-auto bg-purple-100/80 text-purple-700 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60">
+                                      08:45–17:00
+                                    </div>
+                                  )
+                                }
                               } else {
                                 displayBadge = (
                                   <div className="rounded px-1 py-1 text-[10px] font-medium leading-tight mx-auto" style={{ color: offColor.color }}>
@@ -1197,7 +1206,7 @@ export default function SchedulePage() {
                               }
 
                               const cellTitle = !canEdit
-                                ? `🔒 Dikelola oleh ${section.managerNames}. Admin dan HRD hanya dapat melihat (Read-Only) dan tidak dapat mengubahnya.`
+                                ? `🔒 Jadwal ini tidak dapat diubah oleh akun Anda.`
                                 : d.holiday
                                 ? `${d.holiday.isCollectiveLeave ? "Cuti Bersama" : "Libur Nasional"}: ${d.holiday.localName}`
                                 : undefined
@@ -1205,16 +1214,14 @@ export default function SchedulePage() {
                               return (
                                 <td
                                   key={d.date}
-                                  onClick={canEdit ? () => handleCellClick(emp.idKaryawan, d.date, false, isBlockedLibur) : undefined}
+                                  onClick={canEdit ? () => handleOpenCell(emp, d.date) : undefined}
                                   title={cellTitle}
-                                  className={`px-0.5 py-1 border-b border-[var(--border-default)] text-center transition-opacity ${
+                                  className={`px-0.5 py-1 border-b border-[var(--border-default)] text-center transition-colors ${
                                     d.holiday ? "bg-red-50/20 dark:bg-red-950/10" : d.isWeekend ? "bg-[var(--bg-page)]" : ""
                                   } ${
-                                    !canEdit
-                                      ? "cursor-not-allowed select-none opacity-85"
-                                      : isBlockedLibur
-                                      ? "opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-800"
-                                      : "cursor-pointer hover:opacity-80"
+                                    canEdit
+                                      ? "cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/30"
+                                      : "cursor-not-allowed select-none opacity-80"
                                   }`}
                                 >
                                   {displayBadge}
@@ -1257,6 +1264,182 @@ export default function SchedulePage() {
           await fetchData()
         }}
       />
+
+      {/* MODAL 1: ATUR JADWAL HARIAN 1 HARI (Single Day Picker Modal) */}
+      {selectedCell && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-[#0B0F17] w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between p-4 border-b border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02]">
+              <div>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                  <Calendar className="w-3.5 h-3.5" />
+                  Atur Jadwal Harian Karyawan
+                </span>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-50 mt-0.5">
+                  {selectedCell.karyawan.nama}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Departemen: <strong>{selectedCell.karyawan.departemen?.namaDepartemen || "Tanpa Departemen"}</strong> ·{" "}
+                  {new Date(year, month, selectedCell.date).toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedCell(null)}
+                disabled={savingSingle}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content / Shift Options */}
+            <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Pilih Shift Kerja:
+                  </label>
+                  {savingSingle && (
+                    <span className="flex items-center gap-1 text-[11px] text-blue-600 font-semibold animate-pulse">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Menyimpan...
+                    </span>
+                  )}
+                </div>
+
+                {(() => {
+                  const availableShifts = getShiftsForEmployee(selectedCell.karyawan)
+                  if (availableShifts.length === 0) {
+                    return (
+                      <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs">
+                        Belum ada shift yang terdaftar. Anda dapat membuat shift baru di menu Shift.
+                      </div>
+                    )
+                  }
+                  return (
+                    <div className="grid grid-cols-1 gap-2">
+                      {availableShifts.map((s) => {
+                        const conf = shiftConfigMap[s.idShift]
+                        const currentVal = schedule[`${selectedCell.idKaryawan}-${selectedCell.date}`]
+                        const isSelected = currentVal === s.idShift
+
+                        return (
+                          <div
+                            key={s.idShift}
+                            className={`flex items-center justify-between p-3 rounded-lg border text-left transition-all ${
+                              isSelected ? "ring-2 ring-blue-500 bg-blue-50/30" : "border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span
+                                style={{ backgroundColor: conf?.color || "#3b82f6" }}
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                              />
+                              <div>
+                                <div className="font-semibold text-xs text-slate-900 dark:text-slate-50">
+                                  {s.namaShift}
+                                </div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                                  <Clock className="w-3 h-3" />
+                                  {s.jamMulai?.substring(0, 5)} – {s.jamSelesai?.substring(0, 5)}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Tombol Simpan Cepat */}
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                disabled={savingSingle}
+                                onClick={() => handleSelectDayValue(s.idShift, true)}
+                                className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold shadow-2xs transition-all disabled:opacity-50"
+                                title="Simpan langsung ke server"
+                              >
+                                Pilih & Simpan
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 block">
+                  Atau Tetapkan Sebagai:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Option OFF / Libur */}
+                  <button
+                    type="button"
+                    disabled={savingSingle}
+                    onClick={() => handleSelectDayValue("libur", true)}
+                    className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
+                      schedule[`${selectedCell.idKaryawan}-${selectedCell.date}`] === "libur"
+                        ? "bg-slate-200 border-slate-400 ring-2 ring-slate-500 text-slate-900"
+                        : "border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <Coffee className="w-4 h-4 text-slate-500 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold">Libur (OFF)</div>
+                      <div className="text-[10px] text-slate-500">Simpan langsung</div>
+                    </div>
+                  </button>
+
+                  {/* Option Cuti */}
+                  <button
+                    type="button"
+                    disabled={savingSingle}
+                    onClick={() => handleSelectDayValue("cuti", true)}
+                    className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
+                      schedule[`${selectedCell.idKaryawan}-${selectedCell.date}`] === "cuti"
+                        ? "bg-amber-100 border-amber-400 ring-2 ring-amber-500 text-amber-900"
+                        : "border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <CalendarDays className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div>
+                      <div className="text-xs font-bold">Cuti Tahunan</div>
+                      <div className="text-[10px] text-slate-500">Simpan langsung</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Reset / Kosongkan Hari Ini */}
+              <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex items-center justify-between">
+                <button
+                  type="button"
+                  disabled={savingSingle}
+                  onClick={() => handleSelectDayValue(undefined, true)}
+                  className="inline-flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-semibold hover:underline disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Kosongkan & Hapus Hari Ini
+                </button>
+
+                <button
+                  type="button"
+                  disabled={savingSingle}
+                  onClick={() => setSelectedCell(null)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL GENERATE JADWAL OTOMATIS (SISTEM ROLLING SHIFT) */}
       {showAutoModal && (

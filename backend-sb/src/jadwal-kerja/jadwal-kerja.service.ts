@@ -86,12 +86,29 @@ export class JadwalKerjaService {
   ) {
     if (karyawanIds.length === 0) return;
 
+    // Admin & HRD memiliki otoritas penuh untuk mengatur seluruh jadwal (Supervisor, staf operasional, maupun staf kantor)
+    if (user.role === 'Admin' || user.role === 'HRD') {
+      return;
+    }
+
     const karyawanList = await this.karyawanRepo.find({
       where: { idKaryawan: In(karyawanIds) },
       relations: { departemen: { pengelola: true }, jabatan: true },
     });
 
     const users = await this.userRepo.find({ relations: { departemen: true } });
+
+    // Ambil semua ID departemen yang dikelola oleh user SPV ini (dari user.idDepartemen dan departemen_pengelola)
+    const managedDepts = await this.deptRepo.find({
+      relations: { pengelola: true },
+    });
+    const allowedDeptIds = new Set<number>();
+    if (user.idDepartemen) allowedDeptIds.add(user.idDepartemen);
+    managedDepts.forEach((d) => {
+      if (d.pengelola?.some((p) => p.idUser === user.idUser)) {
+        allowedDeptIds.add(d.idDepartemen);
+      }
+    });
 
     for (const emp of karyawanList) {
       const matchedUser = users.find((u) => matchUserName(emp.nama, u.nama));
@@ -104,36 +121,17 @@ export class JadwalKerjaService {
       const isEmpSpv = isRoleSpv || isJabatanSpv;
 
       if (isEmpSpv) {
-        // Karyawan adalah SPV: HRD dan Admin yang berhak mengatur jadwalnya.
-        // SPV TIDAK BISA mengatur jadwal kerja dirinya sendiri.
-        if (user.role === 'SPV') {
-          throw new ForbiddenException(
-            `Supervisor tidak dapat mengatur jadwal kerja dirinya sendiri (${emp.nama}). Jadwal Anda ditentukan oleh HRD.`,
-          );
-        }
-        // Admin dan HRD diizinkan mengatur jadwal SPV
-        continue;
-      }
-
-      // Untuk karyawan non-SPV di departemen Office/Backoffice (Admin & HRD):
-      const isManagedByAdminOrHrd = this.isManagedByAdminOrHrd(emp.departemen);
-      if (isManagedByAdminOrHrd) {
-        throw new BadRequestException(
-          `Jadwal kerja karyawan "${emp.nama}" di departemen "${emp.departemen?.namaDepartemen || 'Office'}" sudah default permanen (08:45 - 17:00, Minggu & Libur Nasional Libur) dan tidak bisa diubah manual.`,
-        );
-      }
-
-      // Untuk staf non-SPV di departemen operasional (yang dipimpin SPV):
-      if (user.role === 'Admin' || user.role === 'HRD') {
+        // SPV tidak boleh mengatur jadwal dirinya sendiri atau sesama SPV. Jadwal SPV diatur oleh HRD.
         throw new ForbiddenException(
-          `Admin dan HRD mengatur jadwal untuk Supervisor. Jadwal staf operasional "${emp.nama}" diatur oleh Supervisor departemen bersangkutan.`,
+          `Supervisor tidak dapat mengatur jadwal kerja dirinya sendiri atau sesama Supervisor (${emp.nama}). Jadwal Supervisor ditentukan oleh HRD.`,
         );
-      } else if (user.role === 'SPV') {
-        if (!user.idDepartemen || emp.idDepartemen !== user.idDepartemen) {
-          throw new ForbiddenException(
-            `Supervisor hanya dapat mengatur jadwal karyawan di departemennya sendiri (${emp.nama} bukan di departemen Anda)`,
-          );
-        }
+      }
+
+      // Validasi departemen: Staf harus berada di departemen yang dikelola oleh SPV ini
+      if (!emp.idDepartemen || !allowedDeptIds.has(emp.idDepartemen)) {
+        throw new ForbiddenException(
+          `Supervisor hanya dapat mengatur jadwal staf di departemen yang Anda kelola (${emp.nama} bukan di departemen yang Anda pimpin).`,
+        );
       }
     }
   }
@@ -332,7 +330,20 @@ export class JadwalKerjaService {
         ? `${tanggal.getFullYear()}-${String(tanggal.getMonth() + 1).padStart(2, '0')}-${String(tanggal.getDate()).padStart(2, '0')}`
         : tanggal;
 
-    // Cek apakah karyawan dikelola oleh Admin & HRD
+    // 1. Cek terlebih dahulu apakah ada jadwal kerja eksplisit di database
+    const existingJadwal = await this.jadwalRepo.findOne({
+      where: {
+        idKaryawan,
+        tanggal: tanggalStr as any,
+      },
+      relations: { shift: true, karyawan: true },
+    });
+
+    if (existingJadwal) {
+      return existingJadwal;
+    }
+
+    // 2. Jika tidak ada jadwal manual di database, cek apakah karyawan di departemen Office/Backoffice
     const emp = await this.karyawanRepo.findOne({
       where: { idKaryawan },
       relations: { departemen: { pengelola: true } },

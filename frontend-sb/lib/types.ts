@@ -175,6 +175,8 @@ export interface JadwalKerja {
   idShift: number | null
   shift: Shift | null
   isCuti: boolean
+  isLibur?: boolean
+  keterangan?: string | null
   idUser: number | null
   user: User | null
   tanggal: string   // "YYYY-MM-DD"
