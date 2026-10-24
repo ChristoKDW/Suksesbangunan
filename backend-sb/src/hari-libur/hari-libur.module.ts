@@ -7,13 +7,14 @@ import { Departemen } from '../departemen/entities/departemen.entity.js';
 import { Shift } from '../shift/entities/shift.entity.js';
 import { HariLiburService } from './hari-libur.service.js';
 import { HariLiburController } from './hari-libur.controller.js';
+import { OpicaHolidayService } from './opica-holiday.service.js';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([HariLibur, Karyawan, JadwalKerja, Departemen, Shift]),
   ],
   controllers: [HariLiburController],
-  providers: [HariLiburService],
-  exports: [HariLiburService],
+  providers: [HariLiburService, OpicaHolidayService],
+  exports: [HariLiburService, OpicaHolidayService],
 })
 export class HariLiburModule {}

@@ -142,30 +142,56 @@ class ScheduleView extends GetView<ScheduleController> {
         calendarBuilders: CalendarBuilders(
           markerBuilder: (context, date, events) {
             final schedule = controller.getScheduleForDay(date);
-            if (schedule == null) return null;
+            final holidays = controller.getHolidaysForDay(date);
+            final hasLibur = holidays.any((h) =>
+                h['isLibur'] == true ||
+                h['type'] == 'libur_nasional' ||
+                h['type'] == 'cuti_bersama');
+            final hasNasional =
+                holidays.any((h) => h['type'] == 'hari_nasional');
 
-            final isDayOff = schedule['is_day_off'] == true;
-            final isCuti = schedule['is_cuti'] == true;
-            final isLibur = schedule['is_libur'] == true;
+            if (schedule == null && holidays.isEmpty) return null;
+
+            final isDayOff = schedule?['is_day_off'] == true;
+            final isCuti = schedule?['is_cuti'] == true;
+            final isLibur = schedule?['is_libur'] == true || hasLibur;
 
             Color dotColor = AppColors.success;
-            if (isCuti) {
-              dotColor = AppColors.info;
-            } else if (isLibur) {
+            if (hasLibur || isLibur) {
               dotColor = AppColors.redPrimary;
+            } else if (isCuti) {
+              dotColor = AppColors.info;
+            } else if (hasNasional) {
+              dotColor = Colors.indigo;
             } else if (isDayOff) {
               dotColor = AppColors.slateLight;
             }
 
             return Positioned(
               bottom: 2,
-              child: Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: dotColor,
-                  shape: BoxShape.circle,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: dotColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  if (hasNasional && (schedule != null && !isDayOff)) ...[
+                    const SizedBox(width: 2),
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: const BoxDecoration(
+                        color: Colors.indigo,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             );
           },
@@ -176,34 +202,142 @@ class ScheduleView extends GetView<ScheduleController> {
 
   Widget _buildSelectedDayDetail(BuildContext context) {
     final loading = controller.isLoading.value;
-    final selected = controller.selectedDay.value;
-
-    if (!loading && selected == null) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(
-          child: Text(
-            'Pilih tanggal untuk melihat jadwal',
-            style: TextStyle(color: AppColors.slateLight),
-          ),
-        ),
-      );
-    }
+    final selected = controller.selectedDay.value ?? DateTime.now();
 
     final schedule = loading
         ? <String, dynamic>{'shift_name': 'Shift Pagi', 'day_name': 'Loading'}
-        : controller.getScheduleForDay(selected ?? DateTime.now());
-
-    if (!loading && schedule == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: _buildEmptyCard(context, selected ?? DateTime.now()),
-      );
-    }
+        : controller.getScheduleForDay(selected);
+    final holidays = loading
+        ? <Map<String, dynamic>>[]
+        : controller.getHolidaysForDay(selected);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: _buildDetailCard(context, schedule ?? <String, dynamic>{}),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Banner Hari Libur Nasional / Peringatan Nasional jika ada
+          if (holidays.isNotEmpty) ...[
+            for (final h in holidays) ...[
+              _buildHolidayBannerCard(context, h),
+              const SizedBox(height: 12),
+            ],
+          ],
+
+          // Kartu Jadwal Kerja
+          if (schedule != null)
+            _buildDetailCard(context, schedule)
+          else if (holidays.isEmpty)
+            _buildEmptyCard(context, selected),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHolidayBannerCard(
+      BuildContext context, Map<String, dynamic> holiday) {
+    final bool isLibur = holiday['isLibur'] == true ||
+        holiday['type'] == 'libur_nasional' ||
+        holiday['type'] == 'cuti_bersama';
+    final String typeLabel = holiday['type'] == 'cuti_bersama'
+        ? 'Cuti Bersama Resmi'
+        : (isLibur
+            ? 'Hari Libur Nasional'
+            : 'Hari Peringatan Nasional');
+    final String name = holiday['name']?.toString() ?? 'Hari Penting';
+    final String? description = holiday['description']?.toString();
+    final String? category = holiday['category']?.toString();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isLibur ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isLibur ? const Color(0xFFFECACA) : const Color(0xFFBFDBFE),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isLibur ? AppColors.redPrimary : Colors.indigo,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isLibur ? Icons.celebration : Icons.flag,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isLibur
+                            ? const Color(0xFFFEE2E2)
+                            : const Color(0xFFDBEAFE),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        typeLabel,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: isLibur ? AppColors.redPrimary : Colors.indigo,
+                        ),
+                      ),
+                    ),
+                    if (category != null && category.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        '•  $category',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.slateLight.withValues(alpha: 0.8),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.slateDark,
+                  ),
+                ),
+                if (description != null &&
+                    description.isNotEmpty &&
+                    description != name) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.slateLight.withValues(alpha: 0.9),
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

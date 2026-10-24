@@ -2,6 +2,7 @@
 import useSWR from "swr"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/molecules"
 import { Badge, Skeleton } from "@/components/atoms"
+import { DashboardCalendar } from "@/components/organisms/DashboardCalendar/DashboardCalendar"
 import {
   Users,
   UserCheck,
@@ -46,7 +47,7 @@ function formatTime(isoString: string | null): string {
 }
 
 export default function DashboardPage() {
-  // ponytail: SWR caching + background live sync (polling tiap 20s untuk absensi real-time)
+  // SWR caching + background live sync (polling tiap 20s untuk absensi real-time)
   const { data: karyawanList = [], isLoading: loadingKaryawan } = useSWR<Karyawan[]>("karyawan")
   const { data: absensiList = [], isLoading: loadingAbsensi } = useSWR<Absensi[]>("absensi", { refreshInterval: 20000 })
   const { data: pendingIzin = [], isLoading: loadingIzin } = useSWR<PengajuanIzin[]>("pengajuan-izin?status=menunggu", { refreshInterval: 30000 })
@@ -205,6 +206,9 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* FITUR KALENDER LENGKAP: Terintegrasi Opica API (Libur Nasional, Cuti Bersama & Hari Peringatan Nasional) */}
+      <DashboardCalendar />
 
       {/* Main content grid */}
       <div className="grid gap-4 lg:grid-cols-7">

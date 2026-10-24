@@ -8,6 +8,7 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
+  Query,
   Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -19,13 +20,13 @@ import { RolesGuard } from '../common/guards/roles.guard.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 
 @ApiTags('Hari Penting & Hari Libur')
-@ApiBearerAuth()
-@UseGuards(JwtWebGuard, RolesGuard)
 @Controller('hari-libur')
 export class HariLiburController {
   constructor(private readonly hariLiburService: HariLiburService) {}
 
   @Post()
+  @ApiBearerAuth()
+  @UseGuards(JwtWebGuard, RolesGuard)
   @Roles('Admin', 'HRD')
   @ApiOperation({
     summary:
@@ -36,21 +37,45 @@ export class HariLiburController {
   }
 
   @Get()
+  @ApiBearerAuth()
+  @UseGuards(JwtWebGuard, RolesGuard)
   @Roles('Admin', 'HRD', 'SPV')
   @ApiOperation({ summary: 'Ambil semua daftar hari penting & hari libur' })
   findAll() {
     return this.hariLiburService.findAll();
   }
 
+  /**
+   * Endpoint Publik & Sinkron untuk Kalender (Web Admin, HRD, SPV & Mobile Karyawan semua role).
+   * Terintegrasi dengan Opica API (Libur Nasional, Cuti Bersama, Hari Peringatan Nasional) & Database Perusahaan.
+   */
   @Get('kalender')
-  @Roles('Admin', 'HRD', 'SPV')
-  @ApiOperation({ summary: 'Ambil kalender hari libur nasional & cuti bersama resmi Indonesia' })
-  getKalender(@Req() req: any) {
-    const year = req.query?.year ? parseInt(req.query.year, 10) : new Date().getFullYear();
-    return this.hariLiburService.getNationalCalendar(year);
+  @ApiOperation({
+    summary:
+      'Ambil kalender hari libur nasional, cuti bersama, dan hari peringatan nasional resmi (Opica + DB)',
+  })
+  getKalender(
+    @Query('year') yearQuery?: string,
+    @Query('month') monthQuery?: string,
+  ) {
+    const currentYear = new Date().getFullYear();
+    const year = yearQuery ? parseInt(yearQuery, 10) : currentYear;
+    const month = monthQuery ? parseInt(monthQuery, 10) : undefined;
+    return this.hariLiburService.getNationalCalendar(year, month);
+  }
+
+  @Get('opica')
+  @ApiOperation({ summary: 'Alias untuk kalender libur & hari nasional Opica' })
+  getOpica(
+    @Query('year') yearQuery?: string,
+    @Query('month') monthQuery?: string,
+  ) {
+    return this.getKalender(yearQuery, monthQuery);
   }
 
   @Get(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtWebGuard, RolesGuard)
   @Roles('Admin', 'HRD', 'SPV')
   @ApiOperation({ summary: 'Ambil rincian hari penting berdasarkan ID' })
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -58,6 +83,8 @@ export class HariLiburController {
   }
 
   @Patch(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtWebGuard, RolesGuard)
   @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Update hari penting / libur' })
   update(
@@ -69,6 +96,8 @@ export class HariLiburController {
   }
 
   @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtWebGuard, RolesGuard)
   @Roles('Admin', 'HRD')
   @ApiOperation({ summary: 'Hapus hari penting / libur' })
   remove(@Param('id', ParseIntPipe) id: number) {

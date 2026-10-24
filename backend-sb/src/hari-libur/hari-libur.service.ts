@@ -13,6 +13,7 @@ import { Departemen } from '../departemen/entities/departemen.entity.js';
 import { Shift } from '../shift/entities/shift.entity.js';
 import { CreateHariLiburDto } from './dto/create-hari-libur.dto.js';
 import { UpdateHariLiburDto } from './dto/update-hari-libur.dto.js';
+import { OpicaHolidayService } from './opica-holiday.service.js';
 
 @Injectable()
 export class HariLiburService {
@@ -27,6 +28,7 @@ export class HariLiburService {
     private readonly deptRepo: Repository<Departemen>,
     @InjectRepository(Shift)
     private readonly shiftRepo: Repository<Shift>,
+    private readonly opicaService: OpicaHolidayService,
   ) {}
 
   private async applyHolidayToAllSchedules(
@@ -265,14 +267,14 @@ export class HariLiburService {
   }
 
   /**
-   * Mengambil kalender hari libur nasional & cuti bersama resmi Indonesia beserta hari penting kustom perusahaan.
+   * Mengambil kalender hari libur nasional, cuti bersama, hari peringatan nasional (Opica),
+   * beserta hari penting kustom perusahaan dari database.
    */
-  async getNationalCalendar(year: number) {
-    const { getIndonesianHolidays } =
-      await import('./indonesia-holidays.util.js');
-    const officialHolidays = getIndonesianHolidays(year);
+  async getNationalCalendar(year: number, month?: number) {
+    // 1. Ambil event resmi dari Opica (libur nasional, cuti bersama, hari nasional)
+    const opicaEvents = await this.opicaService.getEvents(year, month);
 
-    // Ambil juga hari libur dari database
+    // 2. Ambil juga hari libur kustom perusahaan dari database
     const dbHolidays = await this.hariLiburRepo.find({
       relations: { shift: true },
     });
@@ -280,6 +282,10 @@ export class HariLiburService {
     const dbMap = new Map<string, HariLibur>();
     for (const item of dbHolidays) {
       if (item.tanggal && item.tanggal.startsWith(String(year))) {
+        if (month) {
+          const m = parseInt(item.tanggal.substring(5, 7), 10);
+          if (m !== month) continue;
+        }
         dbMap.set(item.tanggal, item);
       }
     }
@@ -287,52 +293,76 @@ export class HariLiburService {
     const merged: Array<{
       date: string;
       localName: string;
-      type: 'national_holiday' | 'collective_leave' | 'company_holiday';
+      name?: string;
+      type: 'libur_nasional' | 'cuti_bersama' | 'hari_nasional' | 'company_holiday';
+      category?: string;
       isLibur: boolean;
       keterangan?: string | null;
+      description?: string | null;
       shift?: any;
     }> = [];
 
-    // Tambahkan libur resmi nasional
-    for (const h of officialHolidays) {
-      const customDb = dbMap.get(h.date);
+    for (const event of opicaEvents) {
+      const customDb = dbMap.get(event.date);
       if (customDb) {
         merged.push({
-          date: h.date,
+          date: event.date,
           localName: customDb.nama,
+          name: customDb.nama,
           type: 'company_holiday',
+          category: 'perusahaan',
           isLibur: customDb.isLibur,
           keterangan: customDb.keterangan,
+          description: customDb.keterangan || event.description,
           shift: customDb.shift,
         });
-        dbMap.delete(h.date);
+        dbMap.delete(event.date);
       } else {
         merged.push({
-          date: h.date,
-          localName: h.localName,
-          type: h.type,
-          isLibur: true,
-          keterangan: h.isCollectiveLeave
-            ? 'Cuti Bersama Resmi'
-            : 'Hari Libur Nasional Resmi',
+          date: event.date,
+          localName: event.name,
+          name: event.name,
+          type: event.type,
+          category: event.category || 'nasional',
+          isLibur: event.isLibur,
+          keterangan: event.description,
+          description: event.description,
         });
       }
     }
 
-    // Tambahkan sisa custom holiday di DB yang bukan tanggal merah nasional
+    // Tambahkan sisa custom holiday di DB yang belum masuk
     for (const [_, item] of dbMap.entries()) {
       merged.push({
         date: item.tanggal,
         localName: item.nama,
+        name: item.nama,
         type: 'company_holiday',
+        category: 'perusahaan',
         isLibur: item.isLibur,
         keterangan: item.keterangan,
+        description: item.keterangan,
         shift: item.shift,
       });
     }
 
     merged.sort((a, b) => a.date.localeCompare(b.date));
-    return merged;
+
+    // Siapkan juga index by date untuk kemudahan lookup
+    const byDate: Record<string, typeof merged> = {};
+    for (const item of merged) {
+      if (!byDate[item.date]) byDate[item.date] = [];
+      byDate[item.date].push(item);
+    }
+
+    return {
+      status: 'success',
+      year,
+      month: month || null,
+      count: merged.length,
+      data: merged,
+      byDate,
+    };
   }
 
   /**
@@ -356,16 +386,31 @@ export class HariLiburService {
       };
     }
 
-    // 2. Cek libur nasional & cuti bersama resmi
-    const { checkIndonesianHoliday } =
-      await import('./indonesia-holidays.util.js');
-    const official = checkIndonesianHoliday(dateStr);
-    if (official) {
-      return {
-        isLibur: true,
-        nama: official.localName,
-        type: official.type,
-      };
+    // 2. Cek libur nasional & cuti bersama resmi via Opica / util
+    try {
+      const year = parseInt(dateStr.substring(0, 4), 10);
+      const month = parseInt(dateStr.substring(5, 7), 10);
+      const events = await this.opicaService.getEvents(year, month);
+      const match = events.find((e) => e.date === dateStr && e.isLibur);
+      if (match) {
+        return {
+          isLibur: true,
+          nama: match.name,
+          type: match.type,
+        };
+      }
+    } catch {
+      // Fallback lokal jika ada kendala
+      const { checkIndonesianHoliday } =
+        await import('./indonesia-holidays.util.js');
+      const official = checkIndonesianHoliday(dateStr);
+      if (official) {
+        return {
+          isLibur: true,
+          nama: official.localName,
+          type: official.type,
+        };
+      }
     }
 
     return null;

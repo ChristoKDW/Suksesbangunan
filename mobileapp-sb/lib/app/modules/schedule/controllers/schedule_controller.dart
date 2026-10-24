@@ -7,6 +7,7 @@ class ScheduleController extends GetxController {
 
   final isLoading = true.obs;
   final monthlySchedules = <String, Map<String, dynamic>>{}.obs;
+  final holidaysByDate = <String, List<Map<String, dynamic>>>{}.obs;
   final selectedDay = Rxn<DateTime>();
   final focusedDay = DateTime.now().obs;
 
@@ -30,7 +31,26 @@ class ScheduleController extends GetxController {
   Future<void> fetchMonthlySchedule(int year, int month) async {
     isLoading.value = true;
     try {
-      final data = await _api.getMonthlySchedule(year, month);
+      final results = await Future.wait([
+        _api.getMonthlySchedule(year, month),
+        _api.getCalendarHolidays(year, month),
+      ]);
+
+      final data = results[0] as List<dynamic>;
+      final holidayRes = results[1] as Map<String, dynamic>;
+
+      final Map<String, List<Map<String, dynamic>>> parsedHolidays = {};
+      if (holidayRes['byDate'] is Map) {
+        final rawByDate = holidayRes['byDate'] as Map;
+        rawByDate.forEach((k, v) {
+          if (v is List) {
+            parsedHolidays[k.toString()] =
+                v.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          }
+        });
+      }
+      holidaysByDate.assignAll(parsedHolidays);
+
       final Map<String, Map<String, dynamic>> mapped = {};
       for (final raw in data) {
         final entry = _mapEntry(raw);
@@ -68,6 +88,13 @@ class ScheduleController extends GetxController {
     final key =
         '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
     return monthlySchedules[key];
+  }
+
+  /// Mendapatkan daftar event libur nasional & peringatan nasional untuk tanggal tertentu
+  List<Map<String, dynamic>> getHolidaysForDay(DateTime day) {
+    final key =
+        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    return holidaysByDate[key] ?? [];
   }
 
   /// Apakah tanggal ini memiliki jadwal?

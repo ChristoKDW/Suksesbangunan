@@ -28,6 +28,7 @@ import {
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { getIndonesianHolidayForDate, type HolidayItem } from "@/lib/indonesia-holidays"
+import { fetchCalendarEvents, type CalendarEvent } from "@/lib/opica-calendar"
 import type { Karyawan, Shift, JadwalKerja, Departemen, PengaturanPenggajian, HariLibur } from "@/lib/types"
 
 // Color palette for shifts
@@ -74,6 +75,7 @@ export default function SupervisorSchedulePage() {
   const [schedule, setSchedule] = useState<Record<string, number | "cuti" | "libur">>({})
   const [initialSchedule, setInitialSchedule] = useState<Record<string, number | "cuti" | "libur">>({})
   const [hasChanges, setHasChanges] = useState(false)
+  const [opicaEvents, setOpicaEvents] = useState<CalendarEvent[]>([])
 
   // Auto-Generate Rolling Schedule state for HRD
   const [showAutoModal, setShowAutoModal] = useState(false)
@@ -86,7 +88,7 @@ export default function SupervisorSchedulePage() {
     karyawan: Karyawan
   } | null>(null)
 
-  const getHolidayForDay = (dayDate: number): (HolidayItem & { isLibur?: boolean }) | null => {
+  const getHolidayForDay = (dayDate: number) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(dayDate).padStart(2, "0")}`
     const fromDb = dbHolidays.find((h) => h.tanggal === dateStr)
     if (fromDb) {
@@ -94,14 +96,30 @@ export default function SupervisorSchedulePage() {
         date: dateStr,
         localName: fromDb.nama,
         name: fromDb.nama,
-        type: "company_holiday",
+        type: "company_holiday" as const,
         isNationalHoliday: false,
         isCollectiveLeave: false,
+        isHariNasional: false,
         isLibur: fromDb.isLibur,
+        description: fromDb.keterangan || fromDb.nama,
+      }
+    }
+    const opicaMatch = opicaEvents.find((e) => e.date === dateStr)
+    if (opicaMatch) {
+      return {
+        date: dateStr,
+        localName: opicaMatch.name || opicaMatch.localName,
+        name: opicaMatch.name || opicaMatch.localName,
+        type: opicaMatch.type,
+        isNationalHoliday: opicaMatch.type === "libur_nasional",
+        isCollectiveLeave: opicaMatch.type === "cuti_bersama",
+        isHariNasional: opicaMatch.type === "hari_nasional",
+        isLibur: opicaMatch.isLibur,
+        description: opicaMatch.description || opicaMatch.name,
       }
     }
     const official = getIndonesianHolidayForDate(dateStr)
-    return official ? { ...official, isLibur: true } : null
+    return official ? { ...official, isLibur: true, isHariNasional: false, description: official.localName } : null
   }
 
   const daysInMonth = new Date(year, month + 1, 0).getDate()
@@ -127,17 +145,19 @@ export default function SupervisorSchedulePage() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      const [karyawan, shifts, jadwal, depts, settings, holidays] = await Promise.all([
+      const [karyawan, shifts, jadwal, depts, settings, holidays, opicaCal] = await Promise.all([
         api.get<Karyawan[]>("karyawan"),
         api.get<Shift[]>("shift"),
         api.get<JadwalKerja[]>("jadwal-kerja"),
         api.get<Departemen[]>("departemen").catch(() => []),
         api.get<PengaturanPenggajian>("penggajian/settings").catch(() => null),
         api.get<HariLibur[]>("hari-libur").catch(() => []),
+        fetchCalendarEvents(year, month + 1).catch(() => null),
       ])
 
       if (settings) setCutOffSettings(settings)
       if (holidays) setDbHolidays(holidays)
+      if (opicaCal?.data) setOpicaEvents(opicaCal.data)
 
       // Filter khusus Karyawan yang berstatus SUPERVISOR (SPV)
       const supervisors = (karyawan || []).filter((k) => {
@@ -560,7 +580,9 @@ export default function SupervisorSchedulePage() {
 
                     {/* Day Columns */}
                     {days.map((d) => {
-                      const isHoliday = Boolean(d.holiday?.isLibur)
+                      const hasHoliday = Boolean(d.holiday)
+                      const isHoliday = Boolean((d.holiday as any)?.isLibur)
+                      const isHariNasional = Boolean((d.holiday as any)?.isHariNasional)
                       const isSun = d.isSunday
                       return (
                         <th
@@ -568,16 +590,35 @@ export default function SupervisorSchedulePage() {
                           className={`px-1 py-1.5 text-center font-semibold border-r border-[var(--border-default)] min-w-[34px] sm:min-w-[40px] ${
                             isHoliday || isSun
                               ? "bg-red-50/70 dark:bg-red-950/20 text-red-600 dark:text-red-400"
+                              : isHariNasional
+                              ? "bg-blue-50/70 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400"
                               : "text-[var(--text-secondary)]"
                           }`}
-                          title={d.holiday?.name || (isSun ? "Minggu" : "")}
+                          title={
+                            d.holiday?.name
+                              ? `${isHoliday ? "Libur Nasional / Cuti Bersama" : "Hari Peringatan Nasional"}: ${d.holiday.name}${(d.holiday as any)?.description ? ` (${(d.holiday as any)?.description})` : ""}`
+                              : isSun
+                              ? "Minggu"
+                              : ""
+                          }
                         >
                           <div className="text-[10px] uppercase font-bold tracking-wider leading-none mb-0.5">
                             {d.dayLabel}
                           </div>
-                          <div className={`text-xs font-bold leading-none ${isHoliday || isSun ? "text-red-600" : ""}`}>
+                          <div className={`text-xs font-bold leading-none ${isHoliday || isSun ? "text-red-600" : isHariNasional ? "text-blue-600" : ""}`}>
                             {d.date}
                           </div>
+                          {hasHoliday && (
+                            <div className={`text-[8px] font-bold leading-none mt-0.5 truncate max-w-[36px] mx-auto ${
+                              isHoliday ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"
+                            }`}>
+                              {(d.holiday as any)?.isCollectiveLeave
+                                ? "Cuti"
+                                : isHoliday
+                                ? "Libur"
+                                : "Nasional"}
+                            </div>
+                          )}
                         </th>
                       )
                     })}

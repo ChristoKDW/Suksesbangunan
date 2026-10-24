@@ -224,6 +224,66 @@ class ApiService extends GetConnect {
     return _handleDynamic(res) ?? [];
   }
 
+  /// GET /hari-libur/kalender?year=&month= → sinkronisasi hari libur nasional & peringatan nasional resmi (Opica + DB).
+  Future<Map<String, dynamic>> getCalendarHolidays(int year, int month) async {
+    try {
+      final res = await get(
+        '/hari-libur/kalender',
+        query: {'year': year.toString(), 'month': month.toString()},
+      );
+      if (res.isOk && res.body is Map) {
+        return Map<String, dynamic>.from(res.body as Map);
+      }
+    } catch (_) {}
+
+    // Fallback langsung ke Opica API jika server backend sedang offline
+    try {
+      final directLibur = await get('https://app.opica.id/api-libur/api?year=$year&month=$month');
+      final directNasional = await get('https://app.opica.id/api-libur/api/hari-nasional?year=$year&month=$month');
+      final list = <Map<String, dynamic>>[];
+      final byDate = <String, List<dynamic>>{};
+
+      if (directLibur.isOk && directLibur.body is Map && directLibur.body['data'] is List) {
+        for (final item in directLibur.body['data']) {
+          final dateKey = item['holiday_date']?.toString();
+          if (dateKey != null) {
+            final ev = {
+              'date': dateKey,
+              'name': item['description'],
+              'type': item['holiday_type'],
+              'isLibur': true,
+              'description': item['description'],
+            };
+            list.add(ev);
+            byDate.putIfAbsent(dateKey, () => []).add(ev);
+          }
+        }
+      }
+
+      if (directNasional.isOk && directNasional.body is Map && directNasional.body['data'] is List) {
+        for (final item in directNasional.body['data']) {
+          final dateKey = item['date']?.toString();
+          if (dateKey != null) {
+            final ev = {
+              'date': dateKey,
+              'name': item['name'],
+              'type': 'hari_nasional',
+              'category': item['category'],
+              'isLibur': item['is_public_holiday'] == true,
+              'description': item['description'],
+            };
+            list.add(ev);
+            byDate.putIfAbsent(dateKey, () => []).add(ev);
+          }
+        }
+      }
+
+      return {'status': 'success', 'data': list, 'byDate': byDate};
+    } catch (_) {}
+
+    return {'status': 'empty', 'data': [], 'byDate': {}};
+  }
+
   // ---------- Pengajuan Izin (Mobile) ----------
 
   /// GET /pengajuan-izin/me → daftar izin milik karyawan.
