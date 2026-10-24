@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, Fragment } from "react"
 import { Card, CardContent, CardHeader, Pagination } from "@/components/molecules"
 import { LatticeLoader, Skeleton } from "@/components/atoms"
-import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Save, Filter, Building2, UserCheck, CalendarRange, Sparkles, AlertCircle, Shuffle, RotateCw, CheckCircle2, X, Info, Trash2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, CalendarDays, Loader2, Save, Filter, Building2, UserCheck, CalendarRange, Sparkles, AlertCircle, Shuffle, RotateCw, CheckCircle2, X, Info, Trash2, FileSpreadsheet, Download } from "lucide-react"
 import { DeleteScheduleModal } from "@/components/organisms/DeleteScheduleModal/DeleteScheduleModal"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -40,6 +40,7 @@ export default function SchedulePage() {
   const [pageSize, setPageSize] = useState(10)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<number | "all">("all")
+  const [exporting, setExporting] = useState(false)
 
   const [cutOffSettings, setCutOffSettings] = useState<PengaturanPenggajian>({
     id: 1,
@@ -280,16 +281,28 @@ export default function SchedulePage() {
     return false
   }
 
-  // Filtered karyawan list based on selected department filter
+  // Helper: mendeteksi apakah karyawan adalah Supervisor (SPV)
+  const isEmployeeSupervisor = (emp: Karyawan) => {
+    const isRoleSpv = emp.hakAkses?.role === "SPV"
+    const jabatanName = emp.jabatan?.namaJabatan?.toLowerCase() || ""
+    const isJabatanSpv =
+      jabatanName.includes("supervisor") ||
+      jabatanName.includes("spv") ||
+      jabatanName.includes("leader")
+    return isRoleSpv || isJabatanSpv
+  }
+
+  // Filtered karyawan list: Supervisor TIDAK DIGABUNG di sini (sudah ada halaman khusus /supervisor-schedule)
   const displayedKaryawan = useMemo(() => {
+    const stafOnlyList = karyawanList.filter(k => !isEmployeeSupervisor(k))
     if (isSPV) {
       // SPV only sees their own department's employees and NEVER Admin/HRD managed employees
-      return karyawanList.filter(k => !isDeptManagedByAdminOrHrd(k.idDepartemen) && k.idDepartemen === user?.idDepartemen)
+      return stafOnlyList.filter(k => !isDeptManagedByAdminOrHrd(k.idDepartemen) && k.idDepartemen === user?.idDepartemen)
     }
     if (selectedDeptFilter === "all") {
-      return karyawanList
+      return stafOnlyList
     }
-    return karyawanList.filter(k => k.idDepartemen === Number(selectedDeptFilter))
+    return stafOnlyList.filter(k => k.idDepartemen === Number(selectedDeptFilter))
   }, [karyawanList, isSPV, user?.idDepartemen, selectedDeptFilter, departemenList])
 
   const totalPages = Math.max(1, Math.ceil(displayedKaryawan.length / pageSize))
@@ -642,6 +655,37 @@ export default function SchedulePage() {
     }
   }
 
+  const handleExportExcel = async () => {
+    setExporting(true)
+    try {
+      const token = localStorage.getItem("accessToken")
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id").replace(/\/+$/, "")
+      const deptQuery = selectedDeptFilter !== "all" ? `&idDepartemen=${selectedDeptFilter}` : ""
+      const url = `${baseUrl}/jadwal-kerja/export/excel?year=${year}&month=${month + 1}${deptQuery}`
+
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      if (!res.ok) throw new Error("Gagal mengunduh file Excel jadwal kerja")
+
+      const blob = await res.blob()
+      const blobUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = blobUrl
+      link.download = `Jadwal_Kerja_Lengkap_${year}_${String(month + 1).padStart(2, "0")}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(blobUrl)
+    } catch (err: any) {
+      alert(err instanceof Error ? err.message : "Terjadi kesalahan saat mengekspor Excel")
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear(year - 1) }
     else setMonth(month - 1)
@@ -695,6 +739,22 @@ export default function SchedulePage() {
               </select>
             </div>
           )}
+
+          {/* Tombol Export Jadwal Lengkap ke Excel */}
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={exporting}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 transition-colors cursor-pointer disabled:opacity-50"
+            title="Export jadwal kerja gabungan (Supervisor & Karyawan) per Departemen ke file Excel"
+          >
+            {exporting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            )}
+            <span>Export Excel</span>
+          </button>
 
           {/* Tombol Hapus Jadwal untuk SPV / HRD */}
           {editableEmployees.length > 0 && (

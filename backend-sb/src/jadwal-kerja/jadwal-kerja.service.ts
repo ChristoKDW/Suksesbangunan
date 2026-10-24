@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, In } from 'typeorm';
 import * as ExcelJS from 'exceljs';
+import type { Response } from 'express';
 import { JadwalKerja } from './entities/jadwal-kerja.entity.js';
 import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
 import { Departemen } from '../departemen/entities/departemen.entity.js';
@@ -664,5 +665,296 @@ export class JadwalKerjaService {
       deletedCount: deleteRes.affected || 0,
       message: `${deleteRes.affected || 0} jadwal kerja berhasil dihapus dari rentang ${dto.startDate} s/d ${dto.endDate}`,
     };
+  }
+
+  async exportJadwalExcel(
+    res: Response,
+    year: number,
+    month: number,
+    idDepartemen?: number,
+    user?: { role: string; idDepartemen?: number },
+  ) {
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const monthNames = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    ];
+    const monthName = monthNames[month - 1] || `Bulan ${month}`;
+
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+    // 1. Libur nasional dan perusahaan
+    const { checkIndonesianHoliday } = await import('../hari-libur/indonesia-holidays.util.js');
+    const dbHolidays = await this.hariLiburRepo.find({
+      where: { tanggal: Between(startDate as any, endDate as any) },
+    });
+
+    const dayMeta: { day: number; label: string; isSunday: boolean; holidayName?: string }[] = [];
+    const dayLabels = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dateObj = new Date(year, month - 1, d);
+      const isSunday = dateObj.getDay() === 0;
+      const offHoliday = checkIndonesianHoliday(dStr);
+      const dbH = dbHolidays.find((h) => h.tanggal === dStr && h.isLibur);
+      const holidayName = dbH ? dbH.nama : offHoliday ? offHoliday.localName : undefined;
+      dayMeta.push({
+        day: d,
+        label: dayLabels[dateObj.getDay()],
+        isSunday,
+        holidayName,
+      });
+    }
+
+    // 2. Fetch departemen & karyawan
+    const targetDeptId = user?.role === 'SPV' ? user.idDepartemen : idDepartemen;
+
+    const karyawanWhere: any = { statusAktif: 'aktif' };
+    if (targetDeptId) {
+      karyawanWhere.idDepartemen = targetDeptId;
+    }
+
+    const [allKaryawan, allUsers, jadwalRecords] = await Promise.all([
+      this.karyawanRepo.find({
+        where: karyawanWhere,
+        relations: { departemen: { pengelola: true }, jabatan: true },
+        order: { nama: 'ASC' },
+      }),
+      this.userRepo.find({ relations: { departemen: true } }),
+      this.jadwalRepo.find({
+        where: { tanggal: Between(startDate as any, endDate as any) },
+        relations: { shift: true },
+      }),
+    ]);
+
+    // Map jadwal: `${idKaryawan}-${day}` -> JadwalKerja
+    const schedLookup = new Map<string, JadwalKerja>();
+    jadwalRecords.forEach((j) => {
+      const tglStr = String(j.tanggal).slice(0, 10);
+      const dayNum = Number(tglStr.split('-')[2]);
+      schedLookup.set(`${j.idKaryawan}-${dayNum}`, j);
+    });
+
+    // 3. Klasifikasi Karyawan (Supervisor vs Staf)
+    const enrichedList = allKaryawan.map((emp) => {
+      const matchedUser = allUsers.find((u) => matchUserName(emp.nama, u.nama));
+      const isRoleSpv = matchedUser?.role === 'SPV';
+      const jabName = emp.jabatan?.namaJabatan?.toLowerCase() || '';
+      const isJabatanSpv =
+        jabName.includes('supervisor') || jabName.includes('spv') || jabName.includes('leader');
+      const isSupervisor = isRoleSpv || isJabatanSpv;
+      return {
+        ...emp,
+        isSupervisor,
+      };
+    });
+
+    // 4. Kelompokkan per Departemen
+    const deptGroups = new Map<number | string, { namaDepartemen: string; employees: typeof enrichedList }>();
+    enrichedList.forEach((emp) => {
+      const dId = emp.idDepartemen || 'tanpa_dept';
+      const dName = emp.departemen?.namaDepartemen || 'Tanpa Departemen';
+      if (!deptGroups.has(dId)) {
+        deptGroups.set(dId, { namaDepartemen: dName, employees: [] });
+      }
+      deptGroups.get(dId)!.employees.push(emp);
+    });
+
+    // Urutkan setiap kelompok: Supervisor TERLEBIH DAHULU di atas, baru Staf
+    deptGroups.forEach((group) => {
+      group.employees.sort((a, b) => {
+        if (a.isSupervisor && !b.isSupervisor) return -1;
+        if (!a.isSupervisor && b.isSupervisor) return 1;
+        return a.nama.localeCompare(b.nama);
+      });
+    });
+
+    // 5. Bangun Workbook ExcelJS
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'CV Sukses Bangunan (LARAS)';
+    workbook.created = new Date();
+
+    const sheet = workbook.addWorksheet(`Jadwal ${monthName} ${year}`);
+
+    // Title Block
+    sheet.mergeCells('A1', 'E1');
+    const titleCell = sheet.getCell('A1');
+    titleCell.value = 'JADWAL KERJA CV SUKSES BANGUNAN';
+    titleCell.font = { bold: true, size: 14, color: { argb: 'FF1E3A8A' } };
+
+    sheet.mergeCells('A2', 'E2');
+    const subCell = sheet.getCell('A2');
+    subCell.value = `Periode: ${monthName} ${year} · Gabungan Supervisor & Karyawan per Departemen`;
+    subCell.font = { italic: true, size: 10, color: { argb: 'FF475569' } };
+
+    // Header Table (Row 4)
+    const headerRowValues: any[] = ['No', 'Nama Karyawan', 'Departemen', 'Jabatan', 'Peran'];
+    dayMeta.forEach((d) => {
+      headerRowValues.push(`${d.day}\n${d.label}`);
+    });
+    const headerRow = sheet.addRow(headerRowValues);
+    headerRow.height = 30;
+
+    // Styling Header Row
+    headerRow.eachCell((cell, colNumber) => {
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+
+      if (colNumber <= 5) {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF1E3A8A' }, // Navy blue
+        };
+      } else {
+        const meta = dayMeta[colNumber - 6];
+        if (meta && (meta.isSunday || meta.holidayName)) {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFDC2626' }, // Merah libur
+          };
+        } else {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF2563EB' }, // Royal blue
+          };
+        }
+      }
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' },
+      };
+    });
+
+    let rowNumber = 1;
+    deptGroups.forEach((group) => {
+      // Baris Sekat Header Departemen
+      const deptHeaderRow = sheet.addRow([`DEPARTEMEN: ${group.namaDepartemen.toUpperCase()} (${group.employees.length} Orang)`]);
+      sheet.mergeCells(`A${deptHeaderRow.number}`, `${sheet.getColumn(headerRowValues.length).letter}${deptHeaderRow.number}`);
+      deptHeaderRow.height = 24;
+      deptHeaderRow.getCell(1).font = { bold: true, size: 10, color: { argb: 'FF1E3A8A' } };
+      deptHeaderRow.getCell(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFEEF2FF' }, // Soft indigo fill
+      };
+      deptHeaderRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+      deptHeaderRow.getCell(1).border = {
+        top: { style: 'medium', color: { argb: 'FF93C5FD' } },
+        bottom: { style: 'medium', color: { argb: 'FF93C5FD' } },
+      };
+
+      // Baris per karyawan
+      group.employees.forEach((emp) => {
+        const isManagedAdmin = this.isManagedByAdminOrHrd(emp.departemen);
+        const rowData: any[] = [
+          rowNumber++,
+          emp.nama,
+          emp.departemen?.namaDepartemen || '-',
+          emp.jabatan?.namaJabatan || 'Staf',
+          emp.isSupervisor ? '👑 SUPERVISOR' : 'STAF',
+        ];
+
+        for (let d = 1; d <= daysInMonth; d++) {
+          const meta = dayMeta[d - 1];
+          const j = schedLookup.get(`${emp.idKaryawan}-${d}`);
+
+          if (isManagedAdmin) {
+            if (j?.isCuti) {
+              rowData.push('CUTI');
+            } else if (meta.holidayName) {
+              rowData.push('LIBUR');
+            } else if (meta.isSunday) {
+              rowData.push('OFF');
+            } else {
+              rowData.push('08:45-17:00');
+            }
+          } else {
+            if (j?.isCuti) {
+              rowData.push('CUTI');
+            } else if (j?.isLibur) {
+              rowData.push('OFF');
+            } else if (j?.shift) {
+              rowData.push(j.shift.namaShift);
+            } else {
+              rowData.push('—');
+            }
+          }
+        }
+
+        const dataRow = sheet.addRow(rowData);
+        dataRow.height = 20;
+
+        // Styling data cells
+        dataRow.eachCell((cell, colNumber) => {
+          cell.alignment = {
+            horizontal: colNumber === 2 || colNumber === 3 || colNumber === 4 ? 'left' : 'center',
+            vertical: 'middle',
+          };
+          cell.font = { size: 9 };
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          };
+
+          // Supervisor Row Highlight
+          if (emp.isSupervisor) {
+            if (colNumber <= 5) {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFFFBEB' }, // Soft amber highlight for supervisor
+              };
+            }
+            if (colNumber === 5) {
+              cell.font = { bold: true, size: 9, color: { argb: 'FFB45309' } };
+            }
+          }
+
+          // Nilai sel tanggal
+          if (colNumber > 5) {
+            const val = String(cell.value || '');
+            if (val === 'CUTI') {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } };
+              cell.font = { bold: true, size: 8, color: { argb: 'FF92400E' } };
+            } else if (val === 'OFF' || val === 'LIBUR') {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+              cell.font = { size: 8, color: { argb: 'FF64748B' } };
+            } else if (val !== '—') {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0F2FE' } };
+              cell.font = { bold: true, size: 8, color: { argb: 'FF0369A1' } };
+            } else {
+              cell.font = { size: 8, color: { argb: 'FF94A3B8' } };
+            }
+          }
+        });
+      });
+    });
+
+    // Column widths
+    sheet.getColumn(1).width = 5;  // No
+    sheet.getColumn(2).width = 25; // Nama Karyawan
+    sheet.getColumn(3).width = 22; // Departemen
+    sheet.getColumn(4).width = 20; // Jabatan
+    sheet.getColumn(5).width = 16; // Peran
+    for (let col = 6; col <= headerRowValues.length; col++) {
+      sheet.getColumn(col).width = 11;
+    }
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="Jadwal_Kerja_Lengkap_${year}_${String(month).padStart(2, '0')}.xlsx"`,
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
   }
 }

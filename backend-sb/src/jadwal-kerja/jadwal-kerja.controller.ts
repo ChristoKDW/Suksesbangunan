@@ -12,7 +12,9 @@ import {
   UseInterceptors,
   UploadedFile,
   Req,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -77,6 +79,31 @@ export class JadwalKerjaController {
     @Req() req: any,
   ) {
     return this.jadwalKerjaService.deleteRange(dto, req.user);
+  }
+
+  @Get('export/excel')
+  @ApiBearerAuth()
+  @UseGuards(JwtWebGuard, RolesGuard)
+  @Roles('Admin', 'HRD', 'SPV')
+  @ApiOperation({
+    summary: 'Export jadwal kerja lengkap ke Excel (gabungan Supervisor & Karyawan per Departemen)',
+  })
+  async exportExcel(
+    @Res() res: Response,
+    @Query('year', ParseIntPipe) year: number,
+    @Query('month', ParseIntPipe) month: number,
+    @Query('idDepartemen') idDepartemen?: string,
+    @Req() req: any = {},
+  ) {
+    const deptId =
+      idDepartemen && idDepartemen !== 'all' ? Number(idDepartemen) : undefined;
+    return this.jadwalKerjaService.exportJadwalExcel(
+      res,
+      year,
+      month,
+      deptId,
+      req.user,
+    );
   }
 
   @Post('import-excel')

@@ -26,6 +26,8 @@ import {
   Trash2,
   Filter,
   ShieldAlert,
+  FileSpreadsheet,
+  Download,
 } from "lucide-react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
@@ -63,6 +65,7 @@ export default function SupervisorSchedulePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savingSingle, setSavingSingle] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   // Filter Departemen
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>("all")
@@ -522,6 +525,37 @@ export default function SupervisorSchedulePage() {
     }
   }
 
+  const handleExportExcel = async () => {
+    setExporting(true)
+    try {
+      const token = localStorage.getItem("accessToken")
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id").replace(/\/+$/, "")
+      const deptQuery = selectedDeptFilter !== "all" ? `&idDepartemen=${selectedDeptFilter}` : ""
+      const url = `${baseUrl}/jadwal-kerja/export/excel?year=${year}&month=${month + 1}${deptQuery}`
+
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      if (!res.ok) throw new Error("Gagal mengunduh file Excel jadwal kerja")
+
+      const blob = await res.blob()
+      const blobUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = blobUrl
+      link.download = `Jadwal_Kerja_Lengkap_${year}_${String(month + 1).padStart(2, "0")}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(blobUrl)
+    } catch (err: any) {
+      alert(err instanceof Error ? err.message : "Terjadi kesalahan saat mengekspor Excel")
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const nextMonth = () => {
     if (month === 11) {
       setMonth(0)
@@ -555,6 +589,21 @@ export default function SupervisorSchedulePage() {
 
         {/* Action Buttons Header */}
         <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+          {/* Tombol Export Jadwal Lengkap ke Excel */}
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-950/40 text-xs font-bold transition-all disabled:opacity-50"
+            title="Export jadwal kerja lengkap (gabungan Supervisor dan Karyawan) per Departemen ke file Excel"
+          >
+            {exporting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            )}
+            <span>Export Excel</span>
+          </button>
           {isAdminOrHrd && (
             <>
               {/* Tombol Hapus Jadwal */}
