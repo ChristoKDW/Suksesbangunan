@@ -134,7 +134,7 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
                     ),
                     const Divider(height: 24),
 
-                    // Tampilan Jadwal Nyata Pemohon (Bukan Dropdown Palsu!)
+                    // Tampilan Jadwal Nyata Pemohon
                     Obx(() {
                       if (controller.isLoadingMySchedule.value) {
                         return const Padding(
@@ -171,7 +171,6 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
                       }
 
                       if (isShift) {
-                        // TUKAR SHIFT
                         if (sched['isOff'] == true) {
                           return _buildScheduleAlert(
                             icon: Icons.warning_amber_rounded,
@@ -182,10 +181,10 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
                         }
 
                         final shiftObj = sched['shift'];
-                        if (shiftObj != null) {
+                        if (shiftObj is Map) {
                           final namaShift = shiftObj['namaShift'] ?? 'Shift Kerja';
-                          final jamMulai = (shiftObj['jamMulai'] as String?)?.sliceSafe(0, 5) ?? '';
-                          final jamSelesai = (shiftObj['jamSelesai'] as String?)?.sliceSafe(0, 5) ?? '';
+                          final jamMulai = (shiftObj['jamMulai']?.toString() ?? '').sliceSafe(0, 5);
+                          final jamSelesai = (shiftObj['jamSelesai']?.toString() ?? '').sliceSafe(0, 5);
 
                           return Container(
                             padding: const EdgeInsets.all(12),
@@ -245,10 +244,9 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
                           icon: Icons.info_outline,
                           color: Colors.amber,
                           title: 'Belum Ada Shift Tertulis',
-                          message: 'Jadwal shift kerja Anda belum ditentukan pada tanggal ini.',
+                          message: 'Jadwal shift kerja Anda belum ditentukan pada tanggal ini. Silakan pilih tanggal lain saat Anda memiliki shift.',
                         );
                       } else {
-                        // TUKAR HARI OFF
                         if (sched['isOff'] == true) {
                           return Container(
                             padding: const EdgeInsets.all(12),
@@ -278,7 +276,7 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'Hari Libur Rutin (OFF)',
+                                        'Hari Libur (OFF)',
                                         style: TextStyle(
                                           fontSize: 13.5,
                                           fontWeight: FontWeight.bold,
@@ -318,7 +316,7 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
               const SizedBox(height: 24),
 
               // -- 2. Jadwal Yang Anda Inginkan --
-              _buildSectionTitle('2. Tanggal Jadwal Yang Anda Inginkan'),
+              _buildSectionTitle('2. Tanggal & Shift Yang Anda Inginkan'),
               const SizedBox(height: 10),
               Container(
                 padding: const EdgeInsets.all(16),
@@ -338,23 +336,81 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
                         controller.setTanggalTarget(picked);
                       },
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      controller.jenisPertukaran.value == 'shift'
-                          ? 'Pilih tanggal di atas, lalu pilih rekan kerja di bawah untuk melihat shift nyata yang mereka miliki pada hari itu.'
-                          : 'Pilih tanggal di atas untuk mencari rekan kerja / Supervisor yang sedang berstatus libur (OFF) pada hari tersebut.',
-                      style: const TextStyle(fontSize: 11, color: AppColors.slateLight),
-                    ),
+
+                    // Filter Shift Rekan pada Tanggal Target (Khusus Tukar Shift)
+                    Obx(() {
+                      final isShift = controller.jenisPertukaran.value == 'shift';
+                      final activeFilter = controller.selectedFilterShiftId.value;
+                      // Trigger reactive rebuild when shifts or peers change
+                      final _ = controller.availableShifts.length + controller.peerCandidates.length;
+                      final shiftOptions = controller.shiftFilterOptions;
+
+                      if (!isShift) {
+                        return const Padding(
+                          padding: EdgeInsets.only(top: 10),
+                          child: Text(
+                            'Pilih tanggal di atas untuk menampilkan rekan kerja / Supervisor yang berstatus libur (OFF) sesuai jadwal pada hari tersebut.',
+                            style: TextStyle(fontSize: 11, color: AppColors.slateLight),
+                          ),
+                        );
+                      }
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 14),
+                          const Text(
+                            'Filter Shift Rekan Pada Tanggal Ini (Sesuai Jadwal):',
+                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.slateDark),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _buildShiftFilterChip(
+                                label: 'Semua Shift (${controller.peerCandidates.length})',
+                                isSelected: activeFilter == null,
+                                onTap: () => controller.setFilterShift(null),
+                              ),
+                              ...shiftOptions.map((opt) {
+                                final sid = opt['idShift'] as int;
+                                final nama = opt['namaShift']?.toString() ?? 'Shift';
+                                final jam = opt['jam']?.toString() ?? '';
+                                final cnt = opt['count'] as int? ?? 0;
+                                final labelText = jam.isNotEmpty
+                                    ? '$nama ($jam) • $cnt'
+                                    : '$nama • $cnt';
+                                return _buildShiftFilterChip(
+                                  label: labelText,
+                                  isSelected: activeFilter == sid,
+                                  onTap: () => controller.setFilterShift(sid),
+                                );
+                              }),
+                            ],
+                          ),
+                        ],
+                      );
+                    }),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
 
               // -- 3. Pilih Rekan Kerja (Lawan Tukar) --
-              _buildSectionTitle('3. Pilih Rekan Kerja / Supervisor (Lawan Tukar)'),
+              _buildSectionTitle('3. Pilih Rekan Kerja / Supervisor (Tekan Nama Rekan)'),
               const SizedBox(height: 10),
               Obx(() {
-                if (controller.isLoadingPeers.value) {
+                // PENTING: Baca semua variabel reaktif secara sinkron di awal Obx!
+                final isLoading = controller.isLoadingPeers.value;
+                final isShift = controller.jenisPertukaran.value == 'shift';
+                final currentSelectedId = controller.selectedPeerId.value;
+                final currentSelectedPeer = controller.selectedPeer.value;
+                final _ = controller.selectedFilterShiftId.value;
+                final _ = controller.peerCandidates.length;
+                final peers = controller.filteredPeers;
+
+                if (isLoading) {
                   return const Center(
                     child: Padding(
                       padding: EdgeInsets.symmetric(vertical: 24),
@@ -363,7 +419,7 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
                   );
                 }
 
-                if (controller.peerCandidates.isEmpty) {
+                if (peers.isEmpty) {
                   return Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -377,126 +433,189 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
                         Icon(Icons.people_outline, size: 40, color: Colors.grey.shade400),
                         const SizedBox(height: 8),
                         Text(
-                          controller.jenisPertukaran.value == 'shift'
-                              ? 'Tidak ada rekan sebidang atau Supervisor yang memiliki jadwal shift kerja pada tanggal yang dipilih.'
-                              : 'Tidak ada rekan sebidang atau Supervisor yang memiliki hari libur (OFF) pada tanggal yang dipilih.',
+                          isShift
+                              ? (controller.selectedFilterShiftId.value != null
+                                  ? 'Tidak ada rekan yang terjadwal pada shift tersebut di tanggal ini. Tekan "Semua Shift" untuk melihat jadwal rekan lainnya.'
+                                  : 'Tidak ada rekan sebidang atau Supervisor yang memiliki jadwal shift kerja tertulis pada tanggal yang dipilih.')
+                              : 'Tidak ada rekan sebidang atau Supervisor yang memiliki jadwal libur (OFF) tertulis pada tanggal yang dipilih.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                          style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600, height: 1.4),
                         ),
                       ],
                     ),
                   );
                 }
 
-                return ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: controller.peerCandidates.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final peer = controller.peerCandidates[index];
-                    final isSelected = controller.selectedPeer.value?['idKaryawan'] == peer['idKaryawan'];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ...peers.map((peer) {
+                      final rawId = peer['idKaryawan'];
+                      final peerId = rawId is int
+                          ? rawId
+                          : int.tryParse(rawId?.toString() ?? '');
+                      final isSelected = currentSelectedId != null && peerId == currentSelectedId;
+                      final nama = peer['nama']?.toString() ?? '-';
+                      final nik = peer['nik']?.toString() ?? '-';
+                      final jabatan = peer['jabatan']?.toString() ?? 'Staf';
+                      final isPeerOff = peer['isOff'] == true;
+                      final statusLabel = peer['statusLabel']?.toString() ?? '-';
 
-                    return InkWell(
-                      onTap: () => controller.selectPeer(peer),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppColors.redContainer.withValues(alpha: 0.25) : AppColors.white,
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Material(
+                          color: isSelected
+                              ? AppColors.redContainer.withValues(alpha: 0.28)
+                              : AppColors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected ? AppColors.redPrimary : AppColors.borderGrey,
-                            width: isSelected ? 2 : 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 20,
-                              backgroundColor: isSelected ? AppColors.redPrimary : AppColors.redContainer,
-                              child: Text(
-                                (peer['nama'] as String?)?.isNotEmpty == true
-                                    ? (peer['nama'] as String).substring(0, 1).toUpperCase()
-                                    : '?',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: isSelected ? Colors.white : AppColors.redPrimary,
+                          child: InkWell(
+                            onTap: () => controller.selectPeer(peer),
+                            borderRadius: BorderRadius.circular(12),
+                            splashColor: AppColors.redPrimary.withValues(alpha: 0.15),
+                            highlightColor: AppColors.redPrimary.withValues(alpha: 0.08),
+                            child: Container(
+                              padding: const EdgeInsets.all(13),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected ? AppColors.redPrimary : AppColors.borderGrey,
+                                  width: isSelected ? 2.0 : 1.0,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              child: Row(
                                 children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          peer['nama'] ?? '-',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.slateDark),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${peer['nik'] ?? '-'} · ${peer['jabatan'] ?? 'Staf'}',
-                                    style: const TextStyle(fontSize: 11, color: AppColors.slateLight),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: peer['isOff'] == true ? Colors.amber.shade50 : Colors.blue.shade50,
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: peer['isOff'] == true ? Colors.amber.shade300 : Colors.blue.shade300,
+                                  CircleAvatar(
+                                    radius: 21,
+                                    backgroundColor: isSelected
+                                        ? AppColors.redPrimary
+                                        : AppColors.redContainer,
+                                    child: Text(
+                                      nama.isNotEmpty ? nama.substring(0, 1).toUpperCase() : '?',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: isSelected ? Colors.white : AppColors.redPrimary,
                                       ),
                                     ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Icon(
-                                          peer['isOff'] == true ? Icons.beach_access : Icons.schedule,
-                                          size: 12,
-                                          color: peer['isOff'] == true ? Colors.amber.shade900 : Colors.blue.shade900,
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                nama,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 13.5,
+                                                  color: isSelected ? AppColors.redPrimary : AppColors.slateDark,
+                                                ),
+                                              ),
+                                            ),
+                                            if (isSelected)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.redPrimary,
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: const Text(
+                                                  'TERPILIH',
+                                                  style: TextStyle(
+                                                    fontSize: 9.5,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
                                         ),
-                                        const SizedBox(width: 4),
+                                        const SizedBox(height: 2),
                                         Text(
-                                          peer['statusLabel'] ?? '-',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: peer['isOff'] == true ? Colors.amber.shade900 : Colors.blue.shade900,
+                                          '$nik · $jabatan',
+                                          style: const TextStyle(fontSize: 11, color: AppColors.slateLight),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                          decoration: BoxDecoration(
+                                            color: isPeerOff ? Colors.amber.shade50 : Colors.blue.shade50,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(
+                                              color: isPeerOff ? Colors.amber.shade300 : Colors.blue.shade300,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                isPeerOff ? Icons.beach_access : Icons.schedule,
+                                                size: 12,
+                                                color: isPeerOff ? Colors.amber.shade900 : Colors.blue.shade900,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Flexible(
+                                                child: Text(
+                                                  'Jadwal: $statusLabel',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: isPeerOff ? Colors.amber.shade900 : Colors.blue.shade900,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
+                                  const SizedBox(width: 10),
+                                  Icon(
+                                    isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                                    color: isSelected ? AppColors.redPrimary : AppColors.slateLight,
+                                    size: 26,
+                                  ),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            // Radio indicator
-                            Container(
-                              width: 22,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isSelected ? AppColors.redPrimary : AppColors.slateLight.withValues(alpha: 0.5),
-                                  width: isSelected ? 6 : 2,
+                          ),
+                        ),
+                      );
+                    }),
+
+                    // Ringkasan Pertukaran Saat Rekan Sudah Dipilih
+                    if (currentSelectedPeer != null) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.green.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle, color: Colors.green.shade700, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Rekan terpilih: ${currentSelectedPeer['nama']} (${currentSelectedPeer['statusLabel'] ?? '-'})',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green.shade900,
                                 ),
-                                color: AppColors.white,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    );
-                  },
+                    ],
+                  ],
                 );
               }),
               const SizedBox(height: 24),
@@ -528,28 +647,37 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
               ),
               const SizedBox(height: 32),
 
-              // -- Submit Button (Dengan Validasi Ketat!) --
+              // -- Submit Button --
               Obx(() {
+                // Baca semua state reaktif agar tombol selalu sinkron
+                final selectedId = controller.selectedPeerId.value;
+                final _ = controller.idShiftPemohon.value;
+                final _ = controller.idShiftTarget.value;
+                final _ = controller.mySchedule.value;
+                final isSubmitting = controller.isSubmitting.value;
                 final canSubmit = controller.canSubmit;
+
                 return SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: canSubmit ? controller.submitPertukaran : null,
+                    onPressed: isSubmitting ? null : controller.submitPertukaran,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: canSubmit ? AppColors.redPrimary : Colors.grey.shade300,
-                      foregroundColor: canSubmit ? AppColors.white : Colors.grey.shade500,
+                      backgroundColor: canSubmit
+                          ? AppColors.redPrimary
+                          : (selectedId != null ? Colors.amber.shade800 : Colors.grey.shade400),
+                      foregroundColor: AppColors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: canSubmit ? 2 : 0,
                     ),
-                    child: controller.isSubmitting.value
+                    child: isSubmitting
                         ? const SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.white),
                           )
                         : Text(
-                            controller.selectedPeer.value == null
+                            selectedId == null
                                 ? 'Pilih Rekan Terlebih Dahulu'
                                 : 'Kirim Permintaan Pertukaran',
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
@@ -559,6 +687,38 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
               }),
               const SizedBox(height: 24),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShiftFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: isSelected ? AppColors.redPrimary : AppColors.surfaceWhite,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? AppColors.redPrimary : AppColors.borderGrey,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: isSelected ? Colors.white : AppColors.slateDark,
+            ),
           ),
         ),
       ),
@@ -617,35 +777,35 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
+    return Material(
+      color: isSelected ? AppColors.redPrimary : AppColors.white,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.redPrimary : AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppColors.redPrimary : AppColors.borderGrey,
-          ),
-          boxShadow: isSelected
-              ? [BoxShadow(color: AppColors.redPrimary.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 3))]
-              : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 18, color: isSelected ? AppColors.white : AppColors.slateDark),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: isSelected ? AppColors.white : AppColors.slateDark,
-              ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? AppColors.redPrimary : AppColors.borderGrey,
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: isSelected ? AppColors.white : AppColors.slateDark),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: isSelected ? AppColors.white : AppColors.slateDark,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -660,46 +820,51 @@ class ExchangeFormView extends GetView<ExchangeFormController> {
     final displayFormat = DateFormat('EEEE, dd MMMM yyyy', 'id');
     return Obx(() {
       final date = dateStream.value ?? DateTime.now();
-      return InkWell(
-        onTap: () async {
-          final picked = await showDatePicker(
-            context: context,
-            initialDate: date,
-            firstDate: DateTime.now(),
-            lastDate: DateTime.now().add(const Duration(days: 90)),
-            builder: (ctx, child) => Theme(data: AppTheme.datePickerTheme(ctx), child: child!),
-          );
-          if (picked != null) {
-            onDatePicked(picked);
-          }
-        },
+      return Material(
+        color: AppColors.surfaceWhite,
         borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceWhite,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.borderGrey),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.calendar_month, color: AppColors.redPrimary, size: 20),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label, style: const TextStyle(fontSize: 11, color: AppColors.slateLight)),
-                    const SizedBox(height: 2),
-                    Text(
-                      displayFormat.format(date),
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.slateDark),
-                    ),
-                  ],
+        child: InkWell(
+          onTap: () async {
+            final now = DateTime.now();
+            final today = DateTime(now.year, now.month, now.day);
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: date.isBefore(today) ? today : date,
+              firstDate: today,
+              lastDate: today.add(const Duration(days: 90)),
+              builder: (ctx, child) => Theme(data: AppTheme.datePickerTheme(ctx), child: child!),
+            );
+            if (picked != null) {
+              onDatePicked(picked);
+            }
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.borderGrey),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.calendar_month, color: AppColors.redPrimary, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: const TextStyle(fontSize: 11, color: AppColors.slateLight)),
+                      const SizedBox(height: 2),
+                      Text(
+                        displayFormat.format(date),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.slateDark),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const Icon(Icons.chevron_right, color: AppColors.slateLight, size: 20),
-            ],
+                const Icon(Icons.chevron_right, color: AppColors.slateLight, size: 20),
+              ],
+            ),
           ),
         ),
       );

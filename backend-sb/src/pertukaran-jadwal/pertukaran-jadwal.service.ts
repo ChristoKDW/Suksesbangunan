@@ -20,6 +20,7 @@ import {
   businessToday,
   normalizeDateOnly,
 } from '../common/utils/business-date.util.js';
+import { matchUserName } from '../karyawan/name-matcher.util.js';
 
 @Injectable()
 export class PertukaranJadwalService {
@@ -50,12 +51,8 @@ export class PertukaranJadwalService {
     ) {
       return true;
     }
-    const cleanKaryawanName = karyawan.nama.trim().toLowerCase();
-    const userMatch = await this.userRepo
-      .createQueryBuilder('u')
-      .where('LOWER(TRIM(u.nama)) = :name', { name: cleanKaryawanName })
-      .getOne();
-    return userMatch?.role === 'SPV';
+    const spvUsers = await this.userRepo.find({ where: { role: 'SPV' } });
+    return spvUsers.some((u) => matchUserName(u.nama, karyawan.nama));
   }
 
   /**
@@ -66,11 +63,8 @@ export class PertukaranJadwalService {
     if (karyawan.idDepartemen) {
       deptIds.add(Number(karyawan.idDepartemen));
     }
-    const cleanKaryawanName = karyawan.nama.trim().toLowerCase();
-    const userMatch = await this.userRepo
-      .createQueryBuilder('u')
-      .where('LOWER(TRIM(u.nama)) = :name', { name: cleanKaryawanName })
-      .getOne();
+    const allUsers = await this.userRepo.find();
+    const userMatch = allUsers.find((u) => matchUserName(u.nama, karyawan.nama));
     if (userMatch) {
       if (userMatch.idDepartemen) {
         deptIds.add(Number(userMatch.idDepartemen));
@@ -222,25 +216,6 @@ export class PertukaranJadwalService {
           statusLabel: `${jadwal.shift.namaShift} (${jadwal.shift.jamMulai?.slice(0, 5)} - ${jadwal.shift.jamSelesai?.slice(0, 5)})`,
         };
       }
-    }
-
-    // Cek hari libur rutin jika tidak ada jadwal tertulis di tabel jadwal_kerja
-    const parts = tanggalStr.split('-');
-    const dateObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-    const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const dayName = dayNames[dateObj.getDay()];
-    const empOffDay = emp.hariLibur?.trim() || 'Minggu';
-
-    if (empOffDay.toLowerCase() === dayName.toLowerCase()) {
-      return {
-        tanggal: tanggalStr,
-        isCuti: false,
-        isOff: true,
-        hasSchedule: true,
-        idShift: null,
-        shift: null,
-        statusLabel: 'Hari Libur Rutin (OFF)',
-      };
     }
 
     return {
@@ -550,12 +525,17 @@ export class PertukaranJadwalService {
   async getShiftsForMobile(idKaryawan: number) {
     const pemohon = await this.karyawanRepo.findOne({
       where: { idKaryawan },
-      relations: { departemen: { pengelola: true } },
+      relations: { departemen: { pengelola: true }, jabatan: true },
     });
     if (!pemohon) {
       throw new NotFoundException('Data karyawan tidak ditemukan');
     }
-    this.validateKaryawanOperasional(pemohon);
+    await this.validateKaryawanOperasional(pemohon);
+
+    const isPemohonSpv = await this.isKaryawanSpv(pemohon);
+    const managedDeptIds = isPemohonSpv
+      ? await this.getManagedDeptIdsForKaryawan(pemohon)
+      : new Set<number>(pemohon.idDepartemen ? [Number(pemohon.idDepartemen)] : []);
 
     const shifts = await this.shiftRepo.find({
       order: { jamMulai: 'ASC' },
@@ -573,8 +553,8 @@ export class PertukaranJadwalService {
         return false;
       }
 
-      // Jika shift di-assign khusus untuk departemen tertentu, harus sama dengan departemen pemohon
-      if (s.idDepartemen && s.idDepartemen !== pemohon.idDepartemen) {
+      // Jika shift di-assign khusus untuk departemen tertentu, harus sesuai departemen pemohon/binaan
+      if (s.idDepartemen && !managedDeptIds.has(Number(s.idDepartemen))) {
         return false;
       }
 
@@ -634,13 +614,12 @@ export class PertukaranJadwalService {
         const spvUsers = await this.userRepo.find({
           where: { idUser: In(spvUserIds) },
         });
-        const spvNames = spvUsers.map((u) => u.nama.trim().toLowerCase());
         const allKaryawan = await this.karyawanRepo.find({
           where: { statusAktif: 'aktif' },
           relations: { jabatan: true, departemen: true },
         });
         const matchedSpvKaryawan = allKaryawan.filter((k) =>
-          spvNames.includes(k.nama.trim().toLowerCase()),
+          spvUsers.some((u) => matchUserName(u.nama, k.nama)),
         );
         matchedSpvKaryawan.forEach((spvK) => {
           if (!candidates.some((c) => c.idKaryawan === spvK.idKaryawan)) {
@@ -669,23 +648,6 @@ export class PertukaranJadwalService {
       }
     }
 
-    const parts = tanggalTarget.split('-');
-    const dateObj = new Date(
-      Number(parts[0]),
-      Number(parts[1]) - 1,
-      Number(parts[2]),
-    );
-    const dayNames = [
-      'Minggu',
-      'Senin',
-      'Selasa',
-      'Rabu',
-      'Kamis',
-      'Jumat',
-      'Sabtu',
-    ];
-    const targetDayName = dayNames[dateObj.getDay()];
-
     const results: {
       idKaryawan: number;
       nama: string;
@@ -706,6 +668,11 @@ export class PertukaranJadwalService {
         relations: { shift: true },
       });
 
+      // Hanya tampilkan rekan yang benar-benar memiliki jadwal resmi di tabel jadwal_kerja pada tanggal tersebut
+      if (!jadwal || jadwal.isCuti) {
+        continue;
+      }
+
       let isOff = false;
       let currentShift: {
         idShift: number;
@@ -713,25 +680,14 @@ export class PertukaranJadwalService {
         jam: string;
       } | null = null;
 
-      if (jadwal) {
-        if (jadwal.isCuti) {
-          // Karyawan sedang cuti pada hari itu, tidak bisa diajak tukar
-          continue;
-        } else if (jadwal.isLibur || !jadwal.idShift) {
-          isOff = true;
-        } else if (jadwal.shift) {
-          currentShift = {
-            idShift: jadwal.shift.idShift,
-            namaShift: jadwal.shift.namaShift,
-            jam: `${jadwal.shift.jamMulai?.slice(0, 5)} - ${jadwal.shift.jamSelesai?.slice(0, 5)}`,
-          };
-        }
-      } else {
-        // Jika belum ada jadwal tersimpan manual, cek default hari libur rutin
-        const peerOffDay = peer.hariLibur?.trim() || 'Minggu';
-        if (peerOffDay.toLowerCase() === targetDayName.toLowerCase()) {
-          isOff = true;
-        }
+      if (jadwal.isLibur || !jadwal.idShift) {
+        isOff = true;
+      } else if (jadwal.shift) {
+        currentShift = {
+          idShift: jadwal.shift.idShift,
+          namaShift: jadwal.shift.namaShift,
+          jam: `${jadwal.shift.jamMulai?.slice(0, 5)} - ${jadwal.shift.jamSelesai?.slice(0, 5)}`,
+        };
       }
 
       // Filter berdasarkan jenis pertukaran
@@ -1312,6 +1268,7 @@ export class PertukaranJadwalService {
    * Ambil semua untuk SPV / HRD / Admin
    */
   async findAll(user: {
+    idUser?: number;
     role: string;
     idDepartemen?: number;
   }): Promise<PengajuanPertukaran[]> {
@@ -1330,10 +1287,25 @@ export class PertukaranJadwalService {
       .orderBy('p.createdAt', 'DESC');
 
     if (user.role === 'SPV') {
-      if (!user.idDepartemen) return [];
-      qb.andWhere('pemohon.idDepartemen = :idDept', {
-        idDept: user.idDepartemen,
-      });
+      const deptRepo = this.dataSource.getRepository(Departemen);
+      const allDepts = await deptRepo.find({ relations: { pengelola: true } });
+      const allowedDeptIds = new Set<number>();
+      if (user.idDepartemen) allowedDeptIds.add(Number(user.idDepartemen));
+      if (user.idUser) {
+        allDepts.forEach((d) => {
+          if (
+            (d.idPengelola && Number(d.idPengelola) === Number(user.idUser)) ||
+            d.pengelola?.some((p) => Number(p.idUser) === Number(user.idUser))
+          ) {
+            allowedDeptIds.add(Number(d.idDepartemen));
+          }
+        });
+      }
+      if (allowedDeptIds.size === 0) return [];
+      qb.andWhere(
+        '(pemohon.idDepartemen IN (:...deptIds) OR target.idDepartemen IN (:...deptIds))',
+        { deptIds: Array.from(allowedDeptIds) },
+      );
     }
 
     return qb.getMany();

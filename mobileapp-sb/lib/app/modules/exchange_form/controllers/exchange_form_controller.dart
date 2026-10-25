@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
@@ -15,6 +16,9 @@ class ExchangeFormController extends GetxController {
   final idShiftPemohon = RxnInt();
   final idShiftTarget = RxnInt();
 
+  // Filter shift opsional pada Bagian 2 (null = Semua Shift)
+  final selectedFilterShiftId = RxnInt();
+
   // Jadwal nyata milik user pemohon pada tanggalPemohon
   final mySchedule = Rxn<Map<String, dynamic>>();
   final isLoadingMySchedule = false.obs;
@@ -22,6 +26,7 @@ class ExchangeFormController extends GetxController {
   final availableShifts = <Map<String, dynamic>>[].obs;
   final peerCandidates = <Map<String, dynamic>>[].obs;
   final selectedPeer = Rxn<Map<String, dynamic>>();
+  final selectedPeerId = RxnInt();
 
   final alasanController = TextEditingController();
 
@@ -62,14 +67,62 @@ class ExchangeFormController extends GetxController {
         return;
       }
     } catch (_) {}
+
+    await fetchShifts();
+    await _initSmartDefaultDate();
+    await fetchPeers();
+  }
+
+  /// Cari tanggal terdekat di mana karyawan memiliki shift aktif (jika default besok kebetulan libur/OFF)
+  Future<void> _initSmartDefaultDate() async {
     await fetchMySchedule();
-    fetchPeers();
+    if (jenisPertukaran.value == 'shift' && idShiftPemohon.value == null) {
+      final now = DateTime.now();
+      for (int offset = 0; offset <= 6; offset++) {
+        if (offset == 1) continue; // sudah dicek di atas
+        final candidateDate = DateTime(now.year, now.month, now.day).add(Duration(days: offset));
+        try {
+          final tglStr = dateFormat.format(candidateDate);
+          final res = await _api.getMySchedule(tanggal: tglStr);
+          if (res['isOff'] != true && res['isCuti'] != true && res['idShift'] != null) {
+            tanggalPemohon.value = candidateDate;
+            tanggalTarget.value = candidateDate;
+            mySchedule.value = res;
+            idShiftPemohon.value = _parseInt(res['idShift']);
+            return;
+          }
+        } catch (_) {}
+      }
+    }
+  }
+
+  Future<void> fetchShifts() async {
+    isLoadingShifts.value = true;
+    try {
+      final res = await _api.getShifts();
+      final mapped = res
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      availableShifts.assignAll(mapped);
+    } catch (_) {
+      availableShifts.clear();
+    } finally {
+      isLoadingShifts.value = false;
+    }
   }
 
   @override
   void onClose() {
     alasanController.dispose();
     super.onClose();
+  }
+
+  int? _parseInt(dynamic val) {
+    if (val == null) return null;
+    if (val is int) return val;
+    if (val is num) return val.toInt();
+    return int.tryParse(val.toString());
   }
 
   /// Mengambil jadwal nyata pemohon pada tanggal yang dipilih
@@ -85,7 +138,9 @@ class ExchangeFormController extends GetxController {
         if (res['isOff'] == true || res['isCuti'] == true) {
           idShiftPemohon.value = null;
         } else if (res['idShift'] != null) {
-          idShiftPemohon.value = res['idShift'] as int;
+          idShiftPemohon.value = _parseInt(res['idShift']);
+        } else if (res['shift'] is Map && res['shift']['idShift'] != null) {
+          idShiftPemohon.value = _parseInt(res['shift']['idShift']);
         } else {
           idShiftPemohon.value = null;
         }
@@ -103,6 +158,7 @@ class ExchangeFormController extends GetxController {
     if (tanggalTarget.value == null) return;
     isLoadingPeers.value = true;
     selectedPeer.value = null;
+    selectedPeerId.value = null;
     idShiftTarget.value = null;
 
     try {
@@ -111,23 +167,125 @@ class ExchangeFormController extends GetxController {
         tanggalTarget: tglStr,
         jenisPertukaran: jenisPertukaran.value,
       );
-      peerCandidates.value = res.cast<Map<String, dynamic>>();
+      final list = res
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+      peerCandidates.assignAll(list);
+
+      // Jika filter shift aktif tidak ada di daftar kandidat baru, reset ke Semua Shift
+      if (selectedFilterShiftId.value != null) {
+        final hasShift = list.any((p) {
+          final cs = p['currentShift'];
+          final sid = cs is Map ? _parseInt(cs['idShift']) : null;
+          return sid == selectedFilterShiftId.value;
+        });
+        if (!hasShift) {
+          selectedFilterShiftId.value = null;
+        }
+      }
     } catch (e) {
       peerCandidates.clear();
-      Get.snackbar('Perhatian', 'Gagal mencari rekan: $e',
-          backgroundColor: AppColors.redContainer, colorText: AppColors.redPrimary);
+      Get.snackbar(
+        'Perhatian',
+        e.toString(),
+        backgroundColor: AppColors.redContainer,
+        colorText: AppColors.redPrimary,
+      );
     } finally {
       isLoadingPeers.value = false;
     }
   }
 
+  /// Daftar rekan yang sudah difilter sesuai pilihan shift pada Bagian 2
+  List<Map<String, dynamic>> get filteredPeers {
+    final all = peerCandidates.toList();
+    if (jenisPertukaran.value != 'shift') return all;
+    final filterId = selectedFilterShiftId.value;
+    if (filterId == null) return all;
+    return all.where((p) {
+      final cs = p['currentShift'];
+      final sid = cs is Map ? _parseInt(cs['idShift']) : null;
+      return sid == filterId;
+    }).toList();
+  }
+
+  /// Pilihan filter shift beserta jumlah rekan yang terjadwal di shift tersebut pada tanggalTarget
+  List<Map<String, dynamic>> get shiftFilterOptions {
+    final Map<int, Map<String, dynamic>> map = {};
+    for (final s in availableShifts) {
+      final sid = _parseInt(s['idShift']);
+      if (sid != null) {
+        final jm = (s['jamMulai']?.toString() ?? '');
+        final js = (s['jamSelesai']?.toString() ?? '');
+        final jamStr = (jm.length >= 5 && js.length >= 5)
+            ? '${jm.substring(0, 5)} - ${js.substring(0, 5)}'
+            : '';
+        map[sid] = {
+          'idShift': sid,
+          'namaShift': s['namaShift']?.toString() ?? 'Shift',
+          'jam': jamStr,
+          'count': 0,
+        };
+      }
+    }
+    for (final p in peerCandidates) {
+      final cs = p['currentShift'];
+      if (cs is Map) {
+        final sid = _parseInt(cs['idShift']);
+        if (sid != null) {
+          if (!map.containsKey(sid)) {
+            map[sid] = {
+              'idShift': sid,
+              'namaShift': cs['namaShift']?.toString() ?? 'Shift',
+              'jam': cs['jam']?.toString() ?? '',
+              'count': 1,
+            };
+          } else {
+            map[sid]!['count'] = (map[sid]!['count'] as int) + 1;
+          }
+        }
+      }
+    }
+    return map.values.toList();
+  }
+
+  void setFilterShift(int? idShift) {
+    HapticFeedback.selectionClick();
+    selectedFilterShiftId.value = idShift;
+
+    final matches = filteredPeers;
+    if (selectedPeerId.value != null) {
+      final stillInList = matches.any((p) => _parseInt(p['idKaryawan']) == selectedPeerId.value);
+      if (!stillInList) {
+        selectedPeer.value = null;
+        selectedPeerId.value = null;
+        idShiftTarget.value = null;
+      }
+    }
+    // Jika hanya ada 1 rekan pada shift yang dipilih, otomatis pilih rekan tersebut agar praktis
+    if (idShift != null && matches.length == 1) {
+      selectPeer(matches.first);
+    }
+  }
+
   void setJenisPertukaran(String jenis) {
     if (jenisPertukaran.value == jenis) return;
+    HapticFeedback.selectionClick();
     jenisPertukaran.value = jenis;
+    selectedFilterShiftId.value = null;
     selectedPeer.value = null;
+    selectedPeerId.value = null;
     idShiftTarget.value = null;
     if (jenis == 'shift') {
       tanggalTarget.value = tanggalPemohon.value;
+    } else {
+      // Untuk tukar off, tanggal target harus berbeda dari tanggal pemohon
+      if (tanggalPemohon.value != null &&
+          tanggalTarget.value != null &&
+          dateFormat.format(tanggalPemohon.value!) == dateFormat.format(tanggalTarget.value!)) {
+        tanggalTarget.value = tanggalPemohon.value!.add(const Duration(days: 1));
+      }
     }
     fetchMySchedule();
     fetchPeers();
@@ -148,11 +306,19 @@ class ExchangeFormController extends GetxController {
   }
 
   void selectPeer(Map<String, dynamic> peer) {
-    selectedPeer.value = peer;
+    HapticFeedback.selectionClick();
+    final parsedId = _parseInt(peer['idKaryawan']);
+    final peerCopy = Map<String, dynamic>.from(peer);
+    selectedPeerId.value = parsedId;
+    selectedPeer.value = peerCopy;
+    selectedPeer.refresh();
+
     if (jenisPertukaran.value == 'shift') {
-      final currentShift = peer['currentShift'];
-      if (currentShift != null && currentShift['idShift'] != null) {
-        idShiftTarget.value = currentShift['idShift'] as int;
+      final currentShift = peerCopy['currentShift'];
+      if (currentShift is Map && currentShift['idShift'] != null) {
+        idShiftTarget.value = _parseInt(currentShift['idShift']);
+      } else if (peerCopy['idShift'] != null) {
+        idShiftTarget.value = _parseInt(peerCopy['idShift']);
       } else {
         idShiftTarget.value = null;
       }
@@ -161,10 +327,10 @@ class ExchangeFormController extends GetxController {
     }
   }
 
-  /// Cek validasi form sebelum tombol submit aktif
+  /// Cek validasi form sebelum tombol submit aktif penuh
   bool get canSubmit {
     if (isSubmitting.value) return false;
-    if (selectedPeer.value == null) return false;
+    if (selectedPeerId.value == null || selectedPeer.value == null) return false;
     if (tanggalPemohon.value == null || tanggalTarget.value == null) return false;
 
     if (jenisPertukaran.value == 'shift') {
@@ -174,27 +340,104 @@ class ExchangeFormController extends GetxController {
     } else if (jenisPertukaran.value == 'off') {
       if (mySchedule.value?['isOff'] != true) return false;
       if (selectedPeer.value?['isOff'] != true) return false;
+      if (dateFormat.format(tanggalPemohon.value!) == dateFormat.format(tanggalTarget.value!)) {
+        return false;
+      }
     }
     return true;
   }
 
   Future<void> submitPertukaran() async {
-    if (!canSubmit) {
-      if (selectedPeer.value == null) {
-        Get.snackbar('Validasi', 'Silakan pilih rekan kerja yang ingin diajak bertukar',
-            backgroundColor: AppColors.redContainer, colorText: AppColors.redPrimary);
-      } else if (jenisPertukaran.value == 'shift' && mySchedule.value?['isOff'] == true) {
-        Get.snackbar('Validasi', 'Anda berstatus libur pada tanggal ini, pilih tanggal saat Anda bertugas',
-            backgroundColor: AppColors.redContainer, colorText: AppColors.redPrimary);
-      }
+    if (isSubmitting.value) return;
+
+    if (selectedPeerId.value == null || selectedPeer.value == null) {
+      Get.snackbar(
+        'Pilih Rekan Kerja',
+        'Silakan tekan salah satu nama rekan kerja / Supervisor pada daftar Bagian 3 terlebih dahulu.',
+        backgroundColor: AppColors.redContainer,
+        colorText: AppColors.redPrimary,
+        snackPosition: SnackPosition.TOP,
+      );
       return;
+    }
+
+    if (jenisPertukaran.value == 'shift') {
+      if (mySchedule.value?['isOff'] == true) {
+        Get.snackbar(
+          'Status Anda Sedang Libur (OFF)',
+          'Pada Tanggal Jadwal Anda (Bagian 1), Anda sedang Libur (OFF). Silakan ubah Tanggal Bagian 1 ke hari kerja Anda, atau gunakan tab "Tukar Hari Off".',
+          backgroundColor: AppColors.redContainer,
+          colorText: AppColors.redPrimary,
+          duration: const Duration(seconds: 4),
+        );
+        return;
+      }
+      if (mySchedule.value?['isCuti'] == true) {
+        Get.snackbar(
+          'Sedang Cuti / Izin',
+          'Jadwal Anda pada Tanggal Bagian 1 berstatus cuti/izin sehingga tidak dapat ditukar.',
+          backgroundColor: AppColors.redContainer,
+          colorText: AppColors.redPrimary,
+        );
+        return;
+      }
+      if (idShiftPemohon.value == null) {
+        Get.snackbar(
+          'Jadwal Anda Belum Ada',
+          'Anda belum memiliki shift kerja tertulis pada Tanggal Bagian 1. Pilih tanggal saat Anda memiliki jadwal shift aktif.',
+          backgroundColor: AppColors.redContainer,
+          colorText: AppColors.redPrimary,
+          duration: const Duration(seconds: 4),
+        );
+        return;
+      }
+      if (idShiftTarget.value == null) {
+        Get.snackbar(
+          'Shift Rekan Tidak Valid',
+          'Rekan yang dipilih tidak memiliki shift kerja aktif pada tanggal yang dipilih.',
+          backgroundColor: AppColors.redContainer,
+          colorText: AppColors.redPrimary,
+        );
+        return;
+      }
+    } else if (jenisPertukaran.value == 'off') {
+      if (mySchedule.value?['isOff'] != true) {
+        Get.snackbar(
+          'Bukan Hari Libur (OFF)',
+          'Pada Tanggal Bagian 1 Anda tercatat masuk kerja. Untuk Tukar Hari Off, pilih tanggal saat Anda sedang berstatus Libur (OFF).',
+          backgroundColor: AppColors.redContainer,
+          colorText: AppColors.redPrimary,
+          duration: const Duration(seconds: 4),
+        );
+        return;
+      }
+      if (selectedPeer.value?['isOff'] != true) {
+        Get.snackbar(
+          'Rekan Tidak Libur',
+          'Rekan yang dipilih tidak sedang berstatus Libur (OFF) pada tanggal tersebut.',
+          backgroundColor: AppColors.redContainer,
+          colorText: AppColors.redPrimary,
+        );
+        return;
+      }
+      if (dateFormat.format(tanggalPemohon.value!) == dateFormat.format(tanggalTarget.value!)) {
+        Get.snackbar(
+          'Tanggal Harus Berbeda',
+          'Pertukaran Hari Off harus menggunakan 2 tanggal berbeda (tanggal libur Anda dan tanggal libur rekan).',
+          backgroundColor: AppColors.redContainer,
+          colorText: AppColors.redPrimary,
+          duration: const Duration(seconds: 4),
+        );
+        return;
+      }
     }
 
     isSubmitting.value = true;
     try {
       final tglPemohonStr = dateFormat.format(tanggalPemohon.value!);
       final tglTargetStr = dateFormat.format(tanggalTarget.value!);
-      final targetKaryawanId = selectedPeer.value!['idKaryawan'] as int;
+      final targetKaryawanId = selectedPeerId.value!;
+      final peerName = selectedPeer.value?['nama']?.toString() ?? 'rekan kerja';
 
       await _api.createPertukaran(
         idKaryawanTarget: targetKaryawanId,
@@ -209,15 +452,20 @@ class ExchangeFormController extends GetxController {
       Get.back(result: true);
       Get.snackbar(
         'Berhasil Diajukan',
-        'Permintaan pertukaran telah dikirim ke ${selectedPeer.value!['nama']} untuk konfirmasi.',
+        'Permintaan pertukaran telah dikirim ke $peerName untuk konfirmasi.',
         backgroundColor: Colors.green.shade50,
         colorText: Colors.green.shade800,
         icon: const Icon(Icons.check_circle_outline, color: Colors.green),
         duration: const Duration(seconds: 4),
       );
     } catch (e) {
-      Get.snackbar('Gagal Mengajukan', e.toString(),
-          backgroundColor: AppColors.redContainer, colorText: AppColors.redPrimary);
+      Get.snackbar(
+        'Gagal Mengajukan',
+        e.toString(),
+        backgroundColor: AppColors.redContainer,
+        colorText: AppColors.redPrimary,
+        duration: const Duration(seconds: 4),
+      );
     } finally {
       isSubmitting.value = false;
     }
