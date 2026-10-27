@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-10-27 (sore) · Claude Code (Opus 5.5) — Cuti mengikuti hari kerja jadwal karyawan
+
+- **Masalah**: cuti selalu melewati hari Minggu untuk semua karyawan. Karyawan operasional yang dijadwalkan masuk hari Minggu (libur fleksibel, mis. off hari Rabu) tetap harus masuk di Minggu tsb padahal sedang cuti. Kasus: Christo Kurniawan Diadema Wiroreno, cuti #3 (28 Okt–8 Nov) — Minggu 1 Nov (Pagi) & 8 Nov (Middle) tidak menjadi cuti.
+- **Aturan baru** (`hariKerjaCuti` di `pengajuan-izin.service.ts`): cuti = hari kerja karyawan. Ada jadwal → shift = cuti, off = tetap libur. Tanpa jadwal → kecuali hari libur tetap karyawan (default Minggu) & tanggal merah untuk kantor. Berlaku untuk hitungan saldo, pengisian jadwal cuti, catatan absensi cuti, dan payroll (cuti Minggu dibayar).
+- **Perbaikan data**: jadwal Christo 1 & 8 Nov 2026 dijadikan cuti resmi (pengajuan #3).
+- Mobile: teks form cuti diperbarui. Test: kasus operasional (Minggu shift + off Rabu) & kantor.
+
+---
+
 ## 2026-10-27 (sore) · Claude Code (Opus 5.5) — Kebijakan Tanggal Merah & Cuti Bersama
 
 - **Masalah**: cuti bersama ikut diliburkan untuk karyawan kantor, padahal perusahaan menganggapnya hari kerja (tidak libur & tidak dapat RO). Payroll juga belum mengecualikan tanggal merah untuk karyawan tanpa jadwal (kantor bisa tercatat alpa saat libur nasional).

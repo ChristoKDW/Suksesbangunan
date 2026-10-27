@@ -51,19 +51,15 @@ describe('PengajuanIzinService cuti schedules', () => {
     expect(izinRepo.createQueryBuilder).not.toHaveBeenCalled();
   });
 
-  it('marks approved cuti weekdays as paid cuti and skips Sundays', async () => {
+  it('cuti operasional mengikuti jadwal: Minggu yang ada shift ikut cuti, hari off (Rabu) tetap libur', async () => {
     const saved: any[] = [];
+    const jadwalRows = [
+      { idKaryawan: 7, tanggal: '2026-11-01', idShift: 3, isCuti: false, isLibur: false }, // Minggu, shift Pagi
+      { idKaryawan: 7, tanggal: '2026-11-04', idShift: null, isCuti: false, isLibur: true }, // Rabu, off fleksibel
+    ];
     const jadwalRepo = {
-      findOne: jest
-        .fn()
-        .mockResolvedValueOnce({
-          idJadwal: 1,
-          idKaryawan: 7,
-          idShift: 3,
-          isCuti: false,
-          isLibur: false,
-        })
-        .mockResolvedValueOnce(null),
+      find: jest.fn().mockResolvedValue(jadwalRows),
+      findOne: jest.fn(async ({ where }: any) => jadwalRows.find((j) => j.tanggal === where.tanggal) ?? null),
       create: jest.fn((value) => value),
       save: jest.fn(async (value) => {
         saved.push({ ...value });
@@ -75,33 +71,47 @@ describe('PengajuanIzinService cuti schedules', () => {
       jadwalRepo as any,
       {} as any,
       {} as any,
-      {} as any,
+      {
+        findOne: jest.fn().mockResolvedValue({
+          idKaryawan: 7,
+          hariLibur: 'Minggu',
+          departemen: { pengelola: [{ role: 'SPV' }] },
+        }),
+      } as any,
       {} as any,
       {} as any,
       {} as any,
     );
 
+    // Sab 31 Okt – Rab 4 Nov 2026
     await (service as any).upsertCutiSchedules(
-      {
-        idIzin: 12,
-        idKaryawan: 7,
-        tanggalMulai: '2026-10-03',
-        tanggalSelesai: '2026-10-05',
-      },
+      { idIzin: 12, idKaryawan: 7, tanggalMulai: '2026-10-31', tanggalSelesai: '2026-11-04' },
       4,
     );
 
-    expect(saved).toHaveLength(2);
-    expect(jadwalRepo.findOne).toHaveBeenCalledTimes(2);
-    expect(saved).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          idShift: null,
-          isCuti: true,
-          isLibur: false,
-          sumberUpload: 'pengajuan_cuti',
+    const tanggalCuti = saved.map((j) => j.tanggal).sort();
+    expect(tanggalCuti).toEqual(['2026-10-31', '2026-11-01', '2026-11-02', '2026-11-03']);
+    expect(saved.every((j) => j.isCuti && j.sumberUpload === 'pengajuan_cuti')).toBe(true);
+  });
+
+  it('karyawan kantor tanpa jadwal: hari Minggu tetap libur, tidak menjadi cuti', async () => {
+    const service = new PengajuanIzinService(
+      {} as any,
+      { find: jest.fn().mockResolvedValue([]) } as any,
+      {} as any,
+      {} as any,
+      {
+        findOne: jest.fn().mockResolvedValue({
+          idKaryawan: 8,
+          hariLibur: 'Minggu',
+          departemen: { pengelola: [{ role: 'HRD' }] },
         }),
-      ]),
+      } as any,
+      {} as any,
+      {} as any,
+      {} as any,
     );
+    const hari = await (service as any).hariKerjaCuti(8, '2026-10-31', '2026-11-02');
+    expect(hari).toEqual(['2026-10-31', '2026-11-02']);
   });
 });

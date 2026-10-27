@@ -257,7 +257,7 @@ class LeaveFormView extends GetView<LeaveFormController> {
                     child: Text(
                       'Sisa cuti ${saldo['tahun']}: $sisa hari '
                       '(jatah ${saldo['jatah']}, terpakai ${saldo['terpakai']}, menunggu ${saldo['menunggu']}). '
-                      'Hari Minggu tidak dihitung. Setelah disetujui SPV & HRD, jadwal Anda otomatis menjadi Cuti.',
+                      'Hanya hari kerja sesuai jadwal Anda yang dihitung (hari off tetap libur). Setelah disetujui SPV & HRD, jadwal Anda otomatis menjadi Cuti.',
                       style: const TextStyle(color: AppColors.slateDark, fontSize: 12, height: 1.3),
                     ),
                   ),

@@ -45,7 +45,7 @@ describe('Saldo cuti tahunan', () => {
     };
     return new PengajuanIzinService(
       { createQueryBuilder: () => qb, save: jest.fn() } as any,
-      {} as any,
+      { find: jest.fn().mockResolvedValue([]) } as any,
       {} as any,
       {} as any,
       { findOne: jest.fn().mockResolvedValue(karyawan) } as any,
@@ -55,7 +55,7 @@ describe('Saldo cuti tahunan', () => {
     );
   };
 
-  it('jatah dikurangi cuti disetujui & yang masih menunggu (tanpa hari Minggu)', async () => {
+  it('jatah dikurangi cuti disetujui & menunggu (tanpa hari libur tetap Minggu)', async () => {
     const service = makeService(
       [
         // Sen 5 – Sab 10 Okt 2099 = 6 hari kerja

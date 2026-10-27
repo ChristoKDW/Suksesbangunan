@@ -69,7 +69,7 @@ describe('PenggajianService payroll integrity', () => {
     expect(penggajianRepo.save).not.toHaveBeenCalled();
   });
 
-  it('uses full WITA boundaries and excludes Sunday cuti defensively', async () => {
+  it('uses full WITA boundaries and pays every approved cuti day (incl. Sunday shift)', async () => {
     const penggajianRepo = {
       findOne: jest
         .fn()
@@ -122,7 +122,9 @@ describe('PenggajianService payroll integrity', () => {
     expect(
       jadwalKerjaService.findCutiByKaryawanAndPeriode,
     ).toHaveBeenCalledWith(7, '2026-08-25', '2026-09-28');
-    expect(saved.totalJamKerja).toBe(8);
-    expect(saved.catatan).toContain('1 Hari Cuti Tahunan');
+    // Cuti resmi hanya dibuat di hari kerja karyawan (operasional bisa masuk
+    // hari Minggu), jadi cuti Minggu 27 Sep tetap dibayar.
+    expect(saved.totalJamKerja).toBe(16);
+    expect(saved.catatan).toContain('2 Hari Cuti Tahunan');
   });
 });

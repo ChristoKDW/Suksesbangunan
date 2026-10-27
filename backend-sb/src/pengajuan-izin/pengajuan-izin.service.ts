@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { Between, DataSource, EntityManager, Repository } from 'typeorm';
 import { PengajuanIzin } from './entities/pengajuan-izin.entity.js';
 import { CreatePengajuanIzinDto } from './dto/create-pengajuan-izin.dto.js';
 import { ApprovalPengajuanIzinDto } from './dto/approval-pengajuan-izin.dto.js';
@@ -14,6 +14,7 @@ import { KaryawanService } from '../karyawan/karyawan.service.js';
 import { AbsensiService } from '../absensi/absensi.service.js';
 import { NotificationService } from '../notification/notification.service.js';
 import { JadwalKerja } from '../jadwal-kerja/entities/jadwal-kerja.entity.js';
+import { KebijakanLiburService } from '../kebijakan-libur/kebijakan-libur.service.js';
 import {
   businessToday,
   dateRange,
@@ -34,6 +35,7 @@ export class PengajuanIzinService {
     private readonly absensiService: AbsensiService,
     private readonly notificationService: NotificationService,
     private readonly dataSource: DataSource,
+    private readonly kebijakanLibur?: KebijakanLiburService,
   ) {}
 
   /**
@@ -119,10 +121,10 @@ export class PengajuanIzinService {
           'Pengajuan cuti ditolak: Anda belum memiliki hak cuti tahunan dari HRD. Silakan hubungi HRD.',
         );
       }
-      const hariDiminta = this.hariCutiPerTahun(tglMulaiStr, tglSelesaiStr);
+      const hariDiminta = await this.hariCutiPerTahun(dto.idKaryawan, tglMulaiStr, tglSelesaiStr);
       if ([...hariDiminta.values()].reduce((a, b) => a + b, 0) === 0) {
         throw new BadRequestException(
-          'Rentang tanggal cuti hanya berisi hari Minggu. Pilih minimal 1 hari kerja.',
+          'Rentang tanggal cuti hanya berisi hari libur Anda. Pilih minimal 1 hari kerja.',
         );
       }
       for (const [tahun, hari] of hariDiminta) {
@@ -385,6 +387,22 @@ export class PengajuanIzinService {
    */
   private async createAbsensiFromIzin(izin: PengajuanIzin): Promise<void> {
     const statusKehadiran = izin.jenisIzin;
+    if (izin.jenisIzin === 'cuti') {
+      // Cuti hanya tercatat di hari kerja; hari libur karyawan tetap libur
+      for (const tanggal of await this.hariKerjaCuti(
+        izin.idKaryawan,
+        normalizeDateOnly(izin.tanggalMulai),
+        normalizeDateOnly(izin.tanggalSelesai),
+      )) {
+        await this.absensiService.createAbsensiIzin(
+          izin.idKaryawan,
+          izin.idIzin,
+          new Date(`${tanggal}T00:00:00`),
+          statusKehadiran,
+        );
+      }
+      return;
+    }
 
     const start = new Date(izin.tanggalMulai);
     const end = new Date(izin.tanggalSelesai);
@@ -401,11 +419,59 @@ export class PengajuanIzinService {
     }
   }
 
-  /** Hari cuti terhitung (non-Minggu) per tahun kalender dalam rentang tanggal. */
-  private hariCutiPerTahun(mulai: string, selesai: string): Map<number, number> {
+  private static readonly NAMA_HARI = ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'];
+
+  /**
+   * Tanggal yang benar-benar menjadi cuti (dan memotong jatah) = hari KERJA karyawan.
+   * Hari libur karyawan tetap libur, tidak ditimpa cuti:
+   * - tanggal yang punya jadwal → hari kerja bila ada shift (mis. operasional
+   *   masuk hari Minggu), libur bila off (mis. off fleksibel hari Rabu)
+   * - tanggal tanpa jadwal → libur tetap karyawan (kolom hari libur, default Minggu);
+   *   karyawan kantor (departemen tanpa SPV) juga libur di tanggal merah.
+   */
+  private async hariKerjaCuti(
+    idKaryawan: number,
+    mulai: string,
+    selesai: string,
+    manager?: EntityManager,
+  ): Promise<string[]> {
+    const karyawan = await this.karyawanService.findOne(idKaryawan);
+    const jadwalRepo = manager?.getRepository(JadwalKerja) ?? this.jadwalRepo;
+    const jadwal = await jadwalRepo.find({
+      where: { idKaryawan, tanggal: Between(mulai as any, selesai as any) },
+    });
+    const kerjaPerTanggal = new Map<string, boolean>();
+    for (const j of jadwal) {
+      const tgl = normalizeDateOnly(j.tanggal);
+      kerjaPerTanggal.set(tgl, (kerjaPerTanggal.get(tgl) ?? false) || j.isCuti || !j.isLibur);
+    }
+    const pengelola: any[] = Array.isArray(karyawan?.departemen?.pengelola)
+      ? karyawan.departemen.pengelola
+      : [];
+    const isKantor = !pengelola.some((m) => m.role === 'SPV');
+    const tanggalMerah = isKantor && this.kebijakanLibur
+      ? await this.kebijakanLibur.tanggalMerahDalamRentang(mulai, selesai)
+      : new Map();
+    const hariLiburTetap = (karyawan?.hariLibur || 'Minggu')
+      .split(',')
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean);
+
+    return dateRange(mulai, selesai).filter((tgl) => {
+      if (kerjaPerTanggal.has(tgl)) return kerjaPerTanggal.get(tgl)!;
+      const hari = PengajuanIzinService.NAMA_HARI[new Date(`${tgl}T00:00:00Z`).getUTCDay()];
+      return !hariLiburTetap.includes(hari) && !tanggalMerah.has(tgl);
+    });
+  }
+
+  /** Jumlah hari cuti terhitung (hari kerja karyawan) per tahun kalender. */
+  private async hariCutiPerTahun(
+    idKaryawan: number,
+    mulai: string,
+    selesai: string,
+  ): Promise<Map<number, number>> {
     const perTahun = new Map<number, number>();
-    for (const tanggal of dateRange(mulai, selesai)) {
-      if (isSunday(tanggal)) continue;
+    for (const tanggal of await this.hariKerjaCuti(idKaryawan, mulai, selesai)) {
       const tahun = Number(tanggal.slice(0, 4));
       perTahun.set(tahun, (perTahun.get(tahun) ?? 0) + 1);
     }
@@ -431,9 +497,12 @@ export class PengajuanIzinService {
     let menunggu = 0;
     for (const izin of list) {
       const hari =
-        this.hariCutiPerTahun(
-          normalizeDateOnly(izin.tanggalMulai),
-          normalizeDateOnly(izin.tanggalSelesai),
+        (
+          await this.hariCutiPerTahun(
+            idKaryawan,
+            normalizeDateOnly(izin.tanggalMulai),
+            normalizeDateOnly(izin.tanggalSelesai),
+          )
         ).get(tahun) ?? 0;
       if (izin.status === 'disetujui') terpakai += hari;
       else menunggu += hari;
@@ -457,8 +526,8 @@ export class PengajuanIzinService {
     const jadwalRepo = manager?.getRepository(JadwalKerja) ?? this.jadwalRepo;
     const start = normalizeDateOnly(izin.tanggalMulai);
     const end = normalizeDateOnly(izin.tanggalSelesai);
-    for (const tanggal of dateRange(start, end)) {
-      if (isSunday(tanggal)) continue;
+    // Hanya hari kerja karyawan yang menjadi cuti; hari libur (off) tetap libur
+    for (const tanggal of await this.hariKerjaCuti(izin.idKaryawan, start, end, manager)) {
       let jadwal = manager
         ? await jadwalRepo
             .createQueryBuilder('jadwal')

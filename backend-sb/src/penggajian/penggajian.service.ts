@@ -400,11 +400,7 @@ export class PenggajianService {
           periodeAwalStr,
           periodeAkhirStr,
         );
-      const hariCuti = new Set(
-        cutiList
-          .map((cuti) => normalizeDateOnly(cuti.tanggal))
-          .filter((date) => !isSunday(date)),
-      ).size;
+      const hariCuti = new Set(cutiList.map((cuti) => normalizeDateOnly(cuti.tanggal))).size;
       totalJamKerja += hariCuti * 8;
 
       const totalHariHadir = attendedDates.size;
@@ -910,11 +906,7 @@ export class PenggajianService {
       periodeAwalStr,
       periodeAkhirStr,
     );
-    const hariCuti = new Set(
-      cutiList
-        .map((cuti) => normalizeDateOnly(cuti.tanggal))
-        .filter((date) => !isSunday(date)),
-    ).size;
+    const hariCuti = new Set(cutiList.map((cuti) => normalizeDateOnly(cuti.tanggal))).size;
 
     const totalHariHadir = attendedDates.size;
     const hariDibayarGajiPokok = Math.min(
