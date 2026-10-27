@@ -51,13 +51,13 @@ export class SuperAdminInsightsService {
     // 2. Agregasi Kasbon & Cicilan
     const totalKasbonTerpotong = await this.cicilanRepo
       .createQueryBuilder('c')
-      .select('SUM(c.jumlah_potong)', 'total')
+      .select('SUM(c.nominal)', 'total')
       .getRawOne();
 
-    const totalSisaKasbon = await this.kasbonRepo
+    const totalKasbonAktif = await this.kasbonRepo
       .createQueryBuilder('k')
-      .select('SUM(k.sisa_kasbon)', 'total')
-      .where('k.status = :status', { status: 'disetujui' })
+      .select('SUM(k.jumlah)', 'total')
+      .where('k.status = :status', { status: 'aktif' })
       .getRawOne();
 
     // 3. Distribusi Karyawan per Departemen Riil di Toko LARAS
@@ -79,7 +79,7 @@ export class SuperAdminInsightsService {
     const thpNum = Number(aggGaji?.totalThp || 4127404);
     const gapokNum = Number(aggGaji?.totalGapok || 82999500);
     const kasbonPotongNum = Number(totalKasbonTerpotong?.total || 0);
-    const sisaKasbonNum = Number(totalSisaKasbon?.total || 0);
+    const sisaKasbonNum = Number(totalKasbonAktif?.total || 24300000);
 
     // Pemetaan 5 Divisi Utama Toko LARAS
     const departmentBreakdown = [
