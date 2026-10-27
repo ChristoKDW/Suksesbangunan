@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-10-27 (malam) · Claude Code (Opus 5.5) — Mobile: sesi kadaluarsa langsung kembali ke login
+
+- **Masalah**: karyawan (kasus Dea Syikal Ananda) tidak bisa upload KTP/KK. Log nginx: semua request dari HP-nya (upload KTP/KK, izin, jadwal, istirahat) dibalas **401** — token login sudah tidak berlaku, tetapi aplikasi tetap di Home memakai data cadangan sesi sehingga setiap aksi gagal "Unauthorized" (kartu "Upload KTP/KK" juga muncul karena profil gagal dimuat).
+- **Perbaikan** (`mobileapp-sb/lib/app/data/services/api_service.dart`): response modifier global — respons 401 pada request ber-token → sesi dihapus, pindah ke halaman login + pesan "Sesi Berakhir". Login salah password (tanpa token) tidak terpengaruh.
+- Tanpa perubahan backend/data. Perlu APK baru; karyawan yang sedang tertahan cukup logout lalu login ulang.
+
+---
+
 ## 2026-10-27 (sore) · Claude Code (Opus 5.5) — Izin sementara: jam pulang diperpanjang
 
 - Izin, sakit, dinas luar, dan izin sementara **tidak mengubah jadwal** (hanya cuti yang mengubah & mengunci jadwal).

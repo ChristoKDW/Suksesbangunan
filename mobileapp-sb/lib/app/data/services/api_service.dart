@@ -24,6 +24,23 @@ class ApiService extends GetConnect {
       return request;
     });
 
+    // Token ditolak server (kadaluarsa / akun di-reset HRD) → hapus sesi & kembali ke login,
+    // supaya karyawan tidak tertahan di Home dengan semua aksi gagal "Unauthorized".
+    httpClient.addResponseModifier<Object?>((request, response) {
+      if (response.statusCode == 401 &&
+          request.headers.containsKey('Authorization') &&
+          _session.isLoggedIn) {
+        _session.clear();
+        Get.offAllNamed('/login');
+        Get.snackbar(
+          'Sesi Berakhir',
+          'Sesi login Anda sudah berakhir, silakan login ulang.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+      return response;
+    });
+
     super.onInit();
   }
 
