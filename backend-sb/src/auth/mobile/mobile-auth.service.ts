@@ -471,6 +471,7 @@ export class MobileAuthService {
       tanggalMasuk: k.tanggalMasuk,
       gajiPokok: k.gajiPokok,
       hakCuti: k.hakCuti,
+      jatahCuti: k.jatahCuti ?? 12,
       fotoProfil: k.fotoProfil
         ? (k.fotoProfil.startsWith('http') ? k.fotoProfil : `/uploads/foto-profil/${k.fotoProfil.split(/[\\/]/).pop()}`)
         : null,

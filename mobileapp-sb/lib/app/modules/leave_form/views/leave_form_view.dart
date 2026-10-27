@@ -232,6 +232,40 @@ class LeaveFormView extends GetView<LeaveFormController> {
             );
           }
 
+          final saldo = controller.saldoCuti.value;
+          if (typeCode == 'cuti' && controller.hasHakCuti.value && saldo != null) {
+            final sisa = (saldo['sisa'] ?? 0) as num;
+            return Container(
+              margin: const EdgeInsets.only(top: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: (sisa > 0 ? AppColors.success : AppColors.error).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: (sisa > 0 ? AppColors.success : AppColors.error).withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.event_available_rounded,
+                    color: sisa > 0 ? AppColors.success : AppColors.error,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Sisa cuti ${saldo['tahun']}: $sisa hari '
+                      '(jatah ${saldo['jatah']}, terpakai ${saldo['terpakai']}, menunggu ${saldo['menunggu']}). '
+                      'Hari Minggu tidak dihitung. Setelah disetujui SPV & HRD, jadwal Anda otomatis menjadi Cuti.',
+                      style: const TextStyle(color: AppColors.slateDark, fontSize: 12, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
           if (typeCode == 'cuti' && !controller.hasHakCuti.value) {
             return Container(
               margin: const EdgeInsets.only(top: 10),

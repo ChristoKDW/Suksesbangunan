@@ -347,11 +347,8 @@ export default function SupervisorSchedulePage() {
         const key = `${emp.idKaryawan}-${day}`
         const tanggal = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 
-        // Cuti tidak ditimpa
-        if (schedule[key] === "cuti") {
-          bulkItems.push({ idKaryawan: emp.idKaryawan, tanggal, isCuti: true })
-          continue
-        }
+        // Cuti resmi terkunci: tidak ikut ditimpa jadwal rotasi
+        if (schedule[key] === "cuti") continue
 
         if (dayOfWeek === targetOffDay) {
           newSchedule[key] = "libur"
@@ -406,6 +403,10 @@ export default function SupervisorSchedulePage() {
   // Buka dialog untuk edit 1 sel hari
   const handleOpenCell = (emp: Karyawan, date: number) => {
     if (isSPV) return // SPV read-only
+    if (schedule[`${emp.idKaryawan}-${date}`] === "cuti") {
+      showWarning("Cuti resmi yang sudah disetujui HRD terkunci dan tidak dapat diubah.", "Jadwal Terkunci")
+      return
+    }
     setSelectedCell({
       idKaryawan: emp.idKaryawan,
       date,
@@ -888,7 +889,7 @@ export default function SupervisorSchedulePage() {
                           }
 
                           if (val === "cuti") {
-                            label = "CUTI"
+                            label = "🔒 CUTI"
                             cellStyle = {
                               backgroundColor: "#fef3c7",
                               color: "#92400e",
@@ -914,14 +915,16 @@ export default function SupervisorSchedulePage() {
                           return (
                             <td
                               key={d.date}
-                              onClick={isAdminOrHrd ? () => handleOpenCell(emp, d.date) : undefined}
+                              onClick={isAdminOrHrd && val !== "cuti" ? () => handleOpenCell(emp, d.date) : undefined}
                               className={`p-1 text-center border-r border-[var(--border-default)] transition-all select-none ${
-                                isAdminOrHrd ? "cursor-pointer hover:ring-2 hover:ring-red-400" : "cursor-default"
+                                isAdminOrHrd && val !== "cuti" ? "cursor-pointer hover:ring-2 hover:ring-red-400" : "cursor-default"
                               } ${d.isSunday ? "bg-red-50/20 dark:bg-red-950/5" : ""} ${
                                 isChanged ? "ring-1 ring-amber-400" : ""
                               }`}
                               title={
-                                isAdminOrHrd
+                                val === "cuti"
+                                  ? "🔒 Cuti resmi (disetujui) — terkunci, tidak dapat diubah"
+                                  : isAdminOrHrd
                                   ? `Klik untuk atur jadwal ${emp.nama} pada ${d.date} ${monthLabel}`
                                   : `Jadwal ${emp.nama}: ${label}`
                               }
@@ -1100,24 +1103,6 @@ export default function SupervisorSchedulePage() {
                     <Coffee className="w-4 h-4 text-slate-500 shrink-0" />
                     <div>
                       <div className="text-xs font-bold">Libur (OFF)</div>
-                      <div className="text-[10px] text-slate-500">Simpan langsung</div>
-                    </div>
-                  </button>
-
-                  {/* Option Cuti */}
-                  <button
-                    type="button"
-                    disabled={savingSingle}
-                    onClick={() => handleSelectDayValue("cuti", true)}
-                    className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
-                      schedule[`${selectedCell.idKaryawan}-${selectedCell.date}`] === "cuti"
-                        ? "bg-amber-100 border-amber-400 ring-2 ring-amber-500 text-amber-900"
-                        : "border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300"
-                    }`}
-                  >
-                    <CalendarDays className="w-4 h-4 text-amber-600 shrink-0" />
-                    <div>
-                      <div className="text-xs font-bold">Cuti Tahunan</div>
                       <div className="text-[10px] text-slate-500">Simpan langsung</div>
                     </div>
                   </button>

@@ -424,7 +424,7 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
                   employee.hakCuti ? "text-emerald-600" : "text-slate-500"
                 }`}
               >
-                {employee.hakCuti ? "Aktif (Berhak Cuti)" : "Tidak Aktif"}
+                {employee.hakCuti ? `Aktif · ${employee.jatahCuti ?? 12} hari/tahun` : "Tidak Aktif"}
               </span>
             </div>
           </CardContent>

@@ -270,6 +270,10 @@ export class Karyawan {
   })
   hakCuti: boolean;
 
+  @ApiProperty({ description: 'Jatah cuti tahunan (hari) yang ditetapkan HRD', example: 12 })
+  @Column({ name: 'jatah_cuti', type: 'int', default: 12 })
+  jatahCuti: number;
+
   @ApiProperty({ description: 'Hari Libur Paten (pisahkan koma)', required: false })
   @Column({
     name: 'hari_libur',

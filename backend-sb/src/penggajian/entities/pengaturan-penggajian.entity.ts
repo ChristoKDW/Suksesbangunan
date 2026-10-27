@@ -34,6 +34,14 @@ export class PengaturanPenggajian {
   @Column({ name: 'standar_hari_kerja', type: 'int', default: 26 })
   standarHariKerja: number;
 
+  @ApiProperty({ description: 'Rekening debet perusahaan untuk file BNIDirect payroll', required: false })
+  @Column({ name: 'rekening_debet_bni', type: 'varchar', length: 20, nullable: true })
+  rekeningDebetBni: string | null;
+
+  @ApiProperty({ description: 'Metode transfer rekening non-BNI: bifast | online | kliring | rtgs', default: 'bifast' })
+  @Column({ name: 'metode_bank_lain', type: 'varchar', length: 10, default: 'bifast' })
+  metodeBankLain: string;
+
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }

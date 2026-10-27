@@ -680,6 +680,12 @@ class ApiService extends GetConnect {
     );
   }
 
+  /// GET /pengajuan-izin/me/saldo-cuti → { jatah, terpakai, menunggu, sisa, tahun }.
+  Future<Map<String, dynamic>> getSaldoCuti() async {
+    final res = await get('/pengajuan-izin/me/saldo-cuti');
+    return _handle(res);
+  }
+
   /// Ambil snapshot slip resmi exact-period atau pratinjau berjalan.
   Future<Map<String, dynamic>> getMySlip({String? tanggal}) async {
     final query = <String, String>{};

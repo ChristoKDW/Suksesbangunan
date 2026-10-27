@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsInt, Min, Max, IsNumber } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsNumber, IsIn, Matches } from 'class-validator';
 
 export class UpdatePengaturanPenggajianDto {
   @ApiPropertyOptional({ description: 'Tanggal awal cut-off (1 - 28)', example: 25 })
@@ -28,4 +28,14 @@ export class UpdatePengaturanPenggajianDto {
   @Min(1)
   @Max(31)
   standarHariKerja?: number;
+
+  @ApiPropertyOptional({ description: 'Rekening debet perusahaan (angka) untuk BNIDirect', example: '7654321678' })
+  @IsOptional()
+  @Matches(/^\d{0,16}$/, { message: 'Rekening debet hanya boleh angka (maks. 16 digit)' })
+  rekeningDebetBni?: string;
+
+  @ApiPropertyOptional({ description: 'Metode transfer rekening non-BNI', example: 'bifast' })
+  @IsOptional()
+  @IsIn(['bifast', 'online', 'kliring', 'rtgs'])
+  metodeBankLain?: string;
 }

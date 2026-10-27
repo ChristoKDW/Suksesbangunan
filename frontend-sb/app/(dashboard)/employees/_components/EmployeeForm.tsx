@@ -32,6 +32,7 @@ type FormState = {
   potonganBpjs: number
   hariLibur: string
   hakCuti: boolean
+  jatahCuti: number
   namaPanggilan: string
   agama: string
   tempatLahir: string
@@ -68,6 +69,7 @@ const emptyForm: FormState = {
   potonganBpjs: 0,
   hariLibur: "Minggu",
   hakCuti: false,
+  jatahCuti: 12,
   namaPanggilan: "",
   agama: "",
   tempatLahir: "",
@@ -125,6 +127,7 @@ function toForm(emp: Karyawan): FormState {
     potonganBpjs: Number(emp.potonganBpjs || 0),
     hariLibur: emp.hariLibur || "Minggu",
     hakCuti: !!emp.hakCuti,
+    jatahCuti: Number(emp.jatahCuti ?? 12),
     namaPanggilan: emp.namaPanggilan || "",
     agama: emp.agama || "",
     tempatLahir: emp.tempatLahir || "",
@@ -156,6 +159,7 @@ function toBody(form: FormState) {
     tanggalMasuk: form.tanggalMasuk || undefined,
     statusAktif: form.statusAktif,
     hakCuti: form.hakCuti,
+    jatahCuti: Math.max(0, Math.min(60, Math.round(Number(form.jatahCuti) || 0))),
     gajiPokok: Number(form.gajiPokok || 0),
     tunjanganKonsumsiHari: Number(form.tunjanganKonsumsiHari || 0),
     tunjanganTransportasi: Number(form.tunjanganTransportasi || 0),
@@ -547,7 +551,30 @@ export default function EmployeeForm({ id }: { id?: string }) {
             </div>
           )}
 
-          {user?.role === "HRD" && <div className="space-y-1"><Label>Hak Cuti (Cuti Dibayar)</Label><select className={inputClass} value={form.hakCuti ? "true" : "false"} onChange={(e) => set("hakCuti", e.target.value === "true")}><option value="false">Belum Bisa Cuti</option><option value="true">Bisa Cuti (12 Hari)</option></select></div>}
+          {(user?.role === "HRD" || user?.role === "Admin") && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>Hak Cuti (Cuti Dibayar)</Label>
+                <select className={inputClass} value={form.hakCuti ? "true" : "false"} onChange={(e) => set("hakCuti", e.target.value === "true")}>
+                  <option value="false">Belum Bisa Cuti</option>
+                  <option value="true">Bisa Mengajukan Cuti</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label>Jatah Cuti per Tahun (hari)</Label>
+                <input
+                  type="number"
+                  min={0}
+                  max={60}
+                  disabled={!form.hakCuti}
+                  className={`${inputClass} disabled:opacity-50`}
+                  value={form.jatahCuti}
+                  onChange={(e) => set("jatahCuti", Number(e.target.value))}
+                />
+                <p className="text-[11px] text-[var(--text-muted)]">Karyawan mengajukan cuti dari aplikasi mobile; setelah disetujui SPV & HRD, jadwalnya otomatis menjadi Cuti dan terkunci.</p>
+              </div>
+            </div>
+          )}
 
           {(user?.role === "HRD" || user?.role === "Admin") && (
             <div className="rounded-lg border border-[var(--border-default)] p-4 space-y-3">

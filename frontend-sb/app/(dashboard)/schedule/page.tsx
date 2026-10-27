@@ -265,10 +265,15 @@ export default function SchedulePage() {
       return false
     }
 
-    // Admin & HRD berhak mengatur seluruh staf (operasional maupun staf kantor).
-    // SPV berhak mengatur seluruh staf yang tampil di hadapannya (karena sudah difilter departemen yang dipimpinnya).
-    if (user?.role === "Admin" || user?.role === "HRD" || isSPV) {
+    // Admin: akses penuh (cadangan). SPV: seluruh staf departemen yang dipimpinnya.
+    if (user?.role === "Admin" || isSPV) {
       return true
+    }
+    // HRD hanya mengatur staf departemen yang TIDAK dibawahi SPV (jadwal SPV diatur di halaman Jadwal Supervisor)
+    if (user?.role === "HRD") {
+      const dept = departemenList.find(d => d.idDepartemen === emp.idDepartemen)
+      const managers = Array.isArray(dept?.pengelola) ? dept!.pengelola : dept?.pengelola ? [dept.pengelola as any] : []
+      return !managers.some((m: any) => m.role === "SPV")
     }
 
     return false
@@ -422,11 +427,8 @@ export default function SchedulePage() {
         const key = `${emp.idKaryawan}-${day}`
         const tanggal = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 
-        // Cuti approved tidak ditimpa
-        if (schedule[key] === "cuti") {
-          bulkItems.push({ idKaryawan: emp.idKaryawan, tanggal, isCuti: true })
-          continue
-        }
+        // Cuti resmi terkunci: tidak ikut ditimpa jadwal rolling
+        if (schedule[key] === "cuti") continue
 
         if (dayOfWeek === targetOffDay) {
           // Hari libur mingguan rutin karyawan
@@ -538,6 +540,10 @@ export default function SchedulePage() {
 
   // Buka dialog untuk edit 1 sel hari
   const handleOpenCell = (emp: Karyawan, date: number) => {
+    if (schedule[`${emp.idKaryawan}-${date}`] === "cuti") {
+      showWarning("Cuti resmi yang sudah disetujui SPV & HRD terkunci dan tidak dapat diubah.", "Jadwal Terkunci")
+      return
+    }
     if (!canUserEditEmployee(emp)) {
       showWarning(`Anda tidak memiliki wewenang untuk mengubah jadwal karyawan ${emp.nama}.`)
       return
@@ -858,8 +864,8 @@ export default function SchedulePage() {
             <span className="text-[var(--text-muted)]">(08:45–17:00, Minggu Libur)</span>
           </div>
         )}
-        {shiftList.map((s, i) => {
-          const colors = shiftColors[i % shiftColors.length]
+        {departmentShifts.map(s => {
+          const colors = shiftConfigMap[s.idShift] ?? shiftColors[0]
           return (
             <div key={s.idShift} className="flex items-center gap-1.5 text-xs">
               <div className="w-3 h-3 rounded" style={{ background: colors.bg, border: `1px solid ${colors.border}` }} />
@@ -878,7 +884,7 @@ export default function SchedulePage() {
         </div>
         <div className="flex items-center gap-1.5 text-xs">
           <div className="w-3 h-3 rounded" style={{ background: "#fff7ed", border: `1px solid #fed7aa` }} />
-          <span style={{ color: "#ea580c" }} className="font-medium">Cuti</span>
+          <span style={{ color: "#ea580c" }} className="font-medium">🔒 Cuti (dari pengajuan, terkunci)</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs">
           <div className="w-3 h-3 rounded bg-rose-100 border border-rose-300 dark:bg-rose-950 dark:border-rose-700" />
@@ -1148,7 +1154,7 @@ export default function SchedulePage() {
                                     className="rounded px-1 py-1 text-[10px] font-semibold leading-tight mx-auto"
                                     style={{ background: "#fff7ed", color: "#ea580c", border: `1px solid #fed7aa` }}
                                   >
-                                    Cuti
+                                    🔒 Cuti
                                   </div>
                                 )
                               } else if (val === "libur") {
@@ -1195,7 +1201,11 @@ export default function SchedulePage() {
                                 )
                               }
 
-                              const cellTitle = !canEdit
+                              const isCutiLocked = val === "cuti"
+                              const cellEditable = canEdit && !isCutiLocked
+                              const cellTitle = isCutiLocked
+                                ? "🔒 Cuti resmi (disetujui SPV & HRD) — terkunci, tidak dapat diubah"
+                                : !canEdit
                                 ? `🔒 Jadwal ini tidak dapat diubah oleh akun Anda.`
                                 : d.holiday
                                 ? `${d.holiday.isCollectiveLeave ? "Cuti Bersama" : "Libur Nasional"}: ${d.holiday.localName}`
@@ -1204,12 +1214,12 @@ export default function SchedulePage() {
                               return (
                                 <td
                                   key={d.date}
-                                  onClick={canEdit ? () => handleOpenCell(emp, d.date) : undefined}
+                                  onClick={cellEditable ? () => handleOpenCell(emp, d.date) : undefined}
                                   title={cellTitle}
                                   className={`px-0.5 py-1 border-b border-[var(--border-default)] text-center transition-colors ${
                                     d.holiday ? "bg-red-50/20 dark:bg-red-950/10" : d.isWeekend ? "bg-[var(--bg-page)]" : ""
                                   } ${
-                                    canEdit
+                                    cellEditable
                                       ? "cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/30"
                                       : "cursor-not-allowed select-none opacity-80"
                                   }`}
@@ -1380,24 +1390,6 @@ export default function SchedulePage() {
                     <Coffee className="w-4 h-4 text-slate-500 shrink-0" />
                     <div>
                       <div className="text-xs font-bold">Libur (OFF)</div>
-                      <div className="text-[10px] text-slate-500">Simpan langsung</div>
-                    </div>
-                  </button>
-
-                  {/* Option Cuti */}
-                  <button
-                    type="button"
-                    disabled={savingSingle}
-                    onClick={() => handleSelectDayValue("cuti", true)}
-                    className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
-                      schedule[`${selectedCell.idKaryawan}-${selectedCell.date}`] === "cuti"
-                        ? "bg-amber-100 border-amber-400 ring-2 ring-amber-500 text-amber-900"
-                        : "border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300"
-                    }`}
-                  >
-                    <CalendarDays className="w-4 h-4 text-amber-600 shrink-0" />
-                    <div>
-                      <div className="text-xs font-bold">Cuti Tahunan</div>
                       <div className="text-[10px] text-slate-500">Simpan langsung</div>
                     </div>
                   </button>

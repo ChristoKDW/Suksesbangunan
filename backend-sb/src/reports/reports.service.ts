@@ -689,11 +689,23 @@ export class ReportsService {
     if (records.length === 0) {
       throw new BadRequestException(`Tidak ada slip gaji untuk periode ${label}`);
     }
-    const metode = (
-      ['bifast', 'online', 'kliring', 'rtgs'].includes(opts.metodeBankLain || '')
-        ? opts.metodeBankLain
-        : 'bifast'
-    ) as BniSheetKey;
+    // Rekening debet & metode bank lain diambil dari Pengaturan Penggajian;
+    // nilai yang dikirim HRD otomatis disimpan agar tidak perlu diketik ulang.
+    const settings = await this.penggajianService.getSettings();
+    const metodeValid = ['bifast', 'online', 'kliring', 'rtgs'];
+    const rekDebetInput = cleanRekening(opts.rekDebet);
+    const metodeInput = metodeValid.includes(opts.metodeBankLain || '') ? opts.metodeBankLain : undefined;
+    if (
+      (rekDebetInput && rekDebetInput !== settings.rekeningDebetBni) ||
+      (metodeInput && metodeInput !== settings.metodeBankLain)
+    ) {
+      await this.penggajianService.updateSettings({
+        ...(rekDebetInput ? { rekeningDebetBni: rekDebetInput } : {}),
+        ...(metodeInput ? { metodeBankLain: metodeInput } : {}),
+      });
+    }
+    const metode = (metodeInput ||
+      (metodeValid.includes(settings.metodeBankLain) ? settings.metodeBankLain : 'bifast')) as BniSheetKey;
 
     const periodeLabel = isBulan(label) ? bulanLabel(label) : label;
     const remark1 = sanitizeBni(opts.remark || 'PAYROLL SUKSES BANGUNINDO').slice(0, 33);
@@ -703,14 +715,27 @@ export class ReportsService {
       : businessDateOf(new Date()).replace(/-/g, '');
     const header = {
       tglTransaksi,
-      rekDebet: cleanRekening(opts.rekDebet),
+      rekDebet: rekDebetInput || cleanRekening(settings.rekeningDebetBni),
       namaFile: 'SUKSES BANGUNINDO',
     };
 
     const data: Record<BniSheetKey, BniTrx[]> = {
       inhouse: [], kliring: [], rtgs: [], online: [], bifast: [],
     };
-    const masalah: { nik: string; nama: string; bank: string; rek: string; thp: number; catatan: string }[] = [];
+    const masalah: { nik: string; nama: string; bank: string; rek: string; thp: number; catatan: string }[] =
+      all
+        .filter((r) => Math.round(Number(r.totalGaji) || 0) <= 0)
+        .map((r) => ({
+          nik: r.karyawan?.nik || '-',
+          nama: r.karyawan?.nama || '-',
+          bank: r.karyawan?.namaBank || '-',
+          rek: r.karyawan?.noRekening || '-',
+          thp: 0,
+          catatan:
+            Number(r.gajiPokok || 0) <= 0
+              ? 'Take home pay Rp0 — gaji pokok karyawan belum diisi di data Karyawan'
+              : 'Take home pay Rp0 — periksa potongan/kehadiran di slip gaji',
+        }));
     for (const r of records) {
       const k = r.karyawan;
       const amount = Math.round(Number(r.totalGaji) || 0);

@@ -167,10 +167,15 @@ export default function ReportsPage() {
     if (!role) return
     if (isManager) api.get<Departemen[]>("departemen").then(setDepartments).catch(() => setDepartments([]))
     api.get<KaryawanOption[]>("reports/karyawan-options").then(setKaryawan).catch(() => setKaryawan([]))
-    try {
-      setBniRekDebet(localStorage.getItem("bniRekDebet") || "")
-    } catch {
-      // localStorage tidak tersedia
+    // Rekening debet & metode transfer tersimpan di server (Pengaturan Penggajian)
+    if (isManager) {
+      api
+        .get<{ rekeningDebetBni?: string | null; metodeBankLain?: string }>("penggajian/settings")
+        .then(s => {
+          if (s?.rekeningDebetBni) setBniRekDebet(s.rekeningDebetBni)
+          if (s?.metodeBankLain) setBniMetode(s.metodeBankLain)
+        })
+        .catch(() => undefined)
     }
   }, [role, isManager])
 
@@ -401,14 +406,12 @@ export default function ReportsPage() {
                   <input type="date" value={bniTanggal} onChange={e => setBniTanggal(e.target.value)} className={inputCls} />
                 </Field>
               </div>
-              <Field label="Rek. Debet (Rekening Perusahaan)" hint="Wajib untuk CSV. Disimpan di browser ini.">
+              <Field label="Rek. Debet (Rekening Perusahaan)" hint="Cukup diisi sekali — otomatis tersimpan di server untuk export berikutnya.">
                 <input
                   inputMode="numeric"
                   value={bniRekDebet}
                   onChange={e => {
-                    const v = e.target.value.replace(/\D/g, "").slice(0, 16)
-                    setBniRekDebet(v)
-                    try { localStorage.setItem("bniRekDebet", v) } catch { /* abaikan */ }
+                    setBniRekDebet(e.target.value.replace(/\D/g, "").slice(0, 16))
                   }}
                   placeholder="Contoh: 7654321678"
                   className={inputCls}

@@ -1,11 +1,13 @@
 import {
   Injectable,
+  Logger,
+  OnModuleInit,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In } from 'typeorm';
+import { Repository, Between, In, DataSource } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import type { Response } from 'express';
 import { JadwalKerja } from './entities/jadwal-kerja.entity.js';
@@ -19,9 +21,22 @@ import { UpdateJadwalKerjaDto } from './dto/update-jadwal-kerja.dto.js';
 import { BulkJadwalKerjaItemDto } from './dto/bulk-jadwal-kerja.dto.js';
 import { matchUserName } from '../karyawan/name-matcher.util.js';
 
+/** Sumber jadwal cuti resmi hasil pengajuan yang disetujui SPV & HRD (terkunci). */
+export const SUMBER_CUTI_RESMI = 'pengajuan_cuti';
+
+export function isCutiTerkunci(j?: { isCuti?: boolean; sumberUpload?: string } | null) {
+  return !!j?.isCuti && j.sumberUpload === SUMBER_CUTI_RESMI;
+}
+
+const PESAN_CUTI_TERKUNCI =
+  'Jadwal ini adalah cuti resmi yang sudah disetujui SPV & HRD sehingga terkunci dan tidak dapat diubah atau dihapus.';
+
 @Injectable()
-export class JadwalKerjaService {
+export class JadwalKerjaService implements OnModuleInit {
+  private readonly logger = new Logger(JadwalKerjaService.name);
+
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(JadwalKerja)
     private readonly jadwalRepo: Repository<JadwalKerja>,
     @InjectRepository(Karyawan)
@@ -35,6 +50,44 @@ export class JadwalKerjaService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
   ) {}
+
+  /**
+   * Kunci tingkat database: baris cuti resmi tidak bisa di-update/di-hapus oleh
+   * jalur mana pun (edit manual, generate rolling, import Excel, tukar shift,
+   * regular off, hari libur). Hanya proses persetujuan cuti yang boleh menulisnya.
+   */
+  async onModuleInit() {
+    try {
+      await this.dataSource.query(`
+        CREATE OR REPLACE FUNCTION jadwal_kunci_cuti() RETURNS trigger AS $fn$
+        BEGIN
+          -- Hapus berantai (mis. karyawan dihapus) tetap diizinkan
+          IF pg_trigger_depth() > 1 THEN
+            IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+            RETURN NEW;
+          END IF;
+          IF OLD.is_cuti AND OLD.sumber_upload = '${SUMBER_CUTI_RESMI}' THEN
+            IF TG_OP = 'DELETE' THEN RETURN NULL; END IF;
+            IF NEW.is_cuti AND NEW.sumber_upload = '${SUMBER_CUTI_RESMI}' THEN RETURN NEW; END IF;
+            RETURN OLD;
+          END IF;
+          IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+          RETURN NEW;
+        END
+        $fn$ LANGUAGE plpgsql;
+      `);
+      await this.dataSource.query(
+        'DROP TRIGGER IF EXISTS trg_jadwal_kunci_cuti ON jadwal_kerja',
+      );
+      await this.dataSource.query(`
+        CREATE TRIGGER trg_jadwal_kunci_cuti
+        BEFORE UPDATE OR DELETE ON jadwal_kerja
+        FOR EACH ROW EXECUTE FUNCTION jadwal_kunci_cuti()
+      `);
+    } catch (err) {
+      this.logger.error(`Gagal memasang kunci jadwal cuti: ${(err as Error).message}`);
+    }
+  }
 
   private isBackoffice(name?: string): boolean {
     if (!name) return false;
@@ -86,8 +139,8 @@ export class JadwalKerjaService {
   ) {
     if (karyawanIds.length === 0) return;
 
-    // Admin & HRD memiliki otoritas penuh untuk mengatur seluruh jadwal (Supervisor, staf operasional, maupun staf kantor)
-    if (user.role === 'Admin' || user.role === 'HRD') {
+    // Admin: otoritas penuh (cadangan jika SPV berhalangan)
+    if (user.role === 'Admin') {
       return;
     }
 
@@ -97,6 +150,23 @@ export class JadwalKerjaService {
     });
 
     const users = await this.userRepo.find({ relations: { departemen: true } });
+
+    // HRD: hanya mengatur jadwal Supervisor & staf departemen tanpa SPV.
+    // Staf yang dibawahi SPV sepenuhnya diatur oleh SPV-nya.
+    if (user.role === 'HRD') {
+      for (const emp of karyawanList) {
+        if (this.isKaryawanSpv(emp, users)) continue;
+        const deptPunyaSpv = (emp.departemen?.pengelola || []).some(
+          (p) => p.role === 'SPV',
+        );
+        if (deptPunyaSpv) {
+          throw new ForbiddenException(
+            `Jadwal ${emp.nama} dikelola oleh Supervisor departemen ${emp.departemen?.namaDepartemen ?? ''}. HRD hanya dapat mengatur jadwal Supervisor.`,
+          );
+        }
+      }
+      return;
+    }
 
     // Ambil semua ID departemen yang dikelola oleh user SPV ini (dari user.idDepartemen, departemen_pengelola, dan karyawan linked)
     const managedDepts = await this.deptRepo.find({
@@ -127,16 +197,7 @@ export class JadwalKerjaService {
     }
 
     for (const emp of karyawanList) {
-      const matchedUser = users.find((u) => matchUserName(emp.nama, u.nama));
-      const isRoleSpv = matchedUser?.role === 'SPV';
-      const jabatanName = emp.jabatan?.namaJabatan?.toLowerCase() || '';
-      const isJabatanSpv =
-        jabatanName.includes('supervisor') ||
-        jabatanName.includes('spv') ||
-        jabatanName.includes('leader');
-      const isEmpSpv = isRoleSpv || isJabatanSpv;
-
-      if (isEmpSpv) {
+      if (this.isKaryawanSpv(emp, users)) {
         // SPV tidak boleh mengatur jadwal dirinya sendiri atau sesama SPV. Jadwal SPV diatur oleh HRD.
         throw new ForbiddenException(
           `Supervisor tidak dapat mengatur jadwal kerja dirinya sendiri atau sesama Supervisor (${emp.nama}). Jadwal Supervisor ditentukan oleh HRD.`,
@@ -152,6 +213,18 @@ export class JadwalKerjaService {
     }
   }
 
+  /** Karyawan berstatus Supervisor (akun role SPV atau jabatan supervisor/leader). */
+  private isKaryawanSpv(emp: Karyawan, users: User[]): boolean {
+    const matchedUser = users.find((u) => matchUserName(emp.nama, u.nama));
+    const jabatanName = emp.jabatan?.namaJabatan?.toLowerCase() || '';
+    return (
+      matchedUser?.role === 'SPV' ||
+      jabatanName.includes('supervisor') ||
+      jabatanName.includes('spv') ||
+      jabatanName.includes('leader')
+    );
+  }
+
   async create(
     dto: CreateJadwalKerjaDto,
     user: { idUser: number; role: string; idDepartemen?: number },
@@ -162,7 +235,8 @@ export class JadwalKerjaService {
       where: { tanggal: dto.tanggal, isLibur: true },
     });
 
-    const isLiburExplicit = dto.idShift ? false : !dto.isCuti;
+    // Cuti hanya lewat pengajuan cuti (mobile) yang disetujui SPV & HRD
+    const isLiburExplicit = !dto.idShift;
 
     const existing = await this.jadwalRepo.findOne({
       where: {
@@ -170,11 +244,14 @@ export class JadwalKerjaService {
         tanggal: dto.tanggal as any,
       },
     });
+    if (isCutiTerkunci(existing)) {
+      throw new BadRequestException(PESAN_CUTI_TERKUNCI);
+    }
 
     if (existing) {
       await this.jadwalRepo.update(existing.idJadwal, {
         idShift: dto.idShift || null,
-        isCuti: dto.isCuti || false,
+        isCuti: false,
         isLibur: isLiburExplicit,
         keterangan: holiday ? holiday.nama : dto.keterangan || null,
         idUser: user.idUser,
@@ -189,7 +266,7 @@ export class JadwalKerjaService {
     const jadwal = this.jadwalRepo.create({
       idKaryawan: dto.idKaryawan,
       idShift: dto.idShift || null,
-      isCuti: dto.isCuti || false,
+      isCuti: false,
       isLibur: isLiburExplicit,
       keterangan: holiday ? holiday.nama : dto.keterangan || null,
       idUser: user.idUser,
@@ -214,7 +291,7 @@ export class JadwalKerjaService {
         where: { tanggal: item.tanggal, isLibur: true },
       });
 
-      const isLiburExplicit = item.idShift ? false : !item.isCuti;
+      const isLiburExplicit = !item.idShift;
 
       const existing = await this.jadwalRepo.findOne({
         where: {
@@ -222,11 +299,18 @@ export class JadwalKerjaService {
           tanggal: item.tanggal as any,
         },
       });
+      // Cuti resmi terkunci: dilewati (tidak ditimpa generate/import/edit massal)
+      if (isCutiTerkunci(existing)) {
+        results.push(existing!);
+        continue;
+      }
+      // Sel "cuti" dari UI lama tidak lagi diterima sebagai input manual
+      if (item.isCuti && !item.idShift) continue;
 
       if (existing) {
         await this.jadwalRepo.update(existing.idJadwal, {
           idShift: item.idShift || null,
-          isCuti: item.isCuti || false,
+          isCuti: false,
           isLibur: isLiburExplicit,
           keterangan: item.keterangan || (holiday ? holiday.nama : null),
           idUser: user.idUser,
@@ -241,7 +325,7 @@ export class JadwalKerjaService {
         const created = this.jadwalRepo.create({
           idKaryawan: item.idKaryawan,
           idShift: item.idShift || null,
-          isCuti: item.isCuti || false,
+          isCuti: false,
           isLibur: isLiburExplicit,
           keterangan: item.keterangan || (holiday ? holiday.nama : null),
           tanggal: item.tanggal as any,
@@ -681,13 +765,14 @@ export class JadwalKerjaService {
     user: { idUser: number; role: string; idDepartemen?: number },
   ): Promise<JadwalKerja> {
     const jadwal = await this.findOne(id);
+    if (isCutiTerkunci(jadwal)) throw new BadRequestException(PESAN_CUTI_TERKUNCI);
     await this.validateKaryawanAccess([jadwal.idKaryawan], user);
 
     if (dto.idKaryawan && dto.idKaryawan !== jadwal.idKaryawan) {
       await this.validateKaryawanAccess([dto.idKaryawan], user);
     }
 
-    const updateData: any = { ...dto };
+    const updateData: any = { ...dto, isCuti: false };
     if (dto.idShift !== undefined) {
       updateData.idShift = dto.idShift || null;
     }
@@ -700,6 +785,7 @@ export class JadwalKerjaService {
     user: { idUser: number; role: string; idDepartemen?: number },
   ): Promise<void> {
     const jadwal = await this.findOne(id);
+    if (isCutiTerkunci(jadwal)) throw new BadRequestException(PESAN_CUTI_TERKUNCI);
     await this.validateKaryawanAccess([jadwal.idKaryawan], user);
     await this.jadwalRepo.remove(jadwal);
   }
@@ -726,6 +812,7 @@ export class JadwalKerjaService {
         startDate: dto.startDate,
         endDate: dto.endDate,
       })
+      .andWhere('NOT (is_cuti AND sumber_upload = :sumber)', { sumber: SUMBER_CUTI_RESMI })
       .execute();
 
     return {

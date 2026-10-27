@@ -28,6 +28,7 @@ class LeaveFormController extends GetxController {
   final RxInt totalDays = 0.obs;
   final isSubmitting = false.obs;
   final hasHakCuti = false.obs;
+  final saldoCuti = Rxn<Map<String, dynamic>>();
   final isLoadingProfile = true.obs;
 
   final Map<String, String> typeCodeMap = {
@@ -47,6 +48,9 @@ class LeaveFormController extends GetxController {
     try {
       final profile = await _api.getMyProfile();
       hasHakCuti.value = profile['hakCuti'] == true;
+      if (hasHakCuti.value) {
+        saldoCuti.value = await _api.getSaldoCuti();
+      }
     } catch (_) {
       hasHakCuti.value = false;
     } finally {

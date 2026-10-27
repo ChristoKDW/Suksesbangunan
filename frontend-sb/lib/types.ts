@@ -133,6 +133,7 @@ export interface Karyawan {
   tunjanganJabatan?: number | null
   potonganBpjs?: number | null
   hakCuti: boolean
+  jatahCuti?: number | null
   hariLibur: string | null
   namaPanggilan?: string | null
   agama?: string | null

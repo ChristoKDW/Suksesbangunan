@@ -114,6 +114,35 @@ export class PengajuanIzinController {
     return this.pengajuanIzinService.processApproval(id, dto, user);
   }
 
+  @Get('me/saldo-cuti')
+  @UseGuards(JwtMobileGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Saldo cuti tahunan karyawan yang login (jatah, terpakai, menunggu, sisa)' })
+  getMySaldoCuti(
+    @CurrentUser('idKaryawan') idKaryawan: number,
+    @Query('tahun') tahun?: string,
+  ) {
+    return this.pengajuanIzinService.getSaldoCuti(
+      idKaryawan,
+      tahun && /^\d{4}$/.test(tahun) ? Number(tahun) : undefined,
+    );
+  }
+
+  @Get('saldo-cuti/:idKaryawan')
+  @UseGuards(JwtWebGuard, RolesGuard)
+  @Roles('Admin', 'HRD', 'SPV')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Saldo cuti tahunan seorang karyawan (web)' })
+  getSaldoCuti(
+    @Param('idKaryawan', ParseIntPipe) idKaryawan: number,
+    @Query('tahun') tahun?: string,
+  ) {
+    return this.pengajuanIzinService.getSaldoCuti(
+      idKaryawan,
+      tahun && /^\d{4}$/.test(tahun) ? Number(tahun) : undefined,
+    );
+  }
+
   @Get('me')
   @UseGuards(JwtMobileGuard)
   @ApiBearerAuth()

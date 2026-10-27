@@ -7,6 +7,9 @@ import {
   IsIn,
   IsDateString,
   Matches,
+  IsInt,
+  Min,
+  Max,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -115,6 +118,13 @@ export class CreateKaryawanDto {
   @ApiPropertyOptional({ description: 'Hak cuti berbayar' })
   @IsOptional()
   hakCuti?: boolean;
+
+  @ApiPropertyOptional({ description: 'Jatah cuti tahunan (hari)', example: 12 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(60)
+  jatahCuti?: number;
 
 
   @ApiProperty({ description: 'Nomor Telepon/WhatsApp (wajib)' })

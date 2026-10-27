@@ -112,11 +112,27 @@ export class PengajuanIzinService {
       // Durasi sakit bebas sesuai ketentuan surat dokter
     }
 
-    // --- 3. Validasi Aturan Cuti ---
-    if (dto.jenisIzin === 'cuti' && !karyawan.hakCuti) {
-      throw new BadRequestException(
-        'Pengajuan cuti ditolak: Anda belum memiliki hak cuti tahunan dari HRD. Silakan hubungi HRD.',
-      );
+    // --- 3. Validasi Aturan Cuti: wajib hak cuti & tidak melebihi sisa jatah tahunan ---
+    if (dto.jenisIzin === 'cuti') {
+      if (!karyawan.hakCuti) {
+        throw new BadRequestException(
+          'Pengajuan cuti ditolak: Anda belum memiliki hak cuti tahunan dari HRD. Silakan hubungi HRD.',
+        );
+      }
+      const hariDiminta = this.hariCutiPerTahun(tglMulaiStr, tglSelesaiStr);
+      if ([...hariDiminta.values()].reduce((a, b) => a + b, 0) === 0) {
+        throw new BadRequestException(
+          'Rentang tanggal cuti hanya berisi hari Minggu. Pilih minimal 1 hari kerja.',
+        );
+      }
+      for (const [tahun, hari] of hariDiminta) {
+        const saldo = await this.getSaldoCuti(dto.idKaryawan, tahun);
+        if (hari > saldo.sisa) {
+          throw new BadRequestException(
+            `Sisa cuti tahun ${tahun} hanya ${saldo.sisa} hari (jatah ${saldo.jatah}, terpakai ${saldo.terpakai}, menunggu persetujuan ${saldo.menunggu}). Anda mengajukan ${hari} hari.`,
+          );
+        }
+      }
     }
 
     // --- 3b. Validasi Aturan Izin Sementara (keluar sementara saat jam kerja) ---
@@ -383,6 +399,54 @@ export class PengajuanIzinService {
       );
       current.setDate(current.getDate() + 1);
     }
+  }
+
+  /** Hari cuti terhitung (non-Minggu) per tahun kalender dalam rentang tanggal. */
+  private hariCutiPerTahun(mulai: string, selesai: string): Map<number, number> {
+    const perTahun = new Map<number, number>();
+    for (const tanggal of dateRange(mulai, selesai)) {
+      if (isSunday(tanggal)) continue;
+      const tahun = Number(tanggal.slice(0, 4));
+      perTahun.set(tahun, (perTahun.get(tahun) ?? 0) + 1);
+    }
+    return perTahun;
+  }
+
+  /**
+   * Saldo cuti tahunan: jatah dari HRD dikurangi cuti disetujui (terpakai)
+   * dan cuti yang masih menunggu persetujuan (dipesan).
+   */
+  async getSaldoCuti(idKaryawan: number, tahun = Number(businessToday().slice(0, 4))) {
+    const karyawan = await this.karyawanService.findOne(idKaryawan);
+    const awal = `${tahun}-01-01`;
+    const akhir = `${tahun}-12-31`;
+    const list = await this.izinRepo
+      .createQueryBuilder('izin')
+      .where('izin.id_karyawan = :idKaryawan', { idKaryawan })
+      .andWhere("izin.jenis_izin = 'cuti'")
+      .andWhere("izin.status IN ('menunggu', 'menunggu_spv', 'menunggu_hrd', 'disetujui')")
+      .andWhere('izin.tanggal_mulai <= :akhir AND izin.tanggal_selesai >= :awal', { awal, akhir })
+      .getMany();
+    let terpakai = 0;
+    let menunggu = 0;
+    for (const izin of list) {
+      const hari =
+        this.hariCutiPerTahun(
+          normalizeDateOnly(izin.tanggalMulai),
+          normalizeDateOnly(izin.tanggalSelesai),
+        ).get(tahun) ?? 0;
+      if (izin.status === 'disetujui') terpakai += hari;
+      else menunggu += hari;
+    }
+    const jatah = karyawan?.hakCuti ? Number(karyawan.jatahCuti ?? 12) : 0;
+    return {
+      tahun,
+      hakCuti: !!karyawan?.hakCuti,
+      jatah,
+      terpakai,
+      menunggu,
+      sisa: Math.max(0, jatah - terpakai - menunggu),
+    };
   }
 
   private async upsertCutiSchedules(
