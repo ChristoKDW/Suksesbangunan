@@ -14,6 +14,8 @@
 - Dipakai oleh: jadwal default karyawan kantor (`jadwal-kerja.service.ts` → `liburResmi`), perolehan RO (`regular-off.service.ts`), hari kerja payroll (`penggajian.service.ts`), dan kalender (`hari-libur.service.ts`).
 - Web: panel **Kebijakan Tanggal Merah & Cuti Bersama** di halaman *Hari Libur & Penting* — tombol 1 klik per jenis & per tanggal, reset ke default.
 - Test: `kebijakan-libur.service.spec.ts`.
+- Mobile: kalender jadwal kini mengikuti `isLibur` dari server (sebelumnya semua `cuti_bersama` selalu tampil merah/libur);
+  label kartu: "Cuti Bersama — Tetap Masuk Kerja" / "Libur Nasional — Tetap Masuk Kerja". APK baru dirilis.
 
 ---
 

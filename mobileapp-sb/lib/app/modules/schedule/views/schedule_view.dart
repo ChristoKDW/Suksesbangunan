@@ -143,10 +143,9 @@ class ScheduleView extends GetView<ScheduleController> {
           markerBuilder: (context, date, events) {
             final schedule = controller.getScheduleForDay(date);
             final holidays = controller.getHolidaysForDay(date);
-            final hasLibur = holidays.any((h) =>
-                h['isLibur'] == true ||
-                h['type'] == 'libur_nasional' ||
-                h['type'] == 'cuti_bersama');
+            // Libur atau tidak ditentukan Kebijakan Tanggal Merah di server
+            // (cuti bersama default = hari kerja biasa).
+            final hasLibur = holidays.any((h) => h['isLibur'] == true);
             final hasNasional =
                 holidays.any((h) => h['type'] == 'hari_nasional');
 
@@ -236,14 +235,16 @@ class ScheduleView extends GetView<ScheduleController> {
 
   Widget _buildHolidayBannerCard(
       BuildContext context, Map<String, dynamic> holiday) {
-    final bool isLibur = holiday['isLibur'] == true ||
-        holiday['type'] == 'libur_nasional' ||
-        holiday['type'] == 'cuti_bersama';
-    final String typeLabel = holiday['type'] == 'cuti_bersama'
-        ? 'Cuti Bersama Resmi'
-        : (isLibur
-            ? 'Hari Libur Nasional'
-            : 'Hari Peringatan Nasional');
+    final bool isLibur = holiday['isLibur'] == true;
+    final String typeLabel = switch (holiday['type']) {
+      'cuti_bersama' => isLibur
+          ? 'Cuti Bersama (Diliburkan)'
+          : 'Cuti Bersama — Tetap Masuk Kerja',
+      'libur_nasional' => isLibur
+          ? 'Hari Libur Nasional'
+          : 'Libur Nasional — Tetap Masuk Kerja',
+      _ => isLibur ? 'Hari Libur' : 'Hari Peringatan Nasional',
+    };
     final String name = holiday['name']?.toString() ?? 'Hari Penting';
     final String? description = holiday['description']?.toString();
     final String? category = holiday['category']?.toString();

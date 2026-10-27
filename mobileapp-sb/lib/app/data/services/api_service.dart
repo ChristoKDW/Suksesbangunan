@@ -251,7 +251,8 @@ class ApiService extends GetConnect {
               'date': dateKey,
               'name': item['description'],
               'type': item['holiday_type'],
-              'isLibur': true,
+              // Offline: ikuti default perusahaan (cuti bersama = hari kerja)
+              'isLibur': item['holiday_type'] != 'cuti_bersama',
               'description': item['description'],
             };
             list.add(ev);
