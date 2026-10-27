@@ -326,13 +326,11 @@ class ProfileView extends GetView<ProfileController> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Anda belum mengunggah ' +
-                (!hasKtp && !hasKk
+            'Anda belum mengunggah ${!hasKtp && !hasKk
                     ? 'Foto KTP dan Kartu Keluarga (KK).'
                     : !hasKtp
                         ? 'Foto KTP.'
-                        : 'Foto Kartu Keluarga (KK).') +
-                ' Silakan unggah dokumen Anda agar data kepegawaian tuntas.',
+                        : 'Foto Kartu Keluarga (KK).'} Silakan unggah dokumen Anda agar data kepegawaian tuntas.',
             style: const TextStyle(
                 fontSize: 12, color: Color(0xFF92400E), height: 1.4),
           ),

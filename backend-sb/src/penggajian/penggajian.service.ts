@@ -18,6 +18,7 @@ import { HariLibur } from '../hari-libur/entities/hari-libur.entity.js';
 import { KaryawanService } from '../karyawan/karyawan.service.js';
 import { AbsensiService } from '../absensi/absensi.service.js';
 import { JadwalKerjaService } from '../jadwal-kerja/jadwal-kerja.service.js';
+import { KasbonService } from '../kasbon/kasbon.service.js';
 import { UpdatePenggajianDto } from './dto/update-penggajian.dto.js';
 
 import { PengaturanPenggajian } from './entities/pengaturan-penggajian.entity.js';
@@ -70,6 +71,7 @@ export class PenggajianService {
     private readonly karyawanService: KaryawanService,
     private readonly absensiService: AbsensiService,
     private readonly jadwalKerjaService: JadwalKerjaService,
+    private readonly kasbonService?: KasbonService,
   ) {}
 
   /**
@@ -446,12 +448,26 @@ export class PenggajianService {
       const potonganBpjs = Number(karyawan.potonganBpjs) || 0;
       // Denda potongan terlambat otomatis dari riwayat absensi: menggunakan tarif dari pengaturan cut-off
       const potonganTerlambat = lateCount * tarifDenda;
-      const potonganPinjaman = Number(penggajian?.potonganPinjaman || 0);
-      const sisaPinjaman = Number(penggajian?.sisaPinjaman || 0);
       const potonganLainnya =
         hasPotonganGlobal && karyawanKenaPotongan.has(karyawan.idKaryawan)
           ? nominalPotonganPerOrang
           : Number(penggajian?.potonganLainnya || 0);
+      // Kasbon: cicilan dipotong otomatis dari menu Kasbon (tidak membuat THP minus).
+      // Karyawan tanpa data kasbon tetap memakai nilai manual lama (jika ada).
+      const rencanaKasbon = this.kasbonService
+        ? await this.kasbonService.rencanaCicilan(
+            karyawan.idKaryawan,
+            periodeAkhirStr,
+            totalPenghasilan - potonganBpjs - potonganTerlambat - potonganLainnya,
+            penggajian?.idGaji,
+          )
+        : null;
+      const potonganPinjaman = rencanaKasbon?.adaKasbon
+        ? rencanaKasbon.total
+        : Number(penggajian?.potonganPinjaman || 0);
+      const sisaPinjaman = rencanaKasbon?.adaKasbon
+        ? rencanaKasbon.sisaSetelah
+        : Number(penggajian?.sisaPinjaman || 0);
 
       const totalPotongan =
         potonganBpjs + potonganTerlambat + potonganPinjaman + potonganLainnya;
@@ -525,6 +541,9 @@ export class PenggajianService {
       penggajian.catatan = `Metode Penggajian CV Sukses Bangunindo (${totalHariKerja} Hari Kerja Periode): ${detailKehadiran.join(', ')}. Slip gaji bersifat rahasia.`;
 
       const saved = await this.penggajianRepo.save(penggajian);
+      if (rencanaKasbon) {
+        await this.kasbonService!.simpanCicilan(saved.idGaji, periodeAkhirStr, rencanaKasbon);
+      }
       results.push(saved);
     }
 
@@ -536,6 +555,16 @@ export class PenggajianService {
     if (gaji.tanggalBayar) {
       throw new BadRequestException(
         'Slip gaji yang sudah difinalisasi/dibayar tidak dapat dihitung ulang atau diubah.',
+      );
+    }
+    if (
+      (dto.potonganPinjaman !== undefined || dto.sisaPinjaman !== undefined) &&
+      (Number(dto.potonganPinjaman ?? gaji.potonganPinjaman) !== Number(gaji.potonganPinjaman) ||
+        Number(dto.sisaPinjaman ?? gaji.sisaPinjaman) !== Number(gaji.sisaPinjaman)) &&
+      (await this.kasbonService?.adaCicilanUntukGaji(id))
+    ) {
+      throw new BadRequestException(
+        'Potongan kasbon pada slip ini dihitung otomatis dari menu Kasbon. Ubah data kasbon lalu Generate Payroll ulang.',
       );
     }
 
@@ -959,9 +988,21 @@ export class PenggajianService {
     const potonganTerlambat = slipResmi
       ? Number(slipResmi.potonganTerlambat)
       : daftarKeterlambatan.length * tarifDenda;
-    const potonganPinjaman = slipResmi ? Number(slipResmi.potonganPinjaman) : 0;
     const potonganLainnya = slipResmi ? Number(slipResmi.potonganLainnya) : 0;
-    const sisaPinjaman = slipResmi ? Number(slipResmi.sisaPinjaman) : 0;
+    const rencanaKasbon =
+      !slipResmi && this.kasbonService
+        ? await this.kasbonService.rencanaCicilan(
+            idKaryawan,
+            effPeriodeAkhir,
+            totalPenghasilan - potonganBpjs - potonganTerlambat - potonganLainnya,
+          )
+        : null;
+    const potonganPinjaman = slipResmi
+      ? Number(slipResmi.potonganPinjaman)
+      : (rencanaKasbon?.total ?? 0);
+    const sisaPinjaman = slipResmi
+      ? Number(slipResmi.sisaPinjaman)
+      : (rencanaKasbon?.sisaSetelah ?? 0);
 
     const totalPotongan = slipResmi
       ? Number(slipResmi.potongan)

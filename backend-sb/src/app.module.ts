@@ -30,6 +30,7 @@ import { HariLiburModule } from './hari-libur/hari-libur.module.js';
 import { PertukaranJadwalModule } from './pertukaran-jadwal/pertukaran-jadwal.module.js';
 import { RegularOffModule } from './regular-off/regular-off.module.js';
 import { TundaOffModule } from './tunda-off/tunda-off.module.js';
+import { KasbonModule } from './kasbon/kasbon.module.js';
 import { AsetModule } from './aset/aset.module.js';
 
 @Module({
@@ -94,6 +95,7 @@ import { AsetModule } from './aset/aset.module.js';
     PertukaranJadwalModule,
     RegularOffModule,
     TundaOffModule,
+    KasbonModule,
     AsetModule,
   ],
   providers: [

@@ -1,14 +1,102 @@
 ---
 trigger: always_on
-description: "Aturan wajib untuk selalu menggunakan prinsip dan skill ponytail di setiap proses."
+description: "Aturan wajib untuk AI agent & developer di proyek LARAS / Sukses Bangunan (baca SEBELUM mengubah apa pun)."
 ---
 
-# Wajib Menggunakan Skill Ponytail
+# LARAS — Sistem Absensi & Payroll CV. Sukses Bangunindo
 
-Dalam setiap penugasan, analisis, atau penulisan kode pada proyek ini, Anda **WAJIB** menerapkan prinsip dan kapabilitas dari *skill* **ponytail**. 
+> **Untuk AI agent (Claude, Codex, Cursor, Antigravity, Gemini, dll.) dan developer:**
+> File ini adalah aturan utama proyek. Ikuti **Protokol Wajib** di bawah sebelum menulis
+> satu baris kode pun, supaya pekerjaan orang lain (di laptop, GitHub, atau langsung di VPS)
+> tidak tertimpa.
 
-Instruksi untuk agen:
-1. Pastikan Anda bertindak sebagai *lazy senior developer* sesuai dengan filosofi Ponytail (The best code is the code never written).
-2. Selalu prioritaskan penggunaan ulang kode (reuse), penghapusan kode yang tidak perlu (deletion over addition), dan mencari solusi satu baris (one-liners).
-3. Jika diperlukan, baca panduan dari `ponytail-help` atau aktifkan kapabilitas lanjutan dari `ponytail-review` dan `ponytail-audit` sebelum mengeksekusi instruksi pengguna.
-4. Anda harus selalu mempertanyakan kebutuhan akan abstraksi baru, boilerplate, dan dependency tambahan.
+## 1. Peta Proyek
+
+| Bagian | Folder | Teknologi | Produksi |
+|---|---|---|---|
+| Backend API | `backend-sb/` | NestJS + TypeORM + PostgreSQL (pgvector) | PM2 `backend` port 3002 → https://api.larasbysuksesbangunan.my.id |
+| Web Admin (Admin/HRD/SPV) | `frontend-sb/` | Next.js (App Router) + Tailwind + SWR + SweetAlert2 | PM2 `frontend` port 3000 → https://larasbysuksesbangunan.my.id |
+| Aplikasi karyawan | `mobileapp-sb/` | Flutter + GetX | APK di `frontend-sb/public/apk/` (LARAS.apk & app-release.apk) |
+
+- **VPS:** `root@103.247.11.91`, folder proyek `/home/apps/suksesbangunan/` (akses SSH key; minta ke pemilik).
+- **GitHub:** `https://github.com/ChristoKDW/Suksesbangunan` branch `main` = **sumber kebenaran**.
+- **Sejak 27 Okt 2026 folder proyek di VPS adalah repo git** (isi sama dengan repo GitHub).
+  Artinya setiap perubahan langsung di VPS **terdeteksi** dengan `git status`.
+- Database produksi: `absensi_sukses_bangunan` (TypeORM `synchronize: true` → kolom/tabel baru dibuat otomatis saat backend start).
+- File rahasia **tidak** ada di git: `backend-sb/.env`, `frontend-sb/.env*`, `uploads/`, folder `Dokumen/`. Jangan pernah commit kredensial.
+
+## 2. Protokol Wajib Sebelum Mengubah Kode
+
+### A. Bekerja di laptop / komputer sendiri
+```bash
+git fetch origin && git status && git log --oneline -15 origin/main
+git pull --rebase origin main          # selalu mulai dari versi terbaru
+```
+Lalu **cek apakah VPS punya perubahan yang belum masuk git** (lihat bagian C).
+
+### B. Bekerja langsung di VPS (SSH)
+```bash
+cd /home/apps/suksesbangunan
+git status                  # ADA file "modified"/"untracked"? → itu pekerjaan orang lain yang belum dicatat
+git diff --stat && git diff # baca & pahami perubahannya
+git log --oneline -15
+```
+- **JANGAN** `git checkout -- .`, `git reset --hard`, `git clean`, `git stash drop`, atau menimpa file yang berubah.
+- Jika ada perubahan tak tercatat: analisis isinya, tulis entrinya di `CATATAN_PERUBAHAN.md`,
+  lalu `git add -A && git commit -m "chore: catat perubahan langsung di VPS (<ringkas>)"` **sebelum** mulai kerja baru.
+
+### C. Menarik perubahan VPS ke laptop (VPS belum punya token push GitHub)
+```bash
+git remote add vps root@103.247.11.91:/home/apps/suksesbangunan   # sekali saja
+git fetch vps && git log --oneline main..vps/main                  # commit yang hanya ada di VPS
+git merge vps/main && git push origin main
+```
+
+### D. Setelah selesai mengubah
+1. Jalankan pemeriksaan:
+   - backend: `cd backend-sb && npx tsc --noEmit -p tsconfig.build.json && npx jest`
+   - frontend: `cd frontend-sb && npx tsc --noEmit && npm run build`
+   - mobile: `cd mobileapp-sb && flutter analyze lib`
+2. Tambahkan entri di **`CATATAN_PERUBAHAN.md`** (tanggal, siapa/AI apa, apa yang diubah, file, dampak data/migrasi).
+3. `git commit` (pesan jelas, Bahasa Indonesia) → `git push origin main`.
+4. Deploy (bagian 3). Jangan biarkan GitHub, laptop, dan VPS berbeda.
+
+## 3. Cara Deploy (hanya lewat git — DILARANG `scp -r` seluruh folder)
+```bash
+# Dari laptop: kirim commit ke VPS (VPS menerima push ke branch lain, lalu di-merge)
+git push vps main:incoming
+
+# Di VPS
+ssh root@103.247.11.91
+cd /home/apps/suksesbangunan
+git status                                   # harus bersih (lihat Protokol B)
+tar czf /root/backup-$(date +%Y%m%d-%H%M).tgz backend-sb/src backend-sb/dist frontend-sb/app frontend-sb/components frontend-sb/lib frontend-sb/.next
+git merge --ff-only incoming                 # gagal = ada perubahan di VPS yang belum ditarik → ikuti Protokol B/C dulu
+cd backend-sb  && npm install && npm run build && pm2 restart backend
+cd ../frontend-sb && npm install && npm run build && pm2 restart frontend
+pm2 logs backend --lines 30 --nostream       # pastikan "Nest application successfully started"
+```
+APK baru: `cd mobileapp-sb && flutter build apk --release`, salin ke `frontend-sb/public/apk/app-release.apk`
+**dan** `LARAS.apk` di VPS (file APK tidak masuk git). APK ditandatangani debug keystore laptop pemilik —
+APK dari keystore lain tidak bisa meng-update aplikasi yang sudah terpasang.
+
+## 4. Aturan Bisnis Kritis (jangan dilanggar tanpa persetujuan pemilik)
+- **Cuti**: hanya lewat pengajuan mobile. HRD menentukan `hakCuti` & `jatahCuti` (hari/tahun). Saldo = jatah − disetujui − menunggu (hari Minggu tidak dihitung).
+  Cuti yang disetujui SPV & HRD mengisi `jadwal_kerja` (`is_cuti=true`, `sumber_upload='pengajuan_cuti'`) dan **dikunci trigger database `trg_jadwal_kunci_cuti`** — tidak bisa diubah/dihapus oleh siapa pun. Jangan hapus trigger ini.
+- **Hak atur jadwal**: SPV → staf departemennya. HRD → jadwal Supervisor & staf departemen tanpa SPV. Admin → semua (cadangan). Divalidasi di `jadwal-kerja.service.ts` (`validateKaryawanAccess`).
+- **Payroll** (`penggajian.service.ts`): periode = cut-off (default 25 → 24), bulan periode = bulan tanggal akhir.
+  Hari kerja dihitung per tanggal (jadwal bila ada, kalender Sen–Sab bila kosong, minus hari penting HRD).
+  Gaji pokok prorata hari dibayar (hadir + sakit resmi + dinas luar + cuti resmi). Uang makan × hari hadir riil.
+  Telat & kembali istirahat > 60 menit = denda per kejadian (Pengaturan Penggajian). Slip yang sudah dibayar (`tanggalBayar`) tidak bisa di-generate/diedit.
+  Generate ulang mempertahankan lembur & potongan lain input HRD.
+- **Kasbon** (`backend-sb/src/kasbon`): cicilan dipotong otomatis saat Generate Payroll (tabel `kasbon_cicilan` per slip, idempoten), maksimal sisa & tidak membuat THP minus, otomatis `lunas`. Potongan kasbon di slip tidak boleh diedit manual.
+- **Karyawan External**: tidak masuk payroll/kasbon/slip; hanya absensi (rekap berkop untuk brand).
+- **BNIDirect** (`reports/bni-direct.util.ts`): replika template `BNIDIRECT-EXCEL_TEMPLATE_v1.9.6` (9 sheet) & output macro "Create CSV". Ubah format hanya jika template bank berubah.
+- **Dokumen resmi** (kop, logo, cap & tanda tangan HRD) ada di `backend-sb/assets/report/` dan `reports/pdf.util.ts`.
+
+## 5. Gaya Kerja: Ponytail
+Bertindak sebagai *lazy senior developer* — *the best code is the code never written*:
+1. Utamakan reuse, hapus kode yang tidak perlu, pilih solusi paling sederhana.
+2. Pertanyakan setiap abstraksi, boilerplate, dan dependency baru.
+3. Ikuti gaya kode di sekitarnya (komentar Bahasa Indonesia, pola modul NestJS/GetX yang sudah ada).
+4. Notifikasi/konfirmasi web memakai helper `frontend-sb/lib/swal.ts` (SweetAlert2), unduhan memakai `lib/download.ts`.

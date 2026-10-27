@@ -41,6 +41,8 @@ import '../modules/regular_off/bindings/regular_off_binding.dart';
 import '../modules/regular_off/views/regular_off_view.dart';
 import '../modules/splash/bindings/splash_binding.dart';
 import '../modules/splash/views/splash_view.dart';
+import '../modules/kasbon/bindings/kasbon_binding.dart';
+import '../modules/kasbon/views/kasbon_view.dart';
 
 part 'app_routes.dart';
 
@@ -134,6 +136,11 @@ class AppPages {
       name: _Paths.SLIP_GAJI,
       page: () => const SlipGajiView(),
       binding: SlipGajiBinding(),
+    ),
+    GetPage(
+      name: _Paths.KASBON,
+      page: () => const KasbonView(),
+      binding: KasbonBinding(),
     ),
     GetPage(
       name: _Paths.REGULAR_OFF,

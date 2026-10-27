@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:skeletonizer/skeletonizer.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/document_service.dart';
 import '../../../routes/app_pages.dart';
@@ -22,41 +23,41 @@ class HomeView extends GetView<HomeController> {
               onRefresh: controller.fetchData,
               color: AppColors.redPrimary,
               child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildProfileCard(),
-                  const SizedBox(height: 16),
-                  Obx(() {
-                    if (controller.isDokumenLengkap) return const SizedBox.shrink();
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _buildIncompleteWarningCard(context),
-                    );
-                  }),
-                  Text(
-                    'Selamat Datang! 👋',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Semoga harimu menyenangkan',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.slateLight,
-                        ),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildAttendanceCard(context),
-                  const SizedBox(height: 20),
-                  _buildFeatureSection(context),
-                  const SizedBox(height: 20),
-                  _buildActionButton(),
-                ],
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildProfileCard(),
+                    const SizedBox(height: 16),
+                    Obx(() {
+                      if (controller.isDokumenLengkap)
+                        return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildIncompleteWarningCard(context),
+                      );
+                    }),
+                    Text(
+                      'Selamat Datang! 👋',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Semoga harimu menyenangkan',
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: AppColors.slateLight),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildAttendanceCard(context),
+                    const SizedBox(height: 20),
+                    _buildFeatureSection(context),
+                    const SizedBox(height: 20),
+                    _buildActionButton(),
+                  ],
+                ),
               ),
             ),
-          ),
           );
         }),
       ),
@@ -90,7 +91,9 @@ class HomeView extends GetView<HomeController> {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
-          onPressed: () => Get.toNamed(Routes.ATTENDANCE)?.then((_) => controller.fetchData()),
+          onPressed: () =>
+              Get.toNamed(Routes.ATTENDANCE)
+                  ?.then((_) => controller.fetchData()),
           icon: Icon(btnIcon, size: 22),
           label: Text(
             btnLabel,
@@ -138,17 +141,18 @@ class HomeView extends GetView<HomeController> {
                           width: 48,
                           height: 48,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            color: AppColors.redContainer,
-                            alignment: Alignment.center,
-                            child: Text(
-                              controller.initials,
-                              style: const TextStyle(
-                                color: AppColors.redPrimary,
-                                fontWeight: FontWeight.bold,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: AppColors.redContainer,
+                                alignment: Alignment.center,
+                                child: Text(
+                                  controller.initials,
+                                  style: const TextStyle(
+                                    color: AppColors.redPrimary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
                         )
                       : Container(
                           color: AppColors.redContainer,
@@ -169,22 +173,26 @@ class HomeView extends GetView<HomeController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Obx(() => Text(
-                    controller.userProfile['nama'] ?? 'Karyawan',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                      color: AppColors.slateDark,
+                  Obx(
+                    () => Text(
+                      controller.userProfile['nama'] ?? 'Karyawan',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: AppColors.slateDark,
+                      ),
                     ),
-                  )),
+                  ),
                   const SizedBox(height: 2),
-                  Obx(() => Text(
-                    '${controller.userProfile['jabatan'] ?? 'Staff'} • NIK ${controller.userProfile['nik'] ?? '-'}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.slateLight,
+                  Obx(
+                    () => Text(
+                      '${controller.userProfile['jabatan'] ?? 'Staff'} • NIK ${controller.userProfile['nik'] ?? '-'}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.slateLight,
+                      ),
                     ),
-                  )),
+                  ),
                 ],
               ),
             ),
@@ -277,7 +285,10 @@ class HomeView extends GetView<HomeController> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -321,7 +332,10 @@ class HomeView extends GetView<HomeController> {
           const SizedBox(height: 6),
           Text(
             label,
-            style: TextStyle(color: AppColors.white.withValues(alpha: 0.8), fontSize: 11),
+            style: TextStyle(
+              color: AppColors.white.withValues(alpha: 0.8),
+              fontSize: 11,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
@@ -346,7 +360,23 @@ class HomeView extends GetView<HomeController> {
           if (controller.isExternal.value) {
             return _buildRekapAbsensiCard();
           }
-          return _buildSlipGajiLogoCard(context);
+          return Column(
+            children: [
+              _buildSlipGajiLogoCard(context),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: _buildOperationalItem(
+                  icon: Icons.account_balance_wallet_rounded,
+                  title: 'Kasbon',
+                  subtitle: 'Ajukan & cek sisa kasbon',
+                  color: const Color(0xFFB45309),
+                  bgColor: const Color(0xFFFFFBEB),
+                  onTap: () => Get.toNamed(Routes.KASBON),
+                ),
+              ),
+            ],
+          );
         }),
 
         // Khusus Karyawan Operasional: Regular Off & Tukar Shift
@@ -402,7 +432,8 @@ class HomeView extends GetView<HomeController> {
 
   Widget _buildRekapAbsensiCard() {
     return InkWell(
-      onTap: () => DocumentService.showRekapAbsensiSheet(title: 'Rekap Absensi Resmi'),
+      onTap: () =>
+          DocumentService.showRekapAbsensiSheet(title: 'Rekap Absensi Resmi'),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         width: double.infinity,
@@ -506,8 +537,11 @@ class HomeView extends GetView<HomeController> {
                       borderRadius: BorderRadius.circular(14),
                       boxShadow: [
                         BoxShadow(
-                          color: (isLate ? const Color(0xFFDC2626) : AppColors.redPrimary)
-                              .withValues(alpha: 0.25),
+                          color:
+                              (isLate
+                                      ? const Color(0xFFDC2626)
+                                      : AppColors.redPrimary)
+                                  .withValues(alpha: 0.25),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
@@ -536,11 +570,16 @@ class HomeView extends GetView<HomeController> {
                             ),
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFEFF6FF),
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: const Color(0xFFBFDBFE)),
+                                border: Border.all(
+                                  color: const Color(0xFFBFDBFE),
+                                ),
                               ),
                               child: const Text(
                                 'Real-Time',
@@ -571,7 +610,10 @@ class HomeView extends GetView<HomeController> {
                 const SizedBox(height: 12),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFEF2F2),
                     borderRadius: BorderRadius.circular(8),
@@ -579,7 +621,11 @@ class HomeView extends GetView<HomeController> {
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.error_outline, size: 16, color: Color(0xFFDC2626)),
+                      Icon(
+                        Icons.error_outline,
+                        size: 16,
+                        color: Color(0xFFDC2626),
+                      ),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -739,10 +785,10 @@ class HomeView extends GetView<HomeController> {
                     onPressed: uploadingKtp
                         ? null
                         : () => _showUploadSheet(
-                              context,
-                              'Upload Foto KTP',
-                              (source) => controller.pickAndUploadKtp(source),
-                            ),
+                            context,
+                            'Upload Foto KTP',
+                            (source) => controller.pickAndUploadKtp(source),
+                          ),
                     style: OutlinedButton.styleFrom(
                       backgroundColor: hasKtp
                           ? const Color(0xFFF0FDF4)
@@ -753,7 +799,9 @@ class HomeView extends GetView<HomeController> {
                             : const Color(0xFFFBBF24),
                       ),
                       padding: const EdgeInsets.symmetric(
-                          vertical: 10, horizontal: 8),
+                        vertical: 10,
+                        horizontal: 8,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -801,10 +849,10 @@ class HomeView extends GetView<HomeController> {
                     onPressed: uploadingKk
                         ? null
                         : () => _showUploadSheet(
-                              context,
-                              'Upload Foto Kartu Keluarga',
-                              (source) => controller.pickAndUploadKk(source),
-                            ),
+                            context,
+                            'Upload Foto Kartu Keluarga',
+                            (source) => controller.pickAndUploadKk(source),
+                          ),
                     style: OutlinedButton.styleFrom(
                       backgroundColor: hasKk
                           ? const Color(0xFFF0FDF4)
@@ -815,7 +863,9 @@ class HomeView extends GetView<HomeController> {
                             : const Color(0xFFFBBF24),
                       ),
                       padding: const EdgeInsets.symmetric(
-                          vertical: 10, horizontal: 8),
+                        vertical: 10,
+                        horizontal: 8,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -913,12 +963,18 @@ class HomeView extends GetView<HomeController> {
                     color: AppColors.redContainer,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.camera_alt, color: AppColors.redPrimary),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    color: AppColors.redPrimary,
+                  ),
                 ),
-                title: const Text('Ambil Foto Kamera',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
+                title: const Text(
+                  'Ambil Foto Kamera',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 subtitle: const Text(
-                    'Foto dokumen langsung secara vertikal/horizontal'),
+                  'Foto dokumen langsung secara vertikal/horizontal',
+                ),
                 onTap: () {
                   Get.back();
                   onPick(ImageSource.camera);
@@ -932,13 +988,18 @@ class HomeView extends GetView<HomeController> {
                     color: const Color(0xFFEFF6FF),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.photo_library,
-                      color: Color(0xFF2563EB)),
+                  child: const Icon(
+                    Icons.photo_library,
+                    color: Color(0xFF2563EB),
+                  ),
                 ),
-                title: const Text('Pilih dari Galeri',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle:
-                    const Text('Gunakan foto dokumen yang sudah ada di HP'),
+                title: const Text(
+                  'Pilih dari Galeri',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Gunakan foto dokumen yang sudah ada di HP',
+                ),
                 onTap: () {
                   Get.back();
                   onPick(ImageSource.gallery);

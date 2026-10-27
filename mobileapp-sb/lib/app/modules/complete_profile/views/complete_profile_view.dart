@@ -206,7 +206,7 @@ class CompleteProfileView extends GetView<CompleteProfileController> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.redContainer.withOpacity(0.4),
+                    color: AppColors.redContainer.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: AppColors.redSoft),
                   ),
@@ -220,7 +220,7 @@ class CompleteProfileView extends GetView<CompleteProfileController> {
                           'Data diri wajib dilengkapi sebelum mendaftarkan biometrik wajah. Foto KTP & KK dapat diunggah sekarang atau menyusul di halaman profil.',
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.redVariant.withOpacity(0.9),
+                            color: AppColors.redVariant.withValues(alpha: 0.9),
                             height: 1.3,
                           ),
                         ),
@@ -354,7 +354,7 @@ class CompleteProfileView extends GetView<CompleteProfileController> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Obx(() => DropdownButtonFormField<String>(
-                        value: controller.selectedAgama.value,
+                        initialValue: controller.selectedAgama.value,
                         decoration: const InputDecoration(
                           labelText: 'Agama',
                           prefixIcon: Icon(Icons.mosque_outlined, size: 20),
@@ -375,7 +375,7 @@ class CompleteProfileView extends GetView<CompleteProfileController> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Obx(() => DropdownButtonFormField<String>(
-                        value: controller.selectedStatusPerkawinan.value,
+                        initialValue: controller.selectedStatusPerkawinan.value,
                         decoration: const InputDecoration(
                           labelText: 'Status Perkawinan',
                           prefixIcon: Icon(Icons.favorite_outline, size: 20),

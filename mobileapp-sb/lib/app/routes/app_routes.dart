@@ -23,6 +23,7 @@ abstract class Routes {
   static const REGULAR_OFF = _Paths.REGULAR_OFF;
   static const FORGOT_PASSWORD = _Paths.FORGOT_PASSWORD;
   static const COMPLETE_PROFILE = _Paths.COMPLETE_PROFILE;
+  static const KASBON = _Paths.KASBON;
 }
 
 abstract class _Paths {
@@ -47,4 +48,5 @@ abstract class _Paths {
   static const REGULAR_OFF = '/regular-off';
   static const FORGOT_PASSWORD = '/forgot-password';
   static const COMPLETE_PROFILE = '/complete-profile';
+  static const KASBON = '/kasbon';
 }

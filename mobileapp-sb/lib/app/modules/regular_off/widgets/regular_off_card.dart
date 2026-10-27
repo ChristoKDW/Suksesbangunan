@@ -92,7 +92,7 @@ class _RegularOffCardState extends State<RegularOffCard> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFE11D48).withOpacity(0.25),
+              color: const Color(0xFFE11D48).withValues(alpha: 0.25),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -103,7 +103,7 @@ class _RegularOffCardState extends State<RegularOffCard> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -132,7 +132,7 @@ class _RegularOffCardState extends State<RegularOffCard> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.25),
+                            color: Colors.white.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -153,7 +153,7 @@ class _RegularOffCardState extends State<RegularOffCard> {
                         ? '$_totalTersedia hari libur RO tersedia (Bisa diajukan)'
                         : 'Belum ada saldo RO aktif (Didapat jika kerja di tgl merah)',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.85),
+                      color: Colors.white.withValues(alpha: 0.85),
                       fontSize: 12,
                     ),
                   ),

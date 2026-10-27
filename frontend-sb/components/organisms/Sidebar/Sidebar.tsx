@@ -19,6 +19,7 @@ import {
   Coffee,
   FileText,
   DollarSign,
+  HandCoins,
   BarChart3,
   MapPin,
   ChevronRight,
@@ -86,6 +87,7 @@ const navGroups: NavGroup[] = [
     label: "Keuangan",
     items: [
       { href: "/payroll", label: "Penggajian", icon: DollarSign, roles: ["Admin", "HRD"] },
+      { href: "/kasbon", label: "Kasbon", icon: HandCoins, roles: ["Admin", "HRD"] },
     ],
   },
   {

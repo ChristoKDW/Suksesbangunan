@@ -60,3 +60,6 @@ Thumbs.db
 # Test / Coverage
 coverage/
 **/coverage/
+
+# Dokumen sumber berisi data gaji & rekening (jangan di-commit)
+Dokumen/

@@ -143,7 +143,7 @@ class RegularOffView extends GetView<RegularOffController> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFBE123C).withOpacity(0.3),
+            color: const Color(0xFFBE123C).withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -166,7 +166,7 @@ class RegularOffView extends GetView<RegularOffController> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
@@ -305,7 +305,7 @@ class RegularOffView extends GetView<RegularOffController> {
                     boxShadow: controller.activeTab.value == 0
                         ? [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 4,
                             ),
                           ]
@@ -341,7 +341,7 @@ class RegularOffView extends GetView<RegularOffController> {
                     boxShadow: controller.activeTab.value == 1
                         ? [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 4,
                             ),
                           ]
@@ -440,7 +440,7 @@ class RegularOffView extends GetView<RegularOffController> {
             border: Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
+                color: Colors.black.withValues(alpha: 0.02),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -470,7 +470,7 @@ class RegularOffView extends GetView<RegularOffController> {
                     decoration: BoxDecoration(
                       color: badgeBgColor,
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: badgeColor.withOpacity(0.3)),
+                      border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       statusKeterangan,
@@ -600,7 +600,7 @@ class RegularOffView extends GetView<RegularOffController> {
             border: Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
+                color: Colors.black.withValues(alpha: 0.02),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -626,9 +626,9 @@ class RegularOffView extends GetView<RegularOffController> {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: statusColor.withOpacity(0.3)),
+                      border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                     ),
                     child: Text(
                       statusLabel,

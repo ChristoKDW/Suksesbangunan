@@ -680,6 +680,32 @@ class ApiService extends GetConnect {
     );
   }
 
+  /// GET /kasbon/me → { totalSisa, kasbon: [...] }.
+  Future<Map<String, dynamic>> getMyKasbon() async {
+    final res = await get('/kasbon/me');
+    return _handle(res);
+  }
+
+  /// POST /kasbon/me → pengajuan kasbon (menunggu persetujuan HRD).
+  Future<Map<String, dynamic>> ajukanKasbon({
+    required int jumlah,
+    required int cicilanPerBulan,
+    required String alasan,
+  }) async {
+    final res = await post('/kasbon/me', {
+      'jumlah': jumlah,
+      'cicilanPerBulan': cicilanPerBulan,
+      'alasan': alasan,
+    });
+    return _handle(res);
+  }
+
+  /// PATCH /kasbon/me/:id/batal → batalkan pengajuan yang masih menunggu.
+  Future<Map<String, dynamic>> batalkanKasbon(int idKasbon) async {
+    final res = await patch('/kasbon/me/$idKasbon/batal', {});
+    return _handle(res);
+  }
+
   /// GET /pengajuan-izin/me/saldo-cuti → { jatah, terpakai, menunggu, sisa, tahun }.
   Future<Map<String, dynamic>> getSaldoCuti() async {
     final res = await get('/pengajuan-izin/me/saldo-cuti');

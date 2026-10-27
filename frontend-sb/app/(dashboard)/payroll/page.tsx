@@ -1352,7 +1352,7 @@ export default function PayrollPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">
-                    Potongan Pinjaman / Kasbon (Rp)
+                    Potongan Kasbon (Rp) — otomatis dari menu Kasbon
                   </label>
                   <input
                     type="number"
