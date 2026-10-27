@@ -7,92 +7,41 @@ import { DiffViewerModal } from "@/components/diff-viewer"
 import { toast } from "@/lib/swal"
 import { api } from "@/lib/api"
 
-const AUDIT_DATA = [
-  {
-    idAudit: 104,
-    namaUser: "Musrini Muin",
-    role: "HRD",
-    action: "SETUJU_KASBON",
-    entityName: "Kasbon",
-    entityId: "12",
-    createdAt: "2026-10-28 04:15 WITA",
-    ipAddress: "182.253.11.45",
-    category: "KASBON",
-    dataBefore: { status: "menunggu", nominal: "Rp 2.000.000", cicilan: "4 Bulan" },
-    dataAfter: { status: "disetujui", nominal: "Rp 2.000.000", tanggalPersetujuan: "2026-10-28" },
-  },
-  {
-    idAudit: 103,
-    namaUser: "Christo KDW",
-    role: "Owner",
-    action: "SINKRON_VPS_GIT",
-    entityName: "System",
-    entityId: "main",
-    createdAt: "2026-10-28 02:21 WITA",
-    ipAddress: "103.247.11.91",
-    category: "SECURITY",
-    dataBefore: { gitCommit: "12df297", statusSync: "lagging" },
-    dataAfter: { gitCommit: "83a63df", statusSync: "up-to-date" },
-  },
-  {
-    idAudit: 102,
-    namaUser: "Musrini Muin",
-    role: "HRD",
-    action: "UPDATE_KEBIJAKAN_LIBUR",
-    entityName: "KebijakanLibur",
-    entityId: "2026-11-01",
-    createdAt: "2026-10-27 18:40 WITA",
-    ipAddress: "182.253.11.45",
-    category: "KEBIJAKAN",
-    dataBefore: { jenis: "Cuti Bersama", statusLibur: true, beriRO: true },
-    dataAfter: { jenis: "Cuti Bersama", statusLibur: false, beriRO: false },
-  },
-  {
-    idAudit: 101,
-    namaUser: "Hardianto",
-    role: "SPV",
-    action: "EDIT_JADWAL_STAF",
-    entityName: "JadwalKerja",
-    entityId: "Karyawan #18",
-    createdAt: "2026-10-27 15:10 WITA",
-    ipAddress: "180.248.88.12",
-    category: "JADWAL",
-    dataBefore: { tanggal: "2026-10-29", shift: "Shift Pagi (08:00 - 16:00)" },
-    dataAfter: { tanggal: "2026-10-29", shift: "Shift Middle (11:00 - 19:00)" },
-  },
-  {
-    idAudit: 100,
-    namaUser: "Musrini Muin",
-    role: "HRD",
-    action: "RECALCULATE_PAYROLL",
-    entityName: "Penggajian",
-    entityId: "Periode Okt 2026",
-    createdAt: "2026-10-27 11:20 WITA",
-    ipAddress: "182.253.11.45",
-    category: "PAYROLL",
-    dataBefore: { totalKaryawan: 94, totalGaji: "Rp 144.200.000" },
-    dataAfter: { totalKaryawan: 96, totalGaji: "Rp 148.500.000" },
-  },
-]
+interface AuditLogItem {
+  idAudit: number
+  namaUser: string
+  role: string
+  action: string
+  entityName: string
+  entityId: string
+  createdAt: string
+  ipAddress: string
+  category: string
+  dataBefore?: Record<string, unknown> | null
+  dataAfter?: Record<string, unknown> | null
+}
 
-const CATEGORIES = ["ALL", "PAYROLL", "KASBON", "JADWAL", "KEBIJAKAN", "SECURITY"]
+const CATEGORIES = ["ALL", "KEBIJAKAN", "PAYROLL", "KASBON", "JADWAL", "SECURITY"]
 
 export default function AuditTrailPage() {
   const [activeCategory, setActiveCategory] = useState("ALL")
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
-  const [auditLogs, setAuditLogs] = useState<typeof AUDIT_DATA>(AUDIT_DATA)
-  const [selectedAudit, setSelectedAudit] = useState<typeof AUDIT_DATA[0] | null>(null)
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([])
+  const [selectedAudit, setSelectedAudit] = useState<AuditLogItem | null>(null)
 
   const fetchAuditLogs = async () => {
     try {
       setLoading(true)
-      const data = await api.get<any[]>("/super-admin/audit-logs")
-      if (Array.isArray(data) && data.length > 0) {
+      const data = await api.get<AuditLogItem[]>("/super-admin/audit-logs")
+      if (Array.isArray(data)) {
         setAuditLogs(data)
+      } else {
+        setAuditLogs([])
       }
     } catch (e) {
-      console.log("Using fallback audit data or offline:", e)
+      setAuditLogs([])
+      console.log("No audit logs or server offline:", e)
     } finally {
       setLoading(false)
     }

@@ -13,22 +13,7 @@ interface OverrideLog {
 }
 
 export default function EmergencyControlPage() {
-  const [logs, setLogs] = useState<OverrideLog[]>([
-    {
-      id: 1,
-      waktu: "2026-10-27 16:30 WITA",
-      pelaku: "Christo KDW (Owner)",
-      aksi: "UNLOCK_TRIGGER_CUTI",
-      alasan: "Koreksi salah input pengajuan cuti darurat karyawan #12",
-    },
-    {
-      id: 2,
-      waktu: "2026-10-25 09:15 WITA",
-      pelaku: "Christo KDW (Owner)",
-      aksi: "FORCE_UNFREEZE_SLIP",
-      alasan: "Koreksi komponen lembur susulan sebelum transfer BNIDirect",
-    },
-  ])
+  const [logs, setLogs] = useState<OverrideLog[]>([])
 
   const handleUnlockCuti = async () => {
     const ok = await confirmDialog(
@@ -136,18 +121,26 @@ export default function EmergencyControlPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-default)]">
-              {logs.map((log) => (
-                <tr key={log.id} className="hover:bg-[var(--sidebar-item-hover-bg)]">
-                  <td className="py-3 px-4 font-mono text-gray-500">{log.waktu}</td>
-                  <td className="py-3 px-4 font-semibold text-[var(--text-primary)]">{log.pelaku}</td>
-                  <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-50 text-red-700 border border-red-200">
-                      {log.aksi}
-                    </span>
+              {logs.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-gray-400">
+                    Belum ada riwayat tindakan emergency override yang tercatat.
                   </td>
-                  <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{log.alasan}</td>
                 </tr>
-              ))}
+              ) : (
+                logs.map((log) => (
+                  <tr key={log.id} className="hover:bg-[var(--sidebar-item-hover-bg)]">
+                    <td className="py-3 px-4 font-mono text-gray-500">{log.waktu}</td>
+                    <td className="py-3 px-4 font-semibold text-[var(--text-primary)]">{log.pelaku}</td>
+                    <td className="py-3 px-4">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-50 text-red-700 border border-red-200">
+                        {log.aksi}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 dark:text-gray-300">{log.alasan}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -37,74 +37,8 @@ interface IssueReport {
   tanggapanSolusi?: string
 }
 
-const MOCK_ISSUES: IssueReport[] = [
-  {
-    id: 1,
-    tiketId: "RPT-202610-0042",
-    sumber: "mobile",
-    pelapor: "Budi Pratama",
-    role: "Sales Advisor (Lantai Toko LARAS)",
-    kategori: "Kamera & Liveness Wajah",
-    judul: "Kamera depan freeze saat verifikasi liveness wajah di HP Samsung",
-    deskripsi:
-      "Setiap kali klik tombol ambil foto absensi masuk, tampilan kamera depan langsung blank hitam dan aplikasi tidak merespon selama 10 detik sebelum akhirnya kembali ke beranda.",
-    prioritas: "tinggi",
-    status: "menunggu",
-    createdAt: "2026-10-28 04:50 WITA",
-    deviceInfo: {
-      platform: "Android 14",
-      device: "Samsung Galaxy A54 5G",
-      appVersion: "v1.2.0 (Build 45)",
-      isGpsEnabled: true,
-      battery: "76%",
-    },
-    lampiranUrl: "/mock-screenshot-error.png",
-  },
-  {
-    id: 2,
-    tiketId: "RPT-202610-0041",
-    sumber: "web",
-    pelapor: "Musrini Muin",
-    role: "Staf HRD (Kantor LARAS)",
-    kategori: "Export BNIDirect & Payroll",
-    judul: "Sheet BIFAST tidak memunculkan kode bank untuk rekening Bank BSI",
-    deskripsi:
-      "Saat generate file Excel BNIDirect untuk periode 25 September - 24 Oktober, karyawan dengan rekening Bank BSI kolom kode kliring BI-FAST-nya kosong sehingga upload ditolak oleh portal bank.",
-    prioritas: "kritis",
-    status: "sedang_diproses",
-    createdAt: "2026-10-27 16:35 WITA",
-    deviceInfo: {
-      platform: "Web Panel",
-      browser: "Google Chrome 130.0.6723.70",
-      os: "Windows 11 Pro",
-      url: "/payroll/bni-direct",
-    },
-    tanggapanSolusi: "Sedang ditambahkan kode BI-FAST BSI (kode: BSYEIDJA) ke pemetaan bni-direct.util.ts.",
-  },
-  {
-    id: 3,
-    tiketId: "RPT-202610-0039",
-    sumber: "mobile",
-    pelapor: "Andi Wijaya",
-    role: "Warehousekeeper (Gudang LARAS)",
-    kategori: "Radius Lokasi GPS",
-    judul: "Radius GPS terbaca 65 meter padahal sudah di dalam area gudang",
-    deskripsi: "Tombol absensi berwarna abu-abu 'Di Luar Radius' padahal posisi sudah berdiri tepat di depan pintu gudang.",
-    prioritas: "sedang",
-    status: "selesai",
-    createdAt: "2026-10-26 08:12 WITA",
-    deviceInfo: {
-      platform: "Android 13",
-      device: "Xiaomi Redmi Note 12",
-      appVersion: "v1.2.0 (Build 45)",
-      accuracy: "22 meter",
-    },
-    tanggapanSolusi: "Akurasi GPS perangkat sempat menurun akibat cuaca mendung. Pengaturan radius geofence gudang telah disesuaikan menjadi 55m.",
-  },
-]
-
 export default function IssueReportsPage() {
-  const [issues, setIssues] = useState<IssueReport[]>(MOCK_ISSUES)
+  const [issues, setIssues] = useState<IssueReport[]>([])
   const [selectedIssue, setSelectedIssue] = useState<IssueReport | null>(null)
   const [statusFilter, setStatusFilter] = useState("all")
   const [sumberFilter, setSumberFilter] = useState("all")
@@ -115,7 +49,7 @@ export default function IssueReportsPage() {
     try {
       setLoading(true)
       const data = await api.get<any[]>("/super-admin/laporan-masalah")
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         const mapped: IssueReport[] = data.map((item: any) => ({
           id: item.idLaporan,
           tiketId: item.tiketId,
@@ -136,10 +70,12 @@ export default function IssueReportsPage() {
           tanggapanSolusi: item.tanggapanSolusi || undefined,
         }))
         setIssues(mapped)
+      } else {
+        setIssues([])
       }
     } catch (e) {
-      // Backend maybe unreachable or empty, keep mock issues
-      console.log("Using mock issues or server unreachable:", e)
+      setIssues([])
+      console.log("No issue reports or server unreachable:", e)
     } finally {
       setLoading(false)
     }
@@ -282,7 +218,16 @@ export default function IssueReportsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-default)] text-[var(--text-primary)]">
-              {filteredIssues.map((item) => (
+              {filteredIssues.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-gray-400">
+                    <LifeBuoy className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                    <p className="font-bold text-xs text-[var(--text-secondary)]">Belum ada tiket laporan kendala yang masuk</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">Seluruh tiket keluhan dari aplikasi mobile dan web admin akan tampil di sini secara real-time.</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredIssues.map((item) => (
                 <tr key={item.id} className="hover:bg-[var(--sidebar-item-hover-bg)] transition">
                   <td className="py-3.5 px-4">
                     <span className="font-mono font-bold text-red-600 block">{item.tiketId}</span>
@@ -357,7 +302,8 @@ export default function IssueReportsPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              ))
+            )}
             </tbody>
           </table>
         </div>

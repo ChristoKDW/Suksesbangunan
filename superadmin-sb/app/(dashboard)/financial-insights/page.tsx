@@ -24,63 +24,15 @@ interface DeptPayrollItem {
   pct: number
 }
 
-const DEFAULT_DEPARTMENT_PAYROLL: DeptPayrollItem[] = [
-  {
-    name: "Divisi Sales & Area Toko",
-    roleDesc: "Sales Advisor, Pramuniaga, Display Area Toko LARAS",
-    totalKaryawan: 45,
-    thpTotal: "Rp 52.000.000",
-    kasbonTerpotong: "Rp 7.500.000",
-    lembur: "Rp 5.800.000",
-    pct: 35,
-  },
-  {
-    name: "Divisi Gudang & Inventory Control",
-    roleDesc: "Storekeeper, Warehousekeeper, Checker Material",
-    totalKaryawan: 18,
-    thpTotal: "Rp 37.100.000",
-    kasbonTerpotong: "Rp 5.500.000",
-    lembur: "Rp 3.800.000",
-    pct: 25,
-  },
-  {
-    name: "Divisi Kantor, HRD & Finance",
-    roleDesc: "Office Management, Staf HRD, Finance & Kasir Pusat",
-    totalKaryawan: 17,
-    thpTotal: "Rp 26.700.000",
-    kasbonTerpotong: "Rp 3.800.000",
-    lembur: "Rp 1.200.000",
-    pct: 18,
-  },
-  {
-    name: "Divisi Kasir & Customer Service",
-    roleDesc: "Kasir Toko LARAS, Customer Care, Layanan Pelanggan",
-    totalKaryawan: 8,
-    thpTotal: "Rp 17.800.000",
-    kasbonTerpotong: "Rp 2.500.000",
-    lembur: "Rp 2.200.000",
-    pct: 12,
-  },
-  {
-    name: "Divisi Pengiriman & Ekspedisi",
-    roleDesc: "Driver Delivery, Helper Angkut & Logistik Luar",
-    totalKaryawan: 8,
-    thpTotal: "Rp 14.900.000",
-    kasbonTerpotong: "Rp 2.000.000",
-    lembur: "Rp 1.800.000",
-    pct: 10,
-  },
-]
-
 export default function FinancialInsightsPage() {
   const [loading, setLoading] = useState(false)
-  const [departments, setDepartments] = useState<DeptPayrollItem[]>(DEFAULT_DEPARTMENT_PAYROLL)
+  const [departments, setDepartments] = useState<DeptPayrollItem[]>([])
   const [stats, setStats] = useState({
-    totalKaryawan: 96,
-    totalThp: "Rp 148.500.000",
-    totalKasbonTerpotong: "Rp 21.300.000",
-    totalDenda: "Rp 2.150.000",
-    periodeCutoff: "25 Sep - 24 Okt 2026",
+    totalKaryawan: 0,
+    totalThp: "Rp 0",
+    totalKasbonTerpotong: "Rp 0",
+    totalDenda: "Rp 0",
+    periodeCutoff: "-",
   })
 
   const fetchInsights = async () => {
@@ -88,19 +40,23 @@ export default function FinancialInsightsPage() {
       setLoading(true)
       const data = await api.get<any>("/super-admin/financial-insights")
       if (data) {
-        if (Array.isArray(data.departments) && data.departments.length > 0) {
+        if (Array.isArray(data.departments)) {
           setDepartments(data.departments)
+        } else {
+          setDepartments([])
         }
         setStats({
-          totalKaryawan: data.totalKaryawanAktif || 96,
-          totalThp: data.totalThpFormatted || "Rp 148.500.000",
-          totalKasbonTerpotong: data.totalKasbonTerpotongFormatted || "Rp 21.300.000",
-          totalDenda: data.totalDendaFormatted || "Rp 2.150.000",
-          periodeCutoff: `${data.periodeAwal || "2026-09-25"} s/d ${data.periodeAkhir || "2026-10-24"}`,
+          totalKaryawan: data.totalKaryawanAktif || 0,
+          totalThp: data.totalThpFormatted || "Rp 0",
+          totalKasbonTerpotong: data.totalKasbonTerpotongFormatted || "Rp 0",
+          totalDenda: data.totalDendaFormatted || "Rp 0",
+          periodeCutoff: data.periodeAwal && data.periodeAkhir 
+            ? `${data.periodeAwal} s/d ${data.periodeAkhir}` 
+            : "Belum Ada Periode",
         })
       }
     } catch (err) {
-      console.warn("Using fallback financial insights:", err)
+      console.warn("Failed fetching financial insights:", err)
     } finally {
       setLoading(false)
     }
@@ -186,7 +142,14 @@ export default function FinancialInsightsPage() {
         </div>
 
         <div className="space-y-4">
-          {departments.map((dept) => (
+          {departments.length === 0 ? (
+            <div className="p-8 text-center border border-dashed border-[var(--border-default)] rounded-xl text-gray-400">
+              <Building2 className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+              <p className="font-bold text-xs text-[var(--text-secondary)]">Belum ada rincian data penggajian departemen</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Data alokasi beban akan terakumulasi otomatis saat proses payroll disetujui.</p>
+            </div>
+          ) : (
+            departments.map((dept) => (
             <div
               key={dept.name}
               className="p-4 rounded-xl border border-[var(--border-default)] bg-[var(--bg-page)] space-y-2.5 hover:border-red-300 transition"
@@ -221,7 +184,8 @@ export default function FinancialInsightsPage() {
                 </span>
               </div>
             </div>
-          ))}
+          ))
+        )}
         </div>
       </div>
     </div>

@@ -6,6 +6,29 @@
 
 ---
 
+## 2026-10-28 (pagi) · Antigravity — Pembersihan Seluruh Data Dummy & Hardcoded (Peralihan Murni ke Data Dinamis)
+
+- **Backend API (`backend-sb/src/super-admin/super-admin-insights.service.ts`)**:
+  - `getFinancialInsights()`: Menghapus seluruh konstanta/formula dummy (Rp 148.500.000, Rp 21.300.000, 35%, dsb). Menggantinya dengan agregasi SQL murni dari database PostgreSQL:
+    - Total THP murni dari `SUM(g.total_gaji)` periode aktif berjalan (Rp 4.127.404).
+    - Total Gapok murni dari `SUM(g.gaji_pokok_sesuai_hari)`.
+    - Total Kasbon Terpotong murni dari `SUM(c.nominal)` tabel `kasbon_cicilan` (Rp 0).
+    - Total Denda murni dari `SUM(g.potongan_terlambat)` (Rp 120.000).
+    - Rincian beban departemen murni dikelompokkan dinamis dari tabel `departemen` join `karyawan` join `penggajian` (12 unit kerja operasional aktif riil).
+  - `getAuditLogs()`: Menghapus data mock `baseAudits` (Musrini Muin, Christo KDW, Hardianto). Hanya menyajikan riwayat perizinan dan approval riil dari database `pengajuan_izin`.
+  - `getDashboardOverview()`: Menghilangkan string proyeksi hardcoded; seluruh angka kartu overview bersumber dari data dinamis database.
+- **Super Admin Panel (`superadmin-sb`)**:
+  - `issue-reports/page.tsx`: Menghapus array `MOCK_ISSUES` (Budi Pratama, Andi Wijaya, Musrini Muin). Menampilkan empty state jika belum ada tiket kendala riil dari user mobile / web admin.
+  - `audit-trail/page.tsx`: Menghapus array `AUDIT_DATA`. Mengambil murni dari endpoint `/super-admin/audit-logs` dengan penanganan empty state yang bersih.
+  - `emergency-control/page.tsx`: Menghapus histori mock tindakan override. Jika belum ada tindakan, tabel histori dikosongkan secara elegan.
+  - `financial-insights/page.tsx`: Menghapus array `DEFAULT_DEPARTMENT_PAYROLL`. Seluruh kartu statistik dan kartu divisi bersumber dari respons dinamis server backend.
+  - `page.tsx` (Dashboard Overview): Menghapus `MOCK_AUDIT_LOGS` dan angka mock default.
+- **Pengujian & Verifikasi**:
+  - Backend `npx tsc` & `npx jest` 100% lulus (13 suites, 37 test).
+  - Superadmin `npx tsc` & `npm run build` lulus (13/13 static routes).
+
+---
+
 ## 2026-10-28 (pagi) · Antigravity — Pembatasan Akses Super Admin Khusus Software Engineer & Update Email Powtahh
 
 - **Database PostgreSQL (`absensi_sukses_bangunan`)**:

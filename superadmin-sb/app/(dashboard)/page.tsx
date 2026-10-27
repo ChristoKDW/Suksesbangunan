@@ -34,75 +34,24 @@ interface AuditItem {
   dataAfter?: Record<string, unknown> | null
 }
 
-const MOCK_AUDIT_LOGS: AuditItem[] = [
-  {
-    idAudit: 104,
-    namaUser: "Musrini Muin",
-    role: "HRD",
-    action: "SETUJU_KASBON",
-    entityName: "Kasbon",
-    entityId: "12",
-    createdAt: "2026-10-28 04:15 WITA",
-    ipAddress: "182.253.11.45",
-    dataBefore: { status: "menunggu", nominal: "Rp 2.000.000", cicilan: "4 Bulan" },
-    dataAfter: { status: "disetujui", nominal: "Rp 2.000.000", tanggalPersetujuan: "2026-10-28" },
-  },
-  {
-    idAudit: 103,
-    namaUser: "Christo KDW",
-    role: "Owner",
-    action: "SINKRON_VPS_GIT",
-    entityName: "System",
-    entityId: "main",
-    createdAt: "2026-10-28 02:21 WITA",
-    ipAddress: "103.247.11.91",
-    dataBefore: { gitCommit: "12df297", statusSync: "lagging" },
-    dataAfter: { gitCommit: "83a63df", statusSync: "up-to-date" },
-  },
-  {
-    idAudit: 102,
-    namaUser: "Musrini Muin",
-    role: "HRD",
-    action: "UPDATE_KEBIJAKAN_LIBUR",
-    entityName: "KebijakanLibur",
-    entityId: "2026-11-01",
-    createdAt: "2026-10-27 18:40 WITA",
-    ipAddress: "182.253.11.45",
-    dataBefore: { jenis: "Cuti Bersama", statusLibur: true, beriRO: true },
-    dataAfter: { jenis: "Cuti Bersama", statusLibur: false, beriRO: false },
-  },
-  {
-    idAudit: 101,
-    namaUser: "Hardianto",
-    role: "SPV",
-    action: "EDIT_JADWAL_STAF",
-    entityName: "JadwalKerja",
-    entityId: "Karyawan #18",
-    createdAt: "2026-10-27 15:10 WITA",
-    ipAddress: "180.248.88.12",
-    dataBefore: { tanggal: "2026-10-29", shift: "Shift Pagi (08:00 - 16:00)" },
-    dataAfter: { tanggal: "2026-10-29", shift: "Shift Middle (11:00 - 19:00)" },
-  },
-]
-
 export default function DashboardOverviewPage() {
   const { user } = useSuperAdminAuth()
   const [loading, setLoading] = useState(true)
   const [selectedAudit, setSelectedAudit] = useState<AuditItem | null>(null)
   const [stats, setStats] = useState({
-    payrollProjection: "Rp 148.500.000",
-    payrollChangePct: "+2.4%",
-    payrollCutoff: "Cut-off 25 Okt 2026",
-    totalKaryawan: 96,
-    piutangKasbon: "Rp 24.300.000",
-    kasbonLancarPct: "100% cicilan aktif",
-    serverHealthStatus: "Optimal (99.98%)",
-    serverSpecs: "Ubuntu 24.04 · 8 vCPU / 16GB",
-    serverUptime: "Online 36 Jam (PM2)",
+    payrollProjection: "Rp 0",
+    payrollChangePct: "-",
+    payrollCutoff: "-",
+    totalKaryawan: 0,
+    piutangKasbon: "Rp 0",
+    kasbonLancarPct: "-",
+    serverHealthStatus: "Optimal",
+    serverSpecs: "Ubuntu 24.04 LTS · Sukses Bangunan",
+    serverUptime: "PM2 Online",
     totalIssues: 0,
     waitingIssues: 0,
   })
-  const [auditLogs, setAuditLogs] = useState<AuditItem[]>(MOCK_AUDIT_LOGS)
+  const [auditLogs, setAuditLogs] = useState<AuditItem[]>([])
 
   const fetchStats = async () => {
     try {
@@ -110,24 +59,26 @@ export default function DashboardOverviewPage() {
       const data = await api.get<any>("/super-admin/dashboard-stats")
       if (data) {
         setStats({
-          payrollProjection: data.payrollProjection || "Rp 148.500.000",
-          payrollChangePct: data.payrollChangePct || "+2.4%",
-          payrollCutoff: data.payrollCutoff || "Cut-off 25 Okt 2026",
-          totalKaryawan: data.totalKaryawan || 96,
-          piutangKasbon: data.piutangKasbon || "Rp 24.300.000",
-          kasbonLancarPct: data.kasbonLancarPct || "100% cicilan aktif",
-          serverHealthStatus: data.serverHealthStatus || "Optimal (99.98%)",
-          serverSpecs: data.serverSpecs || "Ubuntu 24.04 · 8 vCPU / 16GB",
-          serverUptime: data.serverUptime || "Online 36 Jam (PM2)",
+          payrollProjection: data.payrollProjection || "Rp 0",
+          payrollChangePct: data.payrollChangePct || "-",
+          payrollCutoff: data.payrollCutoff || "-",
+          totalKaryawan: data.totalKaryawan || 0,
+          piutangKasbon: data.piutangKasbon || "Rp 0",
+          kasbonLancarPct: data.kasbonLancarPct || "-",
+          serverHealthStatus: data.serverHealthStatus || "Optimal",
+          serverSpecs: data.serverSpecs || "Ubuntu 24.04 LTS",
+          serverUptime: data.serverUptime || "PM2 Online",
           totalIssues: data.totalIssues || 0,
           waitingIssues: data.waitingIssues || 0,
         })
-        if (Array.isArray(data.recentAudits) && data.recentAudits.length > 0) {
+        if (Array.isArray(data.recentAudits)) {
           setAuditLogs(data.recentAudits)
+        } else {
+          setAuditLogs([])
         }
       }
     } catch (e) {
-      console.log("Using fallback dashboard stats:", e)
+      console.log("Failed fetching dashboard stats:", e)
     } finally {
       setLoading(false)
     }
@@ -316,7 +267,14 @@ export default function DashboardOverviewPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-default)] text-[var(--text-primary)]">
-                {auditLogs.map((item) => (
+                {auditLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-gray-400">
+                      Belum ada aktivitas mutasi sensitif yang tercatat.
+                    </td>
+                  </tr>
+                ) : (
+                  auditLogs.map((item) => (
                   <tr key={item.idAudit} className="hover:bg-[var(--sidebar-item-hover-bg)] transition">
                     <td className="py-3.5 px-4 font-mono text-gray-500">{item.createdAt}</td>
                     <td className="py-3.5 px-4 font-semibold">
@@ -342,7 +300,8 @@ export default function DashboardOverviewPage() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                ))
+              )}
               </tbody>
             </table>
           </div>
