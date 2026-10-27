@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-10-27 (sore) · Claude Code (Opus 5.5) — README, aturan sinkron 3 tempat & pengingat otomatis
+
+- `README.md` (root) untuk developer/AI: baca `AGENTS.md`, samakan laptop–GitHub–VPS setelah setiap perubahan.
+- `AGENTS.md` bagian 2E (wajib sinkron 3 tempat, verifikasi hash) & 2F (pengingat otomatis).
+- `scripts/pantau-perubahan.sh` + `scripts/kirim-pengingat.mjs`: cron VPS tiap 10 menit, email ke pemilik bila ada file diubah di VPS tanpa commit, commit baru, atau VPS ≠ GitHub (memakai SMTP aplikasi di `backend-sb/.env`).
+
+---
+
 ## 2026-10-27 (sore) · Claude Code (Opus 5.5) — Batas pengajuan & rute persetujuan SPV
 
 - **Modul baru `backend-sb/src/aturan-pengajuan`** (global; tabel `batas_pengajuan`):

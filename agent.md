@@ -61,6 +61,22 @@ git merge vps/main && git push origin main
 3. `git commit` (pesan jelas, Bahasa Indonesia) → `git push origin main`.
 4. Deploy (bagian 3). Jangan biarkan GitHub, laptop, dan VPS berbeda.
 
+### E. WAJIB: samakan 3 tempat setiap selesai mengubah (aturan untuk AI)
+AI agent **tidak boleh** mengakhiri pekerjaan selama laptop, GitHub, dan VPS belum sama:
+```bash
+git add -A && git commit -m "<ringkas, Bahasa Indonesia>"   # + entri CATATAN_PERUBAHAN.md
+git push origin main                                        # GitHub
+git push vps main:incoming && ssh root@103.247.11.91 "cd /home/apps/suksesbangunan && git merge --ff-only incoming"
+# lalu build & restart sesuai bagian 3, kemudian verifikasi:
+git fetch origin && git fetch vps && git rev-parse --short HEAD origin/main vps/main   # tiga hash SAMA
+```
+Jika push/merge ditolak karena ada perubahan orang lain: **jangan paksa** (`--force` dilarang) — tarik dulu (`git pull --rebase origin main`, `git fetch vps && git merge vps/main`), selesaikan konflik, ulangi.
+
+### F. Pengingat otomatis ke pemilik
+`scripts/pantau-perubahan.sh` berjalan di VPS tiap 10 menit (cron root) dan **mengirim email ke pemilik** bila:
+file diubah langsung di VPS tanpa commit, ada commit baru di VPS, atau VPS ≠ GitHub (tertinggal / bercabang).
+Penerima diatur di `/root/.laras-pantau/email` (bukan di git). Jangan menonaktifkan cron ini.
+
 ## 3. Cara Deploy (hanya lewat git — DILARANG `scp -r` seluruh folder)
 ```bash
 # Dari laptop: kirim commit ke VPS (VPS menerima push ke branch lain, lalu di-merge)
