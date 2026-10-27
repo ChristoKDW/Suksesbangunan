@@ -16,11 +16,26 @@ Di lingkungan kerja PT Sukses Bangunan, terdapat perbedaan mendasar antara **Kar
 
 ---
 
+## 1b. Kebijakan Tanggal Merah (27 Oktober 2026)
+
+Tidak semua libur resmi pemerintah diliburkan perusahaan. Admin/HRD mengaturnya di
+**Web → Hari Libur & Penting → Kebijakan Tanggal Merah & Cuti Bersama** (1 klik):
+
+| Perlakuan | Karyawan Kantor | Karyawan Operasional | Payroll |
+|---|---|---|---|
+| **Libur (Tanggal Merah)** | otomatis off | yang tetap masuk dapat **1 saldo RO** | bukan hari kerja (kecuali dijadwalkan masuk) |
+| **Hari Kerja Biasa** | masuk seperti biasa | masuk, **tanpa RO** | hari kerja |
+
+- Default: **Libur Nasional = Libur**, **Cuti Bersama = Hari Kerja Biasa**.
+- Default bisa diubah per jenis, dan setiap tanggal bisa diatur khusus (pengecualian).
+- Sumber keputusan tunggal: `KebijakanLiburService` (`backend-sb/src/kebijakan-libur`), dipakai jadwal kantor, RO, payroll & kalender.
+- Cuti tahunan karyawan **bukan** libur dan tidak menghasilkan RO.
+
 ## 2. Aturan Perolehan Saldo RO (Regular Off)
 
 ### A. Kapan Karyawan Mendapatkan RO?
 Karyawan operasional berhak mendapatkan **1 Saldo Regular Off (RO)** jika dan hanya jika:
-1. Hari tersebut merupakan **Hari Libur Nasional resmi** pemerintah (bukan hari Minggu).
+1. Hari tersebut merupakan **tanggal merah yang diliburkan** menurut Kebijakan Tanggal Merah (bukan hari Minggu). Cuti bersama secara default bukan tanggal merah → tidak menghasilkan RO.
 2. Karyawan ditugaskan shift kerja dan **AKTUAL HADIR / MELAKUKAN ABSENSI MASUK** (status tepat waktu atau telat).
 3. Saldo RO dicatat dengan masa aktif selama **3 bulan** terhitung sejak tanggal perolehan (`tanggal_kadaluarsa = tanggal_perolehan + 3 bulan`).
 

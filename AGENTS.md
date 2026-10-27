@@ -90,6 +90,7 @@ APK dari keystore lain tidak bisa meng-update aplikasi yang sudah terpasang.
   Telat & kembali istirahat > 60 menit = denda per kejadian (Pengaturan Penggajian). Slip yang sudah dibayar (`tanggalBayar`) tidak bisa di-generate/diedit.
   Generate ulang mempertahankan lembur & potongan lain input HRD.
 - **Kasbon** (`backend-sb/src/kasbon`): cicilan dipotong otomatis saat Generate Payroll (tabel `kasbon_cicilan` per slip, idempoten), maksimal sisa & tidak membuat THP minus, otomatis `lunas`. Potongan kasbon di slip tidak boleh diedit manual.
+- **Tanggal merah & cuti bersama** (`backend-sb/src/kebijakan-libur`): satu-satunya sumber keputusan libur resmi. `libur` = kantor off, operasional yang masuk dapat RO, bukan hari kerja payroll; `kerja` = hari kerja biasa tanpa RO. Default: libur nasional = libur, cuti bersama = kerja. **Jangan** memakai `checkIndonesianHoliday` langsung untuk keputusan libur/RO/payroll — pakai `KebijakanLiburService`.
 - **Karyawan External**: tidak masuk payroll/kasbon/slip; hanya absensi (rekap berkop untuk brand).
 - **BNIDirect** (`reports/bni-direct.util.ts`): replika template `BNIDIRECT-EXCEL_TEMPLATE_v1.9.6` (9 sheet) & output macro "Create CSV". Ubah format hanya jika template bank berubah.
 - **Dokumen resmi** (kop, logo, cap & tanda tangan HRD) ada di `backend-sb/assets/report/` dan `reports/pdf.util.ts`.

@@ -42,6 +42,14 @@ export class PengaturanPenggajian {
   @Column({ name: 'metode_bank_lain', type: 'varchar', length: 10, default: 'bifast' })
   metodeBankLain: string;
 
+  @ApiProperty({ description: 'Libur nasional (tanggal merah): libur | kerja', default: 'libur' })
+  @Column({ name: 'kebijakan_libur_nasional', type: 'varchar', length: 10, default: 'libur' })
+  kebijakanLiburNasional: string;
+
+  @ApiProperty({ description: 'Cuti bersama pemerintah: libur | kerja', default: 'kerja' })
+  @Column({ name: 'kebijakan_cuti_bersama', type: 'varchar', length: 10, default: 'kerja' })
+  kebijakanCutiBersama: string;
+
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }

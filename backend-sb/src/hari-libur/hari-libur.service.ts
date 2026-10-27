@@ -14,6 +14,7 @@ import { Shift } from '../shift/entities/shift.entity.js';
 import { CreateHariLiburDto } from './dto/create-hari-libur.dto.js';
 import { UpdateHariLiburDto } from './dto/update-hari-libur.dto.js';
 import { OpicaHolidayService } from './opica-holiday.service.js';
+import { KebijakanLiburService } from '../kebijakan-libur/kebijakan-libur.service.js';
 
 @Injectable()
 export class HariLiburService {
@@ -29,6 +30,7 @@ export class HariLiburService {
     @InjectRepository(Shift)
     private readonly shiftRepo: Repository<Shift>,
     private readonly opicaService: OpicaHolidayService,
+    private readonly kebijakanLibur?: KebijakanLiburService,
   ) {}
 
   private async applyHolidayToAllSchedules(
@@ -344,6 +346,20 @@ export class HariLiburService {
         description: item.keterangan,
         shift: item.shift,
       });
+    }
+
+    // Status libur nasional & cuti bersama mengikuti Kebijakan Tanggal Merah perusahaan
+    if (this.kebijakanLibur) {
+      const awal = `${year}-${String(month ?? 1).padStart(2, '0')}-01`;
+      const akhir = month
+        ? `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`
+        : `${year}-12-31`;
+      const merah = await this.kebijakanLibur.tanggalMerahDalamRentang(awal, akhir);
+      for (const item of merged) {
+        if (item.type === 'libur_nasional' || item.type === 'cuti_bersama') {
+          item.isLibur = merah.has(item.date);
+        }
+      }
     }
 
     merged.sort((a, b) => a.date.localeCompare(b.date));

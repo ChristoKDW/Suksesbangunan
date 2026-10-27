@@ -19,6 +19,7 @@ import { KaryawanService } from '../karyawan/karyawan.service.js';
 import { AbsensiService } from '../absensi/absensi.service.js';
 import { JadwalKerjaService } from '../jadwal-kerja/jadwal-kerja.service.js';
 import { KasbonService } from '../kasbon/kasbon.service.js';
+import { KebijakanLiburService } from '../kebijakan-libur/kebijakan-libur.service.js';
 import { UpdatePenggajianDto } from './dto/update-penggajian.dto.js';
 
 import { PengaturanPenggajian } from './entities/pengaturan-penggajian.entity.js';
@@ -72,7 +73,14 @@ export class PenggajianService {
     private readonly absensiService: AbsensiService,
     private readonly jadwalKerjaService: JadwalKerjaService,
     private readonly kasbonService?: KasbonService,
+    private readonly kebijakanLibur?: KebijakanLiburService,
   ) {}
+
+  /** Tanggal merah yang diliburkan perusahaan (sesuai Kebijakan Tanggal Merah). */
+  private async getTanggalMerahSet(start: string, end: string): Promise<Set<string>> {
+    if (!this.kebijakanLibur) return new Set();
+    return new Set((await this.kebijakanLibur.tanggalMerahDalamRentang(start, end)).keys());
+  }
 
   /**
    * Set tanggal hari penting/libur yang diatur HRD (isLibur = true) dalam periode.
@@ -179,6 +187,7 @@ export class PenggajianService {
     periodeAkhirStr: string,
     baseTotalHariKerja: number,
     liburSet: Set<string> = new Set(),
+    tanggalMerahSet: Set<string> = new Set(),
   ): Promise<number> {
     try {
       const jadwalList = await this.jadwalKerjaService.findByKaryawanAndPeriode(
@@ -195,7 +204,10 @@ export class PenggajianService {
       }
       const hariKerja = dateRange(periodeAwalStr, periodeAkhirStr).filter((tgl) => {
         if (liburSet.has(tgl)) return false;
-        return jadwalPerTanggal.has(tgl) ? jadwalPerTanggal.get(tgl)! : !isSunday(tgl);
+        // Tanpa jadwal: Senin–Sabtu kecuali tanggal merah (kantor libur; yang dijadwalkan masuk dapat RO)
+        return jadwalPerTanggal.has(tgl)
+          ? jadwalPerTanggal.get(tgl)!
+          : !isSunday(tgl) && !tanggalMerahSet.has(tgl);
       }).length;
       return hariKerja > 0 ? hariKerja : baseTotalHariKerja;
     } catch {
@@ -245,10 +257,11 @@ export class PenggajianService {
     );
 
     // Hitung hari kerja dinamis kalender periode cut-off (Senin s/d Sabtu, minus hari penting)
+    const tanggalMerahSet = await this.getTanggalMerahSet(periodeAwalStr, periodeAkhirStr);
     const dynamicWorkingDays = this.hitungHariKerjaKalender(
       periodeAwalStr,
       periodeAkhirStr,
-      liburSet,
+      new Set([...liburSet, ...tanggalMerahSet]),
       Number(settings?.standarHariKerja ?? 26),
     );
     const normalizedTotalHariKerjaCustom = Number(totalHariKerjaCustom);
@@ -296,6 +309,7 @@ export class PenggajianService {
           periodeAkhirStr,
           baseTotalHariKerja,
           liburSet,
+          tanggalMerahSet,
         );
       }
 
@@ -765,10 +779,11 @@ export class PenggajianService {
     );
 
     // Hitung hari kerja dinamis berbasis kalender rentang cut-off (Senin s/d Sabtu)
+    const tanggalMerahSet = await this.getTanggalMerahSet(periodeAwalStr, periodeAkhirStr);
     const dynamicWorkingDays = this.hitungHariKerjaKalender(
       periodeAwalStr,
       periodeAkhirStr,
-      liburSet,
+      new Set([...liburSet, ...tanggalMerahSet]),
       Number(settings?.standarHariKerja ?? 26),
     );
     const standarHariKerja = await this.hitungHariKerjaJadwal(
@@ -777,6 +792,7 @@ export class PenggajianService {
       periodeAkhirStr,
       dynamicWorkingDays,
       liburSet,
+      tanggalMerahSet,
     );
 
     const absensiList = await this.absensiService.findByKaryawanDanPeriode(

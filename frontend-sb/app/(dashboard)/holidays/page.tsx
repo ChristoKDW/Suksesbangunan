@@ -8,6 +8,7 @@ import { Search, Plus, X, CalendarCheck, Edit2, Trash2, Loader2, AlertCircle, Cl
 import { api } from "@/lib/api"
 import type { HariLibur, Shift } from "@/lib/types"
 import { confirmDelete, showError, showSuccess, showWarning } from "@/lib/swal"
+import { KebijakanTanggalMerah } from "./_components/KebijakanTanggalMerah"
 
 export default function HolidaysPage() {
   // ponytail: SWR caching - instan 0ms saat navigasi
@@ -139,7 +140,7 @@ export default function HolidaysPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-            Hari Penting
+            Hari Libur & Hari Penting
           </h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             {loading ? "Memuat hari penting..." : "Atur hari-hari penting dan tetapkan shift kerja khusus dari HRD yang otomatis menimpa jadwal karyawan di departemen yang dikelola SPV."}
@@ -153,6 +154,9 @@ export default function HolidaysPage() {
           Tambah Hari Penting
         </button>
       </div>
+
+      {/* Kebijakan tanggal merah & cuti bersama (1 klik) */}
+      <KebijakanTanggalMerah />
 
       {/* Info Card */}
       <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-800 dark:text-blue-300 flex items-start gap-3">

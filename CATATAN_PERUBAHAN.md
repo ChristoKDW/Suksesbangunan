@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-10-27 (sore) · Claude Code (Opus 5.5) — Kebijakan Tanggal Merah & Cuti Bersama
+
+- **Masalah**: cuti bersama ikut diliburkan untuk karyawan kantor, padahal perusahaan menganggapnya hari kerja (tidak libur & tidak dapat RO). Payroll juga belum mengecualikan tanggal merah untuk karyawan tanpa jadwal (kantor bisa tercatat alpa saat libur nasional).
+- **Modul baru `backend-sb/src/kebijakan-libur`** (tabel `kebijakan_libur` untuk pengecualian per tanggal; default di `pengaturan_penggajian.kebijakan_libur_nasional` = `libur`, `kebijakan_cuti_bersama` = `kerja`).
+  Endpoint: `GET /kebijakan-libur?tahun=`, `PATCH /kebijakan-libur/default`, `PATCH /kebijakan-libur/:tanggal`, `POST /kebijakan-libur/reset?tahun=`.
+- Dipakai oleh: jadwal default karyawan kantor (`jadwal-kerja.service.ts` → `liburResmi`), perolehan RO (`regular-off.service.ts`), hari kerja payroll (`penggajian.service.ts`), dan kalender (`hari-libur.service.ts`).
+- Web: panel **Kebijakan Tanggal Merah & Cuti Bersama** di halaman *Hari Libur & Penting* — tombol 1 klik per jenis & per tanggal, reset ke default.
+- Test: `kebijakan-libur.service.spec.ts`.
+
+---
+
 ## 2026-10-27 · Claude Code (Opus 5.5) atas permintaan Christo
 
 ### Sinkronisasi lingkungan

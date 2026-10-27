@@ -67,7 +67,7 @@ const navGroups: NavGroup[] = [
       { href: "/shifts", label: "Daftar Shift", icon: Clock, roles: ["Admin", "HRD", "SPV"] },
       { href: "/supervisor-schedule", label: "Jadwal Supervisor", icon: UserCheck, roles: ["Admin", "HRD", "SPV"] },
       { href: "/schedule", label: "Jadwal Karyawan", icon: CalendarDays, roles: ["Admin", "HRD", "SPV"] },
-      { href: "/holidays", label: "Hari Penting", icon: CalendarCheck, roles: ["Admin", "HRD"] },
+      { href: "/holidays", label: "Hari Libur & Penting", icon: CalendarCheck, roles: ["Admin", "HRD"] },
     ],
   },
   {

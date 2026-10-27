@@ -20,6 +20,7 @@ import { CreateJadwalKerjaDto } from './dto/create-jadwal-kerja.dto.js';
 import { UpdateJadwalKerjaDto } from './dto/update-jadwal-kerja.dto.js';
 import { BulkJadwalKerjaItemDto } from './dto/bulk-jadwal-kerja.dto.js';
 import { matchUserName } from '../karyawan/name-matcher.util.js';
+import { KebijakanLiburService } from '../kebijakan-libur/kebijakan-libur.service.js';
 
 /** Sumber jadwal cuti resmi hasil pengajuan yang disetujui SPV & HRD (terkunci). */
 export const SUMBER_CUTI_RESMI = 'pengajuan_cuti';
@@ -49,7 +50,25 @@ export class JadwalKerjaService implements OnModuleInit {
     private readonly shiftRepo: Repository<Shift>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly kebijakanLibur: KebijakanLiburService,
   ) {}
+
+  private ymd(d: Date): string {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  /**
+   * Pengecek tanggal merah sesuai Kebijakan Tanggal Merah perusahaan
+   * (cuti bersama default = hari kerja biasa). Bentuk hasil sama dengan
+   * checkIndonesianHoliday agar logika jadwal kantor tetap.
+   */
+  private async liburResmi(start: string, end: string) {
+    const map = await this.kebijakanLibur.tanggalMerahDalamRentang(start, end);
+    return (tanggal: string) => {
+      const m = map.get(tanggal);
+      return m ? { localName: m.nama, isCollectiveLeave: m.jenis === 'cuti_bersama' } : null;
+    };
+  }
 
   /**
    * Kunci tingkat database: baris cuti resmi tidak bisa di-update/di-hapus oleh
@@ -502,8 +521,9 @@ export class JadwalKerjaService implements OnModuleInit {
       }
 
       // 2. Cek apakah Hari Libur Nasional atau Cuti Bersama resmi Indonesia
-      const { checkIndonesianHoliday } =
-        await import('../hari-libur/indonesia-holidays.util.js');
+      const checkIndonesianHoliday = await this.liburResmi(
+        tanggalStr, tanggalStr,
+      );
       const officialHoliday = checkIndonesianHoliday(tanggalStr);
       if (officialHoliday) {
         const libur = new JadwalKerja();
@@ -630,8 +650,9 @@ export class JadwalKerjaService implements OnModuleInit {
 
     if (emp && this.isManagedByAdminOrHrd(emp.departemen)) {
       const defaultShift = await this.getOrCreateDefaultAdminShift();
-      const { checkIndonesianHoliday } =
-        await import('../hari-libur/indonesia-holidays.util.js');
+      const checkIndonesianHoliday = await this.liburResmi(
+        this.ymd(startOfWeek), this.ymd(new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000)),
+      );
       const list: JadwalKerja[] = [];
       for (let i = 0; i < 7; i++) {
         const d = new Date(startOfWeek.getTime() + i * 24 * 60 * 60 * 1000);
@@ -690,8 +711,9 @@ export class JadwalKerjaService implements OnModuleInit {
 
     if (emp && this.isManagedByAdminOrHrd(emp.departemen)) {
       const defaultShift = await this.getOrCreateDefaultAdminShift();
-      const { checkIndonesianHoliday } =
-        await import('../hari-libur/indonesia-holidays.util.js');
+      const checkIndonesianHoliday = await this.liburResmi(
+        `${year}-${String(month).padStart(2, '0')}-01`, `${year}-${String(month).padStart(2, '0')}-${String(totalDays).padStart(2, '0')}`,
+      );
       const list: JadwalKerja[] = [];
       for (let d = 1; d <= totalDays; d++) {
         const dateObj = new Date(year, month - 1, d);
@@ -839,7 +861,7 @@ export class JadwalKerjaService implements OnModuleInit {
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
     // 1. Libur nasional dan perusahaan
-    const { checkIndonesianHoliday } = await import('../hari-libur/indonesia-holidays.util.js');
+    const checkIndonesianHoliday = await this.liburResmi(startDate, endDate);
     const dbHolidays = await this.hariLiburRepo.find({
       where: { tanggal: Between(startDate as any, endDate as any) },
     });

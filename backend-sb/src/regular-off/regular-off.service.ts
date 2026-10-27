@@ -15,7 +15,7 @@ import { User } from '../user/entities/user.entity.js';
 import { NotificationService } from '../notification/notification.service.js';
 import { CreatePengajuanRoDto } from './dto/create-pengajuan-ro.dto.js';
 import { ApprovalRoDto } from './dto/approval-ro.dto.js';
-import { checkIndonesianHoliday } from '../hari-libur/indonesia-holidays.util.js';
+import { KebijakanLiburService } from '../kebijakan-libur/kebijakan-libur.service.js';
 import {
   addCalendarMonths,
   businessToday,
@@ -65,6 +65,7 @@ export class RegularOffService {
     private readonly userRepo: Repository<User>,
     private readonly notificationService: NotificationService,
     private readonly dataSource: DataSource,
+    private readonly kebijakanLibur: KebijakanLiburService,
   ) {}
 
   /**
@@ -134,10 +135,10 @@ export class RegularOffService {
       return { isLiburNasional: true, namaLibur: dbHoliday.nama };
     }
 
-    // 2. Cek utilitas kalender libur nasional Indonesia
-    const officialHoliday = checkIndonesianHoliday(tanggalStr);
-    if (officialHoliday && officialHoliday.isNationalHoliday) {
-      return { isLiburNasional: true, namaLibur: officialHoliday.localName };
+    // 2. Tanggal merah resmi sesuai Kebijakan Tanggal Merah (cuti bersama default = kerja → tanpa RO)
+    const merah = await this.kebijakanLibur.tanggalMerah(tanggalStr);
+    if (merah) {
+      return { isLiburNasional: true, namaLibur: merah.nama };
     }
 
     return { isLiburNasional: false, namaLibur: null };
