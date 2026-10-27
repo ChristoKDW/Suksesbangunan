@@ -34,13 +34,16 @@ class LeaveFormView extends GetView<LeaveFormController> {
               const SizedBox(height: 20),
               
               Obx(() => _buildSectionTitle(
-                controller.selectedTypeCode.value == 'izin'
+                controller.isSatuHari
                     ? 'Tanggal Izin (Maksimal 1 Hari)'
                     : 'Rentang Tanggal',
               )),
               const SizedBox(height: 12),
               _buildDateRangePicker(context),
               const SizedBox(height: 20),
+              Obx(() => controller.selectedTypeCode.value == 'izin sementara'
+                  ? _buildJamIzinSementara(context)
+                  : const SizedBox.shrink()),
               
               _buildSectionTitle('Alasan'),
               const SizedBox(height: 12),
@@ -293,6 +296,73 @@ class LeaveFormView extends GetView<LeaveFormController> {
         }),
       ],
     );
+  }
+
+  Widget _buildJamIzinSementara(BuildContext context) {
+    Widget jamBox(String label, TimeOfDay? jam, bool mulai) => Expanded(
+          child: InkWell(
+            onTap: () => controller.pickJam(context, mulai: mulai),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.borderGrey),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 11, color: AppColors.slateLight)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.schedule_rounded, size: 18, color: AppColors.redPrimary),
+                      const SizedBox(width: 6),
+                      Text(
+                        jam == null ? '--:--' : controller.fmtJam(jam),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slateDark),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+    return Obx(() {
+      final durasi = controller.durasiIzinSementara;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle('Jam Izin Sementara'),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              jamBox('Mulai keluar', controller.jamMulai.value, true),
+              const SizedBox(width: 12),
+              jamBox('Kembali', controller.jamSelesai.value, false),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Text(
+              durasi > 0
+                  ? 'Durasi $durasi menit. Jadwal Anda tidak berubah; jam pulang hari itu otomatis diperpanjang $durasi menit untuk mengganti waktu izin.'
+                  : 'Jadwal Anda tidak berubah. Jam pulang hari itu otomatis diperpanjang sesuai lama izin sementara.',
+              style: TextStyle(fontSize: 11.5, height: 1.35, color: Colors.blue.shade900),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      );
+    });
   }
 
   Widget _buildDateRangePicker(BuildContext context) {

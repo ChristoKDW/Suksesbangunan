@@ -228,6 +228,22 @@ export class AbsensiService {
           'Anda masih dalam status istirahat aktif. Harap selesaikan istirahat terlebih dahulu sebelum absen pulang.',
         );
       }
+
+      // Izin sementara tidak mengubah jadwal; jam pulang diperpanjang sesuai durasinya
+      const menitKompensasi = await this.menitIzinSementaraHariIni(
+        dto.idKaryawan,
+        todayDate,
+      );
+      if (menitKompensasi > 0) {
+        const jamPulang = new Date(shiftSelesai.getTime() + menitKompensasi * 60 * 1000);
+        if (now < jamPulang) {
+          const fmt = (d: Date) =>
+            `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          throw new BadRequestException(
+            `Hari ini Anda memiliki izin sementara ${menitKompensasi} menit, sehingga jam pulang diperpanjang menjadi ${fmt(jamPulang)} (shift ${shift.namaShift} berakhir ${jamSelesaiFmt} + ${menitKompensasi} menit). Absen pulang dapat dilakukan mulai pukul ${fmt(jamPulang)}.`,
+          );
+        }
+      }
     } else {
       // tipe masuk
       const existingMasuk = await this.absensiRepo.findOne({
@@ -402,6 +418,23 @@ export class AbsensiService {
       relations: { jadwalKerja: { shift: true } },
       order: { jamMasukAktual: 'DESC' },
     });
+  }
+
+  /** Total menit izin sementara yang disetujui pada tanggal tsb (kompensasi jam pulang). */
+  private async menitIzinSementaraHariIni(idKaryawan: number, tanggal: Date): Promise<number> {
+    const tgl = `${tanggal.getFullYear()}-${String(tanggal.getMonth() + 1).padStart(2, '0')}-${String(tanggal.getDate()).padStart(2, '0')}`;
+    const rows: { jam_mulai: string; jam_selesai: string }[] = await this.absensiRepo.manager.query(
+      `SELECT jam_mulai, jam_selesai FROM pengajuan_izin
+        WHERE id_karyawan = $1 AND jenis_izin = 'izin sementara' AND status = 'disetujui'
+          AND tanggal_mulai <= $2 AND tanggal_selesai >= $2`,
+      [idKaryawan, tgl],
+    );
+    return rows.reduce((total, r) => {
+      if (!r.jam_mulai || !r.jam_selesai) return total;
+      const [h1, m1] = r.jam_mulai.split(':').map(Number);
+      const [h2, m2] = r.jam_selesai.split(':').map(Number);
+      return total + Math.max(0, h2 * 60 + m2 - (h1 * 60 + m1));
+    }, 0);
   }
 
   async createAbsensiIzin(

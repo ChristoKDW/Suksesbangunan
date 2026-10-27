@@ -27,6 +27,40 @@ class LeaveFormController extends GetxController {
   final Rxn<Uint8List> attachedFileBytes = Rxn<Uint8List>(null);
 
   final RxInt totalDays = 0.obs;
+  // Izin sementara: keluar beberapa jam saat jam kerja (jadwal tidak berubah,
+  // jam pulang diperpanjang sesuai durasi izin)
+  final Rxn<TimeOfDay> jamMulai = Rxn<TimeOfDay>();
+  final Rxn<TimeOfDay> jamSelesai = Rxn<TimeOfDay>();
+
+  bool get isSatuHari =>
+      selectedTypeCode.value == 'izin' || selectedTypeCode.value == 'izin sementara';
+
+  String fmtJam(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  int get durasiIzinSementara {
+    final a = jamMulai.value, b = jamSelesai.value;
+    if (a == null || b == null) return 0;
+    return (b.hour * 60 + b.minute) - (a.hour * 60 + a.minute);
+  }
+
+  Future<void> pickJam(BuildContext context, {required bool mulai}) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: (mulai ? jamMulai.value : jamSelesai.value) ?? TimeOfDay.now(),
+      helpText: mulai ? 'Jam Mulai Keluar' : 'Jam Kembali',
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      ),
+    );
+    if (picked == null) return;
+    if (mulai) {
+      jamMulai.value = picked;
+    } else {
+      jamSelesai.value = picked;
+    }
+  }
   final isSubmitting = false.obs;
   final hasHakCuti = false.obs;
   final saldoCuti = Rxn<Map<String, dynamic>>();
@@ -34,6 +68,7 @@ class LeaveFormController extends GetxController {
 
   final Map<String, String> typeCodeMap = {
     'Izin': 'izin',
+    'Izin Sementara': 'izin sementara',
     'Sakit': 'sakit',
     'Cuti Tahunan': 'cuti',
   };
@@ -79,8 +114,8 @@ class LeaveFormController extends GetxController {
       selectedTypeCode.value = typeCodeMap[type] ?? 'izin';
       _cekKuotaJenis();
 
-      // Aturan Izin: Maksimal 1 hari. Jika sebelumnya memilih rentang > 1 hari, ciutkan ke 1 hari pertama.
-      if (selectedTypeCode.value == 'izin' && selectedDateRange.value != null) {
+      // Aturan Izin & Izin Sementara: 1 hari. Jika sebelumnya memilih rentang > 1 hari, ciutkan ke hari pertama.
+      if (isSatuHari && selectedDateRange.value != null) {
         final start = selectedDateRange.value!.start;
         selectedDateRange.value = DateTimeRange(start: start, end: start);
         totalDays.value = 1;
@@ -104,8 +139,8 @@ class LeaveFormController extends GetxController {
     final current = DateTime.now();
     final DateTime today = DateTime(current.year, current.month, current.day);
 
-    // Khusus izin: Maksimal 1 hari -> Gunakan pemilih tanggal tunggal
-    if (selectedTypeCode.value == 'izin') {
+    // Izin & izin sementara: 1 hari -> pemilih tanggal tunggal
+    if (isSatuHari) {
       final DateTime? picked = await showDatePicker(
         context: context,
         firstDate: today,
@@ -410,6 +445,18 @@ class LeaveFormController extends GetxController {
           size: 24,
         ),
         duration: const Duration(seconds: 3),
+      );
+      return;
+    }
+
+    if (selectedTypeCode.value == 'izin sementara' && durasiIzinSementara <= 0) {
+      Get.rawSnackbar(
+        title: 'Peringatan',
+        message: 'Pilih jam mulai dan jam kembali izin sementara (jam kembali harus setelah jam mulai).',
+        backgroundColor: AppColors.warning,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
       );
       return;
     }
@@ -766,6 +813,12 @@ class LeaveFormController extends GetxController {
         filePath: attachedFilePath.value,
         fileBytes: attachedFileBytes.value,
         fileName: attachedFileName.value,
+        jamMulai: selectedTypeCode.value == 'izin sementara' && jamMulai.value != null
+            ? fmtJam(jamMulai.value!)
+            : null,
+        jamSelesai: selectedTypeCode.value == 'izin sementara' && jamSelesai.value != null
+            ? fmtJam(jamSelesai.value!)
+            : null,
       );
 
       // Timer 3 detik saat mengirim data sebelum memunculkan alert sukses

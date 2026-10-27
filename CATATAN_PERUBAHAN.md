@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-10-27 (sore) · Claude Code (Opus 5.5) — Izin sementara: jam pulang diperpanjang
+
+- Izin, sakit, dinas luar, dan izin sementara **tidak mengubah jadwal** (hanya cuti yang mengubah & mengunci jadwal).
+- Izin sementara disetujui → **jam pulang hari itu diperpanjang** sesuai durasinya: absen pulang ditolak sebelum `jam selesai shift + menit izin` dengan pesan jelas (`absensi.service.ts` → `menitIzinSementaraHariIni`).
+- Mobile: jenis **Izin Sementara** ditambahkan di form izin (1 tanggal + jam mulai keluar & jam kembali, info durasi & perpanjangan jam pulang).
+
+---
+
 ## 2026-10-27 (sore) · Claude Code (Opus 5.5) — README, aturan sinkron 3 tempat & pengingat otomatis
 
 - `README.md` (root) untuk developer/AI: baca `AGENTS.md`, samakan laptop–GitHub–VPS setelah setiap perubahan.

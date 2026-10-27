@@ -313,6 +313,8 @@ class ApiService extends GetConnect {
     String? fileName,
     double? lokasiLat,
     double? lokasiLng,
+    String? jamMulai,
+    String? jamSelesai,
   }) async {
     List<int>? uploadBytes = fileBytes;
     String? uploadFileName = fileName;
@@ -358,6 +360,8 @@ class ApiService extends GetConnect {
       };
       if (lokasiLat != null) formMap['lokasiLat'] = lokasiLat.toString();
       if (lokasiLng != null) formMap['lokasiLng'] = lokasiLng.toString();
+      if (jamMulai != null) formMap['jamMulai'] = jamMulai;
+      if (jamSelesai != null) formMap['jamSelesai'] = jamSelesai;
 
       final res = await post('/pengajuan-izin', FormData(formMap));
       return _handle(res);
@@ -372,6 +376,8 @@ class ApiService extends GetConnect {
     };
     if (lokasiLat != null) body['lokasiLat'] = lokasiLat;
     if (lokasiLng != null) body['lokasiLng'] = lokasiLng;
+    if (jamMulai != null) body['jamMulai'] = jamMulai;
+    if (jamSelesai != null) body['jamSelesai'] = jamSelesai;
 
     final res = await post('/pengajuan-izin', body);
     return _handle(res);

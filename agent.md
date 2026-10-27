@@ -99,6 +99,7 @@ APK dari keystore lain tidak bisa meng-update aplikasi yang sudah terpasang.
 ## 4. Aturan Bisnis Kritis (jangan dilanggar tanpa persetujuan pemilik)
 - **Cuti**: hanya lewat pengajuan mobile. HRD menentukan `hakCuti` & `jatahCuti` (hari/tahun). Saldo = jatah − disetujui − menunggu. Yang dihitung & dijadikan cuti hanya **hari kerja karyawan**: menurut jadwal bila ada (operasional bisa cuti di hari Minggu bila Minggu-nya ada shift; hari off fleksibel tetap libur), bila belum ada jadwal → kecuali hari libur tetap (`hariLibur`, default Minggu) dan, untuk kantor, tanggal merah (`hariKerjaCuti` di `pengajuan-izin.service.ts`).
   Cuti yang disetujui SPV & HRD mengisi `jadwal_kerja` (`is_cuti=true`, `sumber_upload='pengajuan_cuti'`) dan **dikunci trigger database `trg_jadwal_kunci_cuti`** — tidak bisa diubah/dihapus oleh siapa pun. Jangan hapus trigger ini.
+- **Izin / sakit / dinas luar / izin sementara** tidak mengubah jadwal. Izin sementara disetujui → jam pulang diperpanjang sebesar durasinya (validasi absen pulang di `absensi.service.ts`).
 - **Hak atur jadwal**: SPV → staf departemennya. HRD → jadwal Supervisor & staf departemen tanpa SPV. Admin → semua (cadangan). Divalidasi di `jadwal-kerja.service.ts` (`validateKaryawanAccess`).
 - **Payroll** (`penggajian.service.ts`): periode = cut-off (default 25 → 24), bulan periode = bulan tanggal akhir.
   Hari kerja dihitung per tanggal (jadwal bila ada, kalender Sen–Sab bila kosong, minus hari penting HRD).
