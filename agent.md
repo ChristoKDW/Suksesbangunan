@@ -68,7 +68,7 @@ git add -A && git commit -m "<ringkas, Bahasa Indonesia>"   # + entri CATATAN_PE
 git push origin main                                        # GitHub
 git push vps main:incoming && ssh root@103.247.11.91 "cd /home/apps/suksesbangunan && git merge --ff-only incoming"
 # lalu build & restart sesuai bagian 3, kemudian verifikasi:
-git fetch origin && git fetch vps && git rev-parse --short HEAD origin/main vps/main   # tiga hash SAMA
+git fetch origin && git fetch vps && git rev-parse HEAD origin/main vps/main   # tiga hash SAMA
 ```
 Jika push/merge ditolak karena ada perubahan orang lain: **jangan paksa** (`--force` dilarang) — tarik dulu (`git pull --rebase origin main`, `git fetch vps && git merge vps/main`), selesaikan konflik, ulangi.
 

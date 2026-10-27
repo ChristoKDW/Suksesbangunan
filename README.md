@@ -17,7 +17,7 @@
 ## Cek cepat: apakah ketiga tempat sudah sama?
 ```bash
 git fetch origin && git fetch vps
-git rev-parse --short HEAD origin/main vps/main   # ketiga hash harus SAMA
+git rev-parse HEAD origin/main vps/main   # ketiga hash harus SAMA
 ssh root@103.247.11.91 "cd /home/apps/suksesbangunan && git status --short"   # harus kosong
 ```
 (`vps` = remote `root@103.247.11.91:/home/apps/suksesbangunan` — cara menambahkannya ada di `AGENTS.md` bagian 2C.)
