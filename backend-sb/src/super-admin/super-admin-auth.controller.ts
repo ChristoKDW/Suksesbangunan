@@ -1,18 +1,31 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { SuperAdminAuthService } from './super-admin-auth.service.js';
 
 class SuperAdminLoginDto {
+  @IsString()
+  @IsNotEmpty()
   username: string;
+
+  @IsString()
+  @IsOptional()
   password?: string;
 }
 
 class SuperAdminVerifyOtpDto {
+  @IsString()
+  @IsNotEmpty()
   challengeToken: string;
+
+  @IsString()
+  @IsNotEmpty()
   otp: string;
 }
 
 class SuperAdminResendOtpDto {
+  @IsString()
+  @IsNotEmpty()
   challengeToken: string;
 }
 
