@@ -76,16 +76,22 @@ const ROLE_OPTIONS = [
     badge: "Full Privilege",
   },
   {
-    value: "SECURITY_AUDITOR",
-    label: "Security Auditor (Audit Trail & Laporan Masalah)",
-    color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/50",
-    badge: "Audit & Forensic",
+    value: "SOFTWARE_ENGINEER",
+    label: "Software Engineer Sukses Bangunan (Developer & Code Core)",
+    color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/50",
+    badge: "Software Engineer",
   },
   {
     value: "DEVOPS_ADMIN",
     label: "DevOps Engineer (Server Health, Backup & Config)",
     color: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-900/50",
     badge: "Infrastructure",
+  },
+  {
+    value: "SECURITY_AUDITOR",
+    label: "Security Auditor (Audit Trail & Laporan Masalah)",
+    color: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/50",
+    badge: "Audit & Forensic",
   },
   {
     value: "Admin",

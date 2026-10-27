@@ -103,9 +103,10 @@ export class SuperAdminAuthService {
   }
 
   async login(username: string, password?: string) {
-    const user = await this.userRepo.findOne({
-      where: { username },
-    });
+    const user = await this.userRepo
+      .createQueryBuilder('u')
+      .where('LOWER(u.username) = LOWER(:username)', { username: username.trim() })
+      .getOne();
 
     if (!user) {
       throw new UnauthorizedException('Kredensial Super Admin tidak ditemukan');
@@ -115,18 +116,27 @@ export class SuperAdminAuthService {
       throw new UnauthorizedException('Akun ini telah dinonaktifkan oleh administrator');
     }
 
+    // Role check: Hanya Software Engineer, Super Admin, DevOps, Security Auditor & Admin teknis
+    const allowedRoles = [
+      'SUPER_ADMIN',
+      'Super Admin',
+      'SOFTWARE_ENGINEER',
+      'DEVOPS_ADMIN',
+      'SECURITY_AUDITOR',
+      'Admin',
+    ];
+    if (!allowedRoles.includes(user.role)) {
+      throw new UnauthorizedException(
+        'Akses ditolak. Panel Super Admin khusus untuk Tim Software Engineer & Eksekutif Sukses Bangunan.',
+      );
+    }
+
     // Verifikasi password jika diberikan
     if (password) {
       const match = await bcrypt.compare(password, user.password);
       if (!match) {
         throw new UnauthorizedException('Username atau password salah');
       }
-    }
-
-    // Role check: Admin, Super Admin, SUPER_ADMIN, SECURITY_AUDITOR, DEVOPS_ADMIN
-    const allowedRoles = ['Admin', 'Super Admin', 'SUPER_ADMIN', 'SECURITY_AUDITOR', 'DEVOPS_ADMIN'];
-    if (!allowedRoles.includes(user.role)) {
-      throw new UnauthorizedException('Pengguna ini tidak memiliki hak akses Super Admin');
     }
 
     const email = user.email || 'it.suksesbangunindo@gmail.com';

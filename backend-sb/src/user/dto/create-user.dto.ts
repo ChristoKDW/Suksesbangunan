@@ -9,13 +9,13 @@ export class CreateUserDto {
 
   @ApiProperty({
     description: 'Role user',
-    enum: ['Admin', 'HRD', 'SPV', 'Super Admin', 'SUPER_ADMIN', 'SECURITY_AUDITOR', 'DEVOPS_ADMIN'],
+    enum: ['Admin', 'HRD', 'SPV', 'Super Admin', 'SUPER_ADMIN', 'SOFTWARE_ENGINEER', 'SECURITY_AUDITOR', 'DEVOPS_ADMIN'],
     example: 'SUPER_ADMIN',
   })
   @IsNotEmpty()
   @IsIn(
-    ['Admin', 'HRD', 'SPV', 'Super Admin', 'SUPER_ADMIN', 'SECURITY_AUDITOR', 'DEVOPS_ADMIN'],
-    { message: 'Role harus Admin, HRD, SPV, SUPER_ADMIN, SECURITY_AUDITOR, atau DEVOPS_ADMIN' },
+    ['Admin', 'HRD', 'SPV', 'Super Admin', 'SUPER_ADMIN', 'SOFTWARE_ENGINEER', 'SECURITY_AUDITOR', 'DEVOPS_ADMIN'],
+    { message: 'Role harus Admin, HRD, SPV, SUPER_ADMIN, SOFTWARE_ENGINEER, SECURITY_AUDITOR, atau DEVOPS_ADMIN' },
   )
   role: string;
 

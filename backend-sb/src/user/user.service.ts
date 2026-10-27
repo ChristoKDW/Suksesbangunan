@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
@@ -122,6 +122,16 @@ export class UserService {
 
   async findSuperAdmins(): Promise<User[]> {
     return this.userRepo.find({
+      where: {
+        role: In([
+          'SUPER_ADMIN',
+          'Super Admin',
+          'SOFTWARE_ENGINEER',
+          'DEVOPS_ADMIN',
+          'SECURITY_AUDITOR',
+          'Admin',
+        ]),
+      },
       select: {
         idUser: true,
         nama: true,

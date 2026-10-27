@@ -6,6 +6,24 @@
 
 ---
 
+## 2026-10-28 (pagi) · Antigravity — Pembatasan Akses Super Admin Khusus Software Engineer & Update Email Powtahh
+
+- **Database PostgreSQL (`absensi_sukses_bangunan`)**:
+  - Memperbarui alamat email user `powtahh` (ID: 16, Muh Wais Al Qarni) menjadi `waisalqarni1712@gmail.com`.
+- **Backend API (`backend-sb`)**:
+  - `user.service.ts`: Method `findSuperAdmins()` kini menerapkan filter ketat hanya mengembalikan pengguna dengan role teknis eksekutif (`SUPER_ADMIN`, `SOFTWARE_ENGINEER`, `DEVOPS_ADMIN`, `SECURITY_AUDITOR`, `Admin`). Akun HRD dan SPV tidak lagi muncul di panel Super Admin.
+  - `super-admin-auth.service.ts`:
+    - Pencarian username login dibuat case-insensitive (`LOWER(u.username) = LOWER(:username)`) sehingga variasi kapitalisasi seperti `Powtahh` atau `powtahh` otomatis teridentifikasi.
+    - Pembatasan login Super Admin: Akses ditolak otomatis dengan pesan jelas jika user ber-role non-engineering (seperti HRD / SPV) mencoba login ke subdomain Super Admin.
+  - DTO `CreateUserDto`: Menambahkan peran `SOFTWARE_ENGINEER` ke dalam enum whitelist role resmi.
+- **Super Admin Panel (`superadmin-sb`)**:
+  - Halaman Kelola User (`app/(dashboard)/superadmin-users/page.tsx`): Menambahkan opsi role `SOFTWARE_ENGINEER` (Software Engineer Sukses Bangunan) dengan badge khusus.
+- **Pengujian & Verifikasi**:
+  - Backend `npx tsc` & `npx jest` 100% lulus (13 suites, 37 test).
+  - Superadmin `npx tsc` & `npm run build` lulus (13/13 routes).
+
+---
+
 ## 2026-10-28 (pagi) · Antigravity — Aktivasi Email Authenticator Login & Integrasi Data Riil Dashboard Superadmin
 
 - **Backend API (`backend-sb/src/super-admin/`)**:
