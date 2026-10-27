@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
+import '../../../components/app_alert.dart';
 
 class ExchangeFormController extends GetxController {
   final ApiService _api = Get.find<ApiService>();
@@ -273,6 +274,7 @@ class ExchangeFormController extends GetxController {
     if (jenisPertukaran.value == jenis) return;
     HapticFeedback.selectionClick();
     jenisPertukaran.value = jenis;
+    AppAlert.cekKuota(jenis == 'off' ? 'tukar_off' : 'tukar_shift');
     selectedFilterShiftId.value = null;
     selectedPeer.value = null;
     selectedPeerId.value = null;
@@ -459,6 +461,10 @@ class ExchangeFormController extends GetxController {
         duration: const Duration(seconds: 4),
       );
     } catch (e) {
+      if (AppAlert.isBatasPengajuan(e)) {
+        await AppAlert.batasPengajuan(e);
+        return;
+      }
       Get.snackbar(
         'Gagal Mengajukan',
         e.toString(),

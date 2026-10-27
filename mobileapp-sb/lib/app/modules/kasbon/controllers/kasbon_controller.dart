@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/services/api_service.dart';
+import '../../../components/app_alert.dart';
 
 /// Kasbon karyawan: lihat sisa & riwayat cicilan, ajukan kasbon baru.
 /// Cicilan dipotong otomatis dari gaji setiap periode setelah disetujui HRD.
@@ -118,6 +119,11 @@ class KasbonController extends GetxController {
       _snack('Pengajuan terkirim', 'Kasbon menunggu persetujuan HRD.');
       fetch();
     } catch (e) {
+      if (AppAlert.isBatasPengajuan(e)) {
+        Get.back();
+        await AppAlert.batasPengajuan(e);
+        return;
+      }
       _snack('Gagal mengajukan', e.toString(), error: true);
     } finally {
       isSubmitting.value = false;

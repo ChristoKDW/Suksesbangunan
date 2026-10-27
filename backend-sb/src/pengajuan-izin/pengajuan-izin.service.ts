@@ -15,6 +15,7 @@ import { AbsensiService } from '../absensi/absensi.service.js';
 import { NotificationService } from '../notification/notification.service.js';
 import { JadwalKerja } from '../jadwal-kerja/entities/jadwal-kerja.entity.js';
 import { KebijakanLiburService } from '../kebijakan-libur/kebijakan-libur.service.js';
+import { AturanPengajuanService, JENIS_IZIN_KE_ATURAN } from '../aturan-pengajuan/aturan-pengajuan.service.js';
 import {
   businessToday,
   dateRange,
@@ -36,6 +37,7 @@ export class PengajuanIzinService {
     private readonly notificationService: NotificationService,
     private readonly dataSource: DataSource,
     private readonly kebijakanLibur?: KebijakanLiburService,
+    private readonly aturan?: AturanPengajuanService,
   ) {}
 
   /**
@@ -171,8 +173,18 @@ export class PengajuanIzinService {
         ? [(karyawan.departemen as any).pengelola]
         : [];
 
-    const hasSpv = managers.some((m: any) => m.role === 'SPV');
-    const initialStatus = hasSpv ? 'menunggu_spv' : 'menunggu_hrd';
+    // Batas jumlah pengajuan per bulan (diatur HRD) → 409 "Anda sudah melakukan pengajuan ..."
+    const jenisAturan = JENIS_IZIN_KE_ATURAN[dto.jenisIzin];
+    if (this.aturan && jenisAturan) {
+      await this.aturan.cekBatas(dto.idKaryawan, jenisAturan, tglMulaiStr);
+    }
+
+    // Pemohon SPV → langsung HRD; staf departemen ber-SPV → SPV dulu; kantor → HRD
+    const initialStatus = this.aturan
+      ? await this.aturan.statusAwal(karyawan)
+      : managers.some((m: any) => m.role === 'SPV')
+        ? 'menunggu_spv'
+        : 'menunggu_hrd';
 
     const izinData: Partial<PengajuanIzin> = {
       idKaryawan: dto.idKaryawan,

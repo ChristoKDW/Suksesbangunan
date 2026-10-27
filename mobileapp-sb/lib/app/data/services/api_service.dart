@@ -681,6 +681,17 @@ class ApiService extends GetConnect {
     );
   }
 
+  /// GET /aturan-pengajuan/me → { boleh, pesan, terpakai, maks } untuk jenis pengajuan.
+  Future<Map<String, dynamic>> cekKuotaPengajuan(String jenis, {DateTime? tanggal}) async {
+    final res = await get('/aturan-pengajuan/me', query: {
+      'jenis': jenis,
+      if (tanggal != null)
+        'tanggal':
+            '${tanggal.year}-${tanggal.month.toString().padLeft(2, '0')}-${tanggal.day.toString().padLeft(2, '0')}',
+    });
+    return _handle(res);
+  }
+
   /// GET /kasbon/me → { totalSisa, kasbon: [...] }.
   Future<Map<String, dynamic>> getMyKasbon() async {
     final res = await get('/kasbon/me');

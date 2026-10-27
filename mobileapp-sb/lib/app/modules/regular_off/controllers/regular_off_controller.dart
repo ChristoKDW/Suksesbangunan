@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 import '../../../data/services/regular_off_service.dart';
+import '../../../components/app_alert.dart';
 
 class RegularOffController extends GetxController {
   final RegularOffService _service = Get.put(RegularOffService());
@@ -150,6 +151,7 @@ class RegularOffController extends GetxController {
       return "${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}";
     }).toList();
 
+    if (!await AppAlert.cekKuota('regular_off')) return;
     isSubmitting.value = true;
     try {
       await _service.submitPengajuan(
@@ -165,7 +167,7 @@ class RegularOffController extends GetxController {
 
       Get.snackbar(
         'Pengajuan Berhasil',
-        'Pengajuan libur Regular Off telah dikirim ke Supervisor untuk persetujuan.',
+        'Pengajuan libur Regular Off telah dikirim untuk persetujuan.',
         backgroundColor: Colors.green.shade600,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
@@ -174,6 +176,10 @@ class RegularOffController extends GetxController {
       activeTab.value = 1; // Pindah ke tab riwayat
       await loadAllData();
     } catch (e) {
+      if (AppAlert.isBatasPengajuan(e)) {
+        await AppAlert.batasPengajuan(e);
+        return;
+      }
       Get.snackbar(
         'Gagal Mengajukan',
         e.toString().replaceAll('Exception:', '').trim(),

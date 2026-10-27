@@ -9,6 +9,7 @@ import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { PengajuanIzin, PengajuanPertukaran } from "@/lib/types"
 import { confirmDialog, showError, showSuccess } from "@/lib/swal"
+import { BatasPengajuanPanel } from "./_components/BatasPengajuanPanel"
 
 const jenisIzinLabelMap: Record<string, string> = {
   izin: "Izin",
@@ -370,6 +371,10 @@ export default function LeaveRequestsPage() {
           </button>
         </div>
       </div>
+
+      {(user?.role === "Admin" || user?.role === "HRD" || user?.role === "SPV") && (
+        <BatasPengajuanPanel canEdit={user?.role === "Admin" || user?.role === "HRD"} />
+      )}
 
       {/* ========================================================================= */}
       {/* MODE 1: IZIN & CUTI                                                       */}

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import '../../../components/app_alert.dart';
 import '../../../core/theme/app_colors.dart';
 import '../controllers/kasbon_controller.dart';
 
@@ -33,7 +34,9 @@ class KasbonView extends GetView<KasbonController> {
         () => controller.adaMenunggu || controller.isLoading.value
             ? const SizedBox.shrink()
             : FloatingActionButton.extended(
-                onPressed: () => _showForm(context),
+                onPressed: () async {
+                  if (await AppAlert.cekKuota('kasbon')) _showForm(context);
+                },
                 backgroundColor: AppColors.redPrimary,
                 foregroundColor: AppColors.white,
                 icon: const Icon(Icons.add),

@@ -16,6 +16,7 @@ import { NotificationService } from '../notification/notification.service.js';
 import { CreatePengajuanRoDto } from './dto/create-pengajuan-ro.dto.js';
 import { ApprovalRoDto } from './dto/approval-ro.dto.js';
 import { KebijakanLiburService } from '../kebijakan-libur/kebijakan-libur.service.js';
+import { AturanPengajuanService } from '../aturan-pengajuan/aturan-pengajuan.service.js';
 import {
   addCalendarMonths,
   businessToday,
@@ -66,6 +67,7 @@ export class RegularOffService {
     private readonly notificationService: NotificationService,
     private readonly dataSource: DataSource,
     private readonly kebijakanLibur: KebijakanLiburService,
+    private readonly aturan?: AturanPengajuanService,
   ) {}
 
   /**
@@ -301,6 +303,7 @@ export class RegularOffService {
    */
   async createPengajuanRo(idKaryawan: number, dto: CreatePengajuanRoDto) {
     const { tanggalDipilih, alasan } = dto;
+    await this.aturan?.cekBatas(idKaryawan, 'regular_off');
     if (!tanggalDipilih || tanggalDipilih.length === 0) {
       throw new BadRequestException(
         'Pilih minimal 1 tanggal untuk libur Regular Off (RO)',
@@ -402,7 +405,8 @@ export class RegularOffService {
             tanggalDipilih: uniqueDates,
             jumlahHari: uniqueDates.length,
             alasan: alasan || null,
-            status: 'menunggu_spv',
+            // Pemohon SPV langsung ke HRD
+            status: this.aturan && (await this.aturan.isSpv(idKaryawan)) ? 'menunggu_hrd' : 'menunggu_spv',
           }),
         );
         for (const saldo of saldoDialokasikan) {

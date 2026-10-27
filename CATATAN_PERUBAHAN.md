@@ -6,6 +6,19 @@
 
 ---
 
+## 2026-10-27 (sore) · Claude Code (Opus 5.5) — Batas pengajuan & rute persetujuan SPV
+
+- **Modul baru `backend-sb/src/aturan-pengajuan`** (global; tabel `batas_pengajuan`):
+  - Batas jumlah pengajuan per bulan per jenis, diatur HRD/Admin di web *Pengajuan → Batas Pengajuan Karyawan* (0 = tanpa batas).
+    Default: Izin 2x, Izin Sementara 3x, Tukar Off 1x (aturan lama), Tunda Off 1x, Kasbon 1 berjalan; Sakit, Dinas Luar, Cuti, Tukar Shift, RO tanpa batas (cuti & RO tetap dibatasi jatah/saldo).
+  - Melewati batas → HTTP **409** "Anda sudah melakukan pengajuan … (batas …x per bulan)". Mobile menampilkan dialog bergaya SweetAlert (`mobileapp-sb/lib/app/components/app_alert.dart`) dan mengecek kuota saat jenis/tanggal dipilih (`GET /aturan-pengajuan/me`).
+  - Rute persetujuan: pemohon **SPV** (akun role SPV / jabatan supervisor-spv-leader) → langsung **HRD** untuk izin, sakit, cuti, dinas luar, izin sementara, tunda off, dan RO. Tukar shift/off dengan SPV sudah: rekan → HRD.
+- Dokumen pendukung (izin/sakit/cuti/dinas luar) tersimpan di `backend-sb/uploads/file-pendukung/` dan tampil di web *Pengajuan → detail* untuk HRD, Admin, dan SPV (tim sendiri).
+- Test: `aturan-pengajuan.service.spec.ts`.
+- Mobile UX: tombol pengajuan di halaman *Pengajuan* langsung membuka form sesuai tab (Izin & Cuti → form izin/cuti, Pertukaran → form tukar shift/off); menu "Pilih Jenis Pengajuan" yang berulang dihapus.
+
+---
+
 ## 2026-10-27 (sore) · Claude Code (Opus 5.5) — Cuti mengikuti hari kerja jadwal karyawan
 
 - **Masalah**: cuti selalu melewati hari Minggu untuk semua karyawan. Karyawan operasional yang dijadwalkan masuk hari Minggu (libur fleksibel, mis. off hari Rabu) tetap harus masuk di Minggu tsb padahal sedang cuti. Kasus: Christo Kurniawan Diadema Wiroreno, cuti #3 (28 Okt–8 Nov) — Minggu 1 Nov (Pagi) & 8 Nov (Middle) tidak menjadi cuti.

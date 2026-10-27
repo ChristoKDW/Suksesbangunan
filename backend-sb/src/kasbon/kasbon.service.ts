@@ -9,6 +9,7 @@ import { Kasbon, KasbonCicilan } from './entities/kasbon.entity.js';
 import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
 import { ApprovalKasbonDto, CreateKasbonDto, PengajuanKasbonDto } from './dto/kasbon.dto.js';
 import { NotificationService } from '../notification/notification.service.js';
+import { AturanPengajuanService } from '../aturan-pengajuan/aturan-pengajuan.service.js';
 import { businessToday } from '../common/utils/business-date.util.js';
 
 export interface RencanaCicilan {
@@ -37,6 +38,7 @@ export class KasbonService {
     @InjectRepository(Karyawan)
     private readonly karyawanRepo: Repository<Karyawan>,
     private readonly notificationService: NotificationService,
+    private readonly aturan?: AturanPengajuanService,
   ) {}
 
   // ======================= Ringkasan & daftar =======================
@@ -145,14 +147,8 @@ export class KasbonService {
   async ajukan(idKaryawan: number, dto: PengajuanKasbonDto) {
     const karyawan = await this.assertKaryawanInternal(idKaryawan);
     this.validasiNominal(dto.jumlah, dto.cicilanPerBulan);
-    const pending = await this.kasbonRepo.count({
-      where: { idKaryawan, status: 'menunggu' },
-    });
-    if (pending > 0) {
-      throw new BadRequestException(
-        'Masih ada pengajuan kasbon yang menunggu persetujuan HRD.',
-      );
-    }
+    // Batas kasbon berjalan (menunggu/aktif) sekaligus — diatur HRD, default 1
+    await this.aturan?.cekBatas(idKaryawan, 'kasbon');
     const saved = await this.kasbonRepo.save(
       this.kasbonRepo.create({
         idKaryawan,

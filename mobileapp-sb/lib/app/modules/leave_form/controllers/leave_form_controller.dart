@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/services/api_service.dart';
 import '../../../data/services/session_service.dart';
+import '../../../components/app_alert.dart';
 
 class LeaveFormController extends GetxController {
   final ApiService _api = Get.find<ApiService>();
@@ -76,6 +77,7 @@ class LeaveFormController extends GetxController {
       }
       selectedType.value = type;
       selectedTypeCode.value = typeCodeMap[type] ?? 'izin';
+      _cekKuotaJenis();
 
       // Aturan Izin: Maksimal 1 hari. Jika sebelumnya memilih rentang > 1 hari, ciutkan ke 1 hari pertama.
       if (selectedTypeCode.value == 'izin' && selectedDateRange.value != null) {
@@ -84,6 +86,18 @@ class LeaveFormController extends GetxController {
         totalDays.value = 1;
       }
     }
+  }
+
+  /// Kode jenis izin → kode batas pengajuan di server.
+  String get _jenisKuota => switch (selectedTypeCode.value) {
+        'izin sementara' => 'izin_sementara',
+        'dinas luar' => 'dinas_luar',
+        final kode => kode,
+      };
+
+  /// Langsung beri tahu bila kuota bulan (tanggal dipilih / bulan ini) sudah habis.
+  void _cekKuotaJenis() {
+    AppAlert.cekKuota(_jenisKuota, tanggal: selectedDateRange.value?.start);
   }
 
   Future<void> pickDateRange(BuildContext context) async {
@@ -132,6 +146,7 @@ class LeaveFormController extends GetxController {
       selectedDateRange.value = picked;
       // Calculate total days including both start and end dates
       totalDays.value = picked.end.difference(picked.start).inDays + 1;
+      _cekKuotaJenis();
     }
   }
 
@@ -794,6 +809,10 @@ class LeaveFormController extends GetxController {
       // Tutup bottom alert status mengirim
       if (Get.isSnackbarOpen) {
         Get.closeCurrentSnackbar();
+      }
+      if (AppAlert.isBatasPengajuan(e)) {
+        await AppAlert.batasPengajuan(e);
+        return;
       }
 
       // Tampilkan bottom alert gagal

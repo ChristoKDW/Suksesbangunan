@@ -11,6 +11,7 @@ import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
 import { JadwalKerja } from '../jadwal-kerja/entities/jadwal-kerja.entity.js';
 import { User } from '../user/entities/user.entity.js';
 import { NotificationService } from '../notification/notification.service.js';
+import { AturanPengajuanService } from '../aturan-pengajuan/aturan-pengajuan.service.js';
 import {
   ApprovalTundaOffDto,
   CreateTundaOffDto,
@@ -33,6 +34,7 @@ export class TundaOffService {
     private readonly userRepo: Repository<User>,
     private readonly notificationService: NotificationService,
     private readonly dataSource: DataSource,
+    private readonly aturan?: AturanPengajuanService,
   ) {}
 
   /**
@@ -106,6 +108,7 @@ export class TundaOffService {
         'Masih ada pengajuan tunda off aktif untuk tanggal tersebut',
       );
     }
+    await this.aturan?.cekBatas(idKaryawan, 'tunda_off', tglAsal);
 
     const managers = Array.isArray(karyawan.departemen?.pengelola)
       ? karyawan.departemen.pengelola
@@ -117,7 +120,7 @@ export class TundaOffService {
       tanggalOffAsal: tglAsal as any,
       tanggalOffBaru: tglBaru as any,
       alasan: dto.alasan,
-      status: hasSpv ? 'menunggu_spv' : 'menunggu_hrd',
+      status: this.aturan ? await this.aturan.statusAwal(karyawan) : hasSpv ? 'menunggu_spv' : 'menunggu_hrd',
     });
     const saved = await this.tundaOffRepo.save(pengajuan);
 

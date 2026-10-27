@@ -32,6 +32,7 @@ import { RegularOffModule } from './regular-off/regular-off.module.js';
 import { TundaOffModule } from './tunda-off/tunda-off.module.js';
 import { KasbonModule } from './kasbon/kasbon.module.js';
 import { KebijakanLiburModule } from './kebijakan-libur/kebijakan-libur.module.js';
+import { AturanPengajuanModule } from './aturan-pengajuan/aturan-pengajuan.module.js';
 import { AsetModule } from './aset/aset.module.js';
 
 @Module({
@@ -98,6 +99,7 @@ import { AsetModule } from './aset/aset.module.js';
     TundaOffModule,
     KasbonModule,
     KebijakanLiburModule,
+    AturanPengajuanModule,
     AsetModule,
   ],
   providers: [

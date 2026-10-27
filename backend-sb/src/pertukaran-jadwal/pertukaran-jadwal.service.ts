@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,6 +14,7 @@ import { Shift } from '../shift/entities/shift.entity.js';
 import { User } from '../user/entities/user.entity.js';
 import { Departemen } from '../departemen/entities/departemen.entity.js';
 import { NotificationService } from '../notification/notification.service.js';
+import { AturanPengajuanService } from '../aturan-pengajuan/aturan-pengajuan.service.js';
 import { CreatePertukaranDto } from './dto/create-pertukaran.dto.js';
 import { RespondPeerDto } from './dto/respond-peer.dto.js';
 import { RespondApprovalDto } from './dto/respond-approval.dto.js';
@@ -37,7 +39,13 @@ export class PertukaranJadwalService {
     private readonly userRepo: Repository<User>,
     private readonly notificationService: NotificationService,
     private readonly dataSource: DataSource,
+    private readonly aturan?: AturanPengajuanService,
   ) {}
+
+  /** Batas tukar off per bulan dari pengaturan HRD (0 = tanpa batas). */
+  private async maksTukarOff(): Promise<number> {
+    return this.aturan ? this.aturan.getMaks('tukar_off') : 1;
+  }
 
   /**
    * Cek apakah karyawan adalah seorang Supervisor (SPV) atau Leader
@@ -423,15 +431,19 @@ export class PertukaranJadwalService {
     // Aturan khusus:
     // - Shift: Bisa ditukar beberapa kali dalam sebulan tanpa batasan (1 hari per penukaran).
     // - Off: Dibatasi maksimal 1 kali dalam sebulan.
-    if (dto.jenisPertukaran === 'off') {
+    if (dto.jenisPertukaran === 'shift') {
+      await this.aturan?.cekBatas(idKaryawanPemohon, 'tukar_shift', dto.tanggalPemohon);
+    }
+    const maksOff = await this.maksTukarOff();
+    if (dto.jenisPertukaran === 'off' && maksOff > 0) {
       const monthPemohon = dto.tanggalPemohon.slice(0, 7);
       const pemohonQuota = await this.countOffExchangesInMonth(
         idKaryawanPemohon,
         monthPemohon,
       );
-      if (pemohonQuota >= 1) {
-        throw new BadRequestException(
-          `Anda sudah menggunakan kuota penukaran hari off untuk bulan ${monthPemohon} (maksimal 1 kali penukaran off dalam sebulan).`,
+      if (pemohonQuota >= maksOff) {
+        throw new ConflictException(
+          `Anda sudah melakukan pengajuan Tukar Off sebanyak ${pemohonQuota}x pada bulan ${monthPemohon} (batas ${maksOff}x per bulan).`,
         );
       }
 
@@ -440,9 +452,9 @@ export class PertukaranJadwalService {
         dto.idKaryawanTarget,
         monthTarget,
       );
-      if (targetQuota >= 1) {
-        throw new BadRequestException(
-          `Rekan kerja (${target.nama}) sudah menggunakan kuota penukaran hari off untuk bulan ${monthTarget} (maksimal 1 kali penukaran off dalam sebulan).`,
+      if (targetQuota >= maksOff) {
+        throw new ConflictException(
+          `Rekan kerja (${target.nama}) sudah memakai kuota Tukar Off bulan ${monthTarget} (batas ${maksOff}x per bulan).`,
         );
       }
     }
@@ -635,15 +647,16 @@ export class PertukaranJadwalService {
     if (otherPeers.length === 0) return [];
 
     // Jika pertukaran off, cek kuota pemohon terlebih dahulu
-    if (jenisPertukaran === 'off') {
+    const maksOff = await this.maksTukarOff();
+    if (jenisPertukaran === 'off' && maksOff > 0) {
       const ym = tanggalTarget.slice(0, 7);
       const pemohonQuota = await this.countOffExchangesInMonth(
         idKaryawanPemohon,
         ym,
       );
-      if (pemohonQuota >= 1) {
-        throw new BadRequestException(
-          `Anda sudah menggunakan kuota penukaran hari off untuk bulan ${ym} (maksimal 1 kali penukaran off dalam sebulan).`,
+      if (pemohonQuota >= maksOff) {
+        throw new ConflictException(
+          `Anda sudah melakukan pengajuan Tukar Off sebanyak ${pemohonQuota}x pada bulan ${ym} (batas ${maksOff}x per bulan).`,
         );
       }
     }
