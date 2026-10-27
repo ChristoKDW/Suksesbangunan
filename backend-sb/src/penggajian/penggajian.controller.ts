@@ -65,12 +65,26 @@ export class PenggajianController {
     description:
       'Total hari kerja periode (opsional, default otomatis dihitung dari kalender non-Minggu / shift)',
   })
+  @ApiQuery({
+    name: 'id_departemen_potongan',
+    required: false,
+    description:
+      'Batasi potongan global hanya untuk karyawan departemen/divisi ini (opsional)',
+  })
+  @ApiQuery({
+    name: 'bagi_rata',
+    required: false,
+    description:
+      'Jika true, nominal potongan global dibagi rata ke seluruh karyawan terdampak',
+  })
   generate(
     @Query('periode_awal') periodeAwal: string,
     @Query('periode_akhir') periodeAkhir: string,
     @Query('potongan') potongan?: string,
     @Query('denda_per_telat') dendaPerTelat?: string,
     @Query('total_hari_kerja') totalHariKerja?: string,
+    @Query('id_departemen_potongan') idDepartemenPotongan?: string,
+    @Query('bagi_rata') bagiRata?: string,
   ) {
     return this.penggajianService.generate(
       periodeAwal,
@@ -82,6 +96,10 @@ export class PenggajianController {
       totalHariKerja !== undefined && totalHariKerja !== ''
         ? Number(totalHariKerja)
         : undefined,
+      idDepartemenPotongan !== undefined && idDepartemenPotongan !== ''
+        ? Number(idDepartemenPotongan)
+        : undefined,
+      bagiRata === 'true' || bagiRata === '1',
     );
   }
 

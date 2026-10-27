@@ -29,6 +29,8 @@ import { FaceModule } from './face/face.module.js';
 import { HariLiburModule } from './hari-libur/hari-libur.module.js';
 import { PertukaranJadwalModule } from './pertukaran-jadwal/pertukaran-jadwal.module.js';
 import { RegularOffModule } from './regular-off/regular-off.module.js';
+import { TundaOffModule } from './tunda-off/tunda-off.module.js';
+import { AsetModule } from './aset/aset.module.js';
 
 @Module({
   imports: [
@@ -91,6 +93,8 @@ import { RegularOffModule } from './regular-off/regular-off.module.js';
     HariLiburModule,
     PertukaranJadwalModule,
     RegularOffModule,
+    TundaOffModule,
+    AsetModule,
   ],
   providers: [
     {

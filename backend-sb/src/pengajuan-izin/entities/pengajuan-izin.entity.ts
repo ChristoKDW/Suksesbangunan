@@ -26,10 +26,24 @@ export class PengajuanIzin {
   karyawan: Karyawan;
 
   @ApiProperty({
-    description: 'Jenis izin: izin, sakit, cuti, dinas luar',
+    description: 'Jenis izin: izin, sakit, cuti, dinas luar, izin sementara',
   })
   @Column({ name: 'jenis_izin', type: 'varchar' })
   jenisIzin: string;
+
+  @ApiProperty({
+    description: 'Jam mulai izin sementara (HH:mm), khusus jenis izin sementara',
+    required: false,
+  })
+  @Column({ name: 'jam_mulai', type: 'varchar', length: 5, nullable: true })
+  jamMulai: string | null;
+
+  @ApiProperty({
+    description: 'Jam selesai izin sementara (HH:mm), khusus jenis izin sementara',
+    required: false,
+  })
+  @Column({ name: 'jam_selesai', type: 'varchar', length: 5, nullable: true })
+  jamSelesai: string | null;
 
   @ApiProperty({ description: 'Tanggal mulai izin' })
   @Column({ name: 'tanggal_mulai', type: 'date' })

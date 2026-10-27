@@ -10,10 +10,16 @@ import { AbsensiModule } from '../absensi/absensi.module.js';
 import { JadwalKerjaModule } from '../jadwal-kerja/jadwal-kerja.module.js';
 
 import { PengajuanIzin } from '../pengajuan-izin/entities/pengajuan-izin.entity.js';
+import { HariLibur } from '../hari-libur/entities/hari-libur.entity.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Penggajian, PengajuanIzin, PengaturanPenggajian]),
+    TypeOrmModule.forFeature([
+      Penggajian,
+      PengajuanIzin,
+      PengaturanPenggajian,
+      HariLibur,
+    ]),
     KaryawanModule,
     AbsensiModule,
     JadwalKerjaModule,

@@ -12,6 +12,8 @@ describe('PenggajianController generation parameters', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
+      false,
     );
 
     controller.generate('2026-08-25', '2026-09-24', '0', '', '');
@@ -21,6 +23,8 @@ describe('PenggajianController generation parameters', () => {
       0,
       undefined,
       undefined,
+      undefined,
+      false,
     );
   });
 });

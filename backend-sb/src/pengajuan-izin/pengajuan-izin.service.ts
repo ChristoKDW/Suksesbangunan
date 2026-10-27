@@ -119,6 +119,25 @@ export class PengajuanIzinService {
       );
     }
 
+    // --- 3b. Validasi Aturan Izin Sementara (keluar sementara saat jam kerja) ---
+    if (dto.jenisIzin === 'izin sementara') {
+      if (tglMulaiStr !== tglSelesaiStr) {
+        throw new BadRequestException(
+          'Izin sementara hanya berlaku untuk 1 hari (keluar sementara saat jam kerja).',
+        );
+      }
+      if (!dto.jamMulai || !dto.jamSelesai) {
+        throw new BadRequestException(
+          'Izin sementara wajib mencantumkan jam mulai dan jam selesai.',
+        );
+      }
+      if (dto.jamMulai >= dto.jamSelesai) {
+        throw new BadRequestException(
+          'Jam mulai izin sementara harus sebelum jam selesai.',
+        );
+      }
+    }
+
     const menggunakanLokasi =
       dto.lokasiLat !== undefined &&
       dto.lokasiLat !== null &&
@@ -143,6 +162,8 @@ export class PengajuanIzinService {
       tanggalMulai: tglMulaiStr as any,
       tanggalSelesai: tglSelesaiStr as any,
       alasan: dto.alasan,
+      jamMulai: dto.jenisIzin === 'izin sementara' ? dto.jamMulai : null,
+      jamSelesai: dto.jenisIzin === 'izin sementara' ? dto.jamSelesai : null,
       filePendukung: filePendukung || undefined,
       tanggalPengajuan: new Date(),
       menggunakanLokasi,
@@ -295,8 +316,12 @@ export class PengajuanIzinService {
     });
 
     if (isApproved) {
-      // Buat / update record absensi secara otomatis
-      await this.createAbsensiFromIzin(saved);
+      // Izin sementara: karyawan tetap hadir & absen normal, tidak perlu record absensi izin.
+      // Durasi izin otomatis dikompensasi pada perhitungan jam kerja payroll.
+      if (saved.jenisIzin !== 'izin sementara') {
+        // Buat / update record absensi secara otomatis
+        await this.createAbsensiFromIzin(saved);
+      }
 
       try {
         await this.notificationService.createNotification({

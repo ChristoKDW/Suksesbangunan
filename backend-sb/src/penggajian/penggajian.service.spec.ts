@@ -11,6 +11,7 @@ describe('PenggajianService payroll integrity', () => {
       penggajianRepo as any,
       {} as any,
       {} as any,
+      { find: jest.fn().mockResolvedValue([]) } as any,
       {} as any,
       {} as any,
       {} as any,
@@ -96,6 +97,7 @@ describe('PenggajianService payroll integrity', () => {
           dendaPerTelatDefault: 20000,
         }),
       } as any,
+      { find: jest.fn().mockResolvedValue([]) } as any,
       { find: jest.fn().mockResolvedValue([]) } as any,
       {
         findAllAktif: jest.fn().mockResolvedValue([

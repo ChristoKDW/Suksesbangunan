@@ -190,6 +190,14 @@ export class RegularOffService {
       return null;
     }
 
+    // Jika libur nasional jatuh tepat di hari off/cuti karyawan, tidak dihitung RO
+    const jadwal = await this.jadwalRepo.findOne({
+      where: { idKaryawan, tanggal: tanggalStr as any },
+    });
+    if (jadwal && (jadwal.isLibur || jadwal.isCuti)) {
+      return null;
+    }
+
     // Cek apakah sudah pernah ada saldo RO untuk karyawan ini di tanggal libur nasional tsb
     const existing = await this.saldoRoRepo.findOne({
       where: {

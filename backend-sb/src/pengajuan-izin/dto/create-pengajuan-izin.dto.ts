@@ -17,12 +17,32 @@ export class CreatePengajuanIzinDto {
 
   @ApiProperty({
     description: 'Jenis izin',
-    enum: ['izin', 'sakit', 'cuti', 'dinas luar'],
+    enum: ['izin', 'sakit', 'cuti', 'dinas luar', 'izin sementara'],
     example: 'sakit',
   })
   @IsNotEmpty()
-  @IsIn(['izin', 'sakit', 'cuti', 'dinas luar'])
+  @IsIn(['izin', 'sakit', 'cuti', 'dinas luar', 'izin sementara'])
   jenisIzin: string;
+
+  @ApiPropertyOptional({
+    description: 'Jam mulai izin sementara (HH:mm), wajib untuk jenis izin sementara',
+    example: '10:00',
+  })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
+    message: 'Jam mulai harus berformat HH:mm',
+  })
+  jamMulai?: string;
+
+  @ApiPropertyOptional({
+    description: 'Jam selesai izin sementara (HH:mm), wajib untuk jenis izin sementara',
+    example: '12:00',
+  })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
+    message: 'Jam selesai harus berformat HH:mm',
+  })
+  jamSelesai?: string;
 
   @ApiProperty({
     description: 'Tanggal mulai (YYYY-MM-DD)',
