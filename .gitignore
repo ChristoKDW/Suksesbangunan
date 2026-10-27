@@ -63,3 +63,10 @@ coverage/
 
 # Dokumen sumber berisi data gaji & rekening (jangan di-commit)
 Dokumen/
+*.zip
+*.pdf
+*.xls
+*.textClipping
+*.sql
+DATA TEST.md
+backend-sb/env

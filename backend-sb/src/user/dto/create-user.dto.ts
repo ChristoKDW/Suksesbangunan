@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsString, IsIn, IsOptional, IsNumber, Matches } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, IsIn, IsOptional, IsNumber, Matches, IsEmail, IsBoolean } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateUserDto {
   @ApiProperty({ description: 'Nama user', example: 'John Doe' })
@@ -9,17 +9,30 @@ export class CreateUserDto {
 
   @ApiProperty({
     description: 'Role user',
-    enum: ['Admin', 'HRD', 'SPV'],
-    example: 'HRD',
+    enum: ['Admin', 'HRD', 'SPV', 'Super Admin', 'SUPER_ADMIN', 'SECURITY_AUDITOR', 'DEVOPS_ADMIN'],
+    example: 'SUPER_ADMIN',
   })
   @IsNotEmpty()
-  @IsIn(['Admin', 'HRD', 'SPV'], { message: 'Role harus Admin, HRD, atau SPV' })
+  @IsIn(
+    ['Admin', 'HRD', 'SPV', 'Super Admin', 'SUPER_ADMIN', 'SECURITY_AUDITOR', 'DEVOPS_ADMIN'],
+    { message: 'Role harus Admin, HRD, SPV, SUPER_ADMIN, SECURITY_AUDITOR, atau DEVOPS_ADMIN' },
+  )
   role: string;
 
   @ApiProperty({ description: 'Username login', example: 'johndoe' })
   @IsNotEmpty()
   @IsString()
   username: string;
+
+  @ApiPropertyOptional({ description: 'Email resmi user / super admin', example: 'superadmin@laras.id' })
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @ApiPropertyOptional({ description: 'Status aktif', default: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 
   @ApiProperty({ description: 'Password (gabungan huruf besar, kecil, angka, simbol)', example: 'Admin#2026' })
   @IsNotEmpty()

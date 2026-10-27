@@ -86,6 +86,21 @@ class ProfileView extends GetView<ProfileController> {
               // -- Section: Dokumen Identitas (KTP & KK) --
               _buildDocumentSection(context),
               const SizedBox(height: 24),
+              // -- Help & Issue Report Button --
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Get.toNamed(Routes.LAPORAN_MASALAH),
+                  icon: const Icon(Icons.support_agent_rounded, color: AppColors.redPrimary),
+                  label: const Text('Bantuan & Lapor Kendala'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.slateDark,
+                    side: const BorderSide(color: AppColors.borderGrey),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               // -- Settings Button --
               SizedBox(
                 width: double.infinity,

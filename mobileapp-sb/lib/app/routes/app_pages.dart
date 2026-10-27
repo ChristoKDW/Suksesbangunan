@@ -43,6 +43,8 @@ import '../modules/splash/bindings/splash_binding.dart';
 import '../modules/splash/views/splash_view.dart';
 import '../modules/kasbon/bindings/kasbon_binding.dart';
 import '../modules/kasbon/views/kasbon_view.dart';
+import '../modules/laporan_masalah/bindings/laporan_masalah_binding.dart';
+import '../modules/laporan_masalah/views/laporan_masalah_view.dart';
 
 part 'app_routes.dart';
 
@@ -156,6 +158,11 @@ class AppPages {
       name: _Paths.COMPLETE_PROFILE,
       page: () => const CompleteProfileView(),
       binding: CompleteProfileBinding(),
+    ),
+    GetPage(
+      name: _Paths.LAPORAN_MASALAH,
+      page: () => const LaporanMasalahView(),
+      binding: LaporanMasalahBinding(),
     ),
   ];
 }

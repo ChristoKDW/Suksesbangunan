@@ -1,0 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   LAYER 1: PRIMITIVE TOKENS
+   ============================================================ */
+:root {
+  /* Minimal Dark Theme Primitives */
+  --color-black: #050505;
+  --color-gray-900: #0A0A0B;
+  --color-gray-800: #121214;
+  --color-gray-700: #1C1C1F;
+  --color-gray-600: #27272A;
+  --color-gray-500: #3F3F46;
+  --color-gray-400: #71717A;
+  --color-gray-300: #A1A1AA;
+  --color-gray-200: #E4E4E7;
+  --color-gray-100: #F4F4F5;
+  --color-white: #FFFFFF;
+  
+  --color-blue-500: #3B82F6;
+  --color-blue-hover: #2563EB;
+  
+  /* Font Primitives */
+  --font-inter: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-16: 4rem;
+  --space-64: 16rem;
+
+  /* Border Radius Primitives */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Animation Primitives */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Sidebar specific */
+  --sidebar-width: 256px;
+  --topbar-height: 64px;
+}
+
+/* ============================================================
+   LAYER 2: SEMANTIC TOKENS (LIGHT MODE - DEFAULT)
+   ============================================================ */
+:root {
+  --bg-page: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-surface-raised: #FFFFFF;
+  --bg-sidebar: #FFFFFF;
+  --bg-topbar: rgba(255, 255, 255, 0.9);
+
+  /* Tema Merah Profesional (Tailwind Red 600) */
+  --color-primary: #dc2626; 
+  --color-primary-hover: #b91c1c;
+  --color-primary-light: #fee2e2;
+  --color-primary-foreground: #ffffff;
+
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --text-inverse: #ffffff;
+  --text-on-sidebar: #4b5563;
+  --text-on-sidebar-active: #dc2626;
+
+  --border-default: #e5e7eb;
+  --border-strong: #d1d5db;
+  --border-focus: #dc2626;
+
+  /* Status colors */
+  --color-success: #10B981;
+  --color-success-bg: rgba(16, 185, 129, 0.1);
+  --color-success-border: rgba(16, 185, 129, 0.2);
+
+  --color-warning: #F59E0B;
+  --color-warning-bg: rgba(245, 158, 11, 0.1);
+  --color-warning-border: rgba(245, 158, 11, 0.2);
+
+  --color-danger: #ef4444;
+  --color-danger-bg: rgba(239, 68, 68, 0.1);
+  --color-danger-border: rgba(239, 68, 68, 0.2);
+
+  --color-info: #dc2626;
+  --color-info-bg: #fee2e2;
+  --color-info-border: #fca5a5;
+
+  --color-neutral: #6b7280;
+  --color-neutral-bg: #f3f4f6;
+  --color-neutral-border: #e5e7eb;
+
+  --sidebar-item-active-bg: #fef2f2;
+  --sidebar-item-active-indicator: #dc2626;
+  --sidebar-item-hover-bg: #f9fafb;
+  --sidebar-section-label: #9ca3af;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+}
+
+/* ============================================================
+   LAYER 2: SEMANTIC TOKENS (DARK MODE)
+   ============================================================ */
+.dark {
+  --bg-page: #0B0F17;
+  --bg-surface: #111827;
+  --bg-surface-raised: #1E293B;
+  --bg-sidebar: #090D16;
+  --bg-topbar: rgba(11, 15, 23, 0.85);
+
+  --color-primary: #ef4444;
+  --color-primary-hover: #f87171;
+  --color-primary-light: rgba(239, 68, 68, 0.1);
+  --color-primary-foreground: #ffffff;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-inverse: #0F172A;
+  --text-on-sidebar: #94A3B8;
+  --text-on-sidebar-active: #ef4444;
+
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-focus: #ef4444;
+}
+
+body {
+  font-family: var(--font-inter);
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+}
+
+/* SweetAlert2 Theme matching LARAS */
+.swal2-popup.swal-laras {
+  border-radius: 1rem !important;
+  font-family: var(--font-inter) !important;
+  padding: 1.5rem !important;
+}

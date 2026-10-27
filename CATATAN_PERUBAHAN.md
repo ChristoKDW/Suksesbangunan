@@ -6,6 +6,49 @@
 
 ---
 
+## 2026-10-28 (pagi) · Antigravity — Fitur Kelola Pengguna Super Admin (Tambah, Edit, Delete)
+
+- **Backend API (`backend-sb`)**:
+  - Kolom baru di entitas `User`: `email` (varchar nullable) dan `isActive` (boolean default true).
+  - DTO `CreateUserDto` diperluas dengan role `SUPER_ADMIN`, `SECURITY_AUDITOR`, dan `DEVOPS_ADMIN`.
+  - Controller baru `SuperAdminUserController` (`/super-admin/users`) dengan endpoint:
+    - `GET /super-admin/users` (daftar seluruh user eksekutif & admin sistem)
+    - `POST /super-admin/users` (tambah user baru dengan validasi password dan enkripsi bcrypt)
+    - `PATCH /super-admin/users/:id` (perbarui data user & password opsional)
+    - `DELETE /super-admin/users/:id` (hapus user dengan proteksi otomatis terhadap akun utama ID: 1 / superadmin)
+- **Super Admin Panel (`superadmin-sb`)**:
+  - Halaman baru `/superadmin-users` (`app/(dashboard)/superadmin-users/page.tsx`):
+    - Tabel interaktif daftar user super admin dengan pencarian nama/username/email dan filter per role.
+    - Modal Tambah Pengguna Baru dengan validasi input, show/hide password, dan role picker.
+    - Modal Edit Pengguna untuk memperbarui nama, email, role, status aktif/nonaktif, dan opsi ubah password.
+    - Aksi Hapus Pengguna dengan dialog konfirmasi SweetAlert2 tipe bahaya (*danger*) dan penguncian proteksi untuk akun root.
+  - Sidebar: Ditambahkan menu navigasi "Kelola User Superadmin" di seksi `AUDIT & SECURITY`.
+- **Obsidian Vault**: Dokumentasi spesifikasi modul & endpoint diperbarui pada Doc 11 Bab 8.
+- **Pengujian**: Backend `npx tsc` & `npx jest` lulus (13/13 suites); Super Admin `npx tsc` & `npm run build` lulus (13/13 static routes).
+
+---
+
+## 2026-10-28 (pagi) · Antigravity — Sistem Pelaporan Masalah & Bug Aplikasi (Multiplatform)
+
+- **Obsidian Vault**: Dokumen spesifikasi dan skema lengkap dibuat di `03 - Project Overview & Backend Setup/12 - Spesifikasi & Skema Sistem Pelaporan Masalah Aplikasi (Issue & Bug Reporting).md` dan diindeks di `000 - Home Dashboard.md`.
+- **Backend API (`backend-sb`)**:
+  - Modul baru `backend-sb/src/laporan-masalah/` dengan entitas TypeORM `laporan_masalah` (`tiket_id` format `RPT-YYYYMM-XXXX`, `sumber`, `kategori`, `judul`, `deskripsi`, `device_info` jsonb, `status`, `prioritas`, `tanggapan_solusi`) & `laporan_masalah_lampiran`.
+  - Endpoint `POST /laporan-masalah/mobile` & `GET /laporan-masalah/my-mobile` untuk mobile karyawan.
+  - Endpoint `POST /laporan-masalah/web` & `GET /laporan-masalah/my-web` untuk web admin.
+  - Endpoint `GET /super-admin/laporan-masalah`, `GET .../:id`, & `PATCH .../:id/status` untuk super admin triage dengan pengiriman notifikasi otomatis (`NotificationService`) ke pelapor saat tiket ditindaklanjuti.
+- **Web Admin Panel (`frontend-sb`)**:
+  - Komponen modal `ReportIssueModal.tsx` dengan tab formulir (auto-capture URL route & device/browser context, upload screenshot) & tab riwayat tiket pribadi.
+  - Integrasi tombol LifeBuoy bantuan di `TopBar.tsx` (sebelah lonceng notifikasi dan menu profil).
+- **Aplikasi Mobile Karyawan (`mobileapp-sb`)**:
+  - Modul GetX baru `lib/app/modules/laporan_masalah/` (`LaporanMasalahView`, `LaporanMasalahController`, `LaporanMasalahBinding`).
+  - Fitur formulir kendala (dropdown kategori, judul, deskripsi, upload foto screenshot via galeri/kamera, auto-capture OS/platform & GPS accuracy) & tab riwayat tiket dengan indikator status & kartu solusi.
+  - Integrasi tombol "Bantuan & Lapor Kendala" di `ProfileView` menuju rute `Routes.LAPORAN_MASALAH`.
+- **Super Admin Panel (`superadmin-sb`)**:
+  - Inbox tiket di `/issue-reports` dengan filter status, filter sumber (mobile/web), inspektur metadata perangkat/browser teknis, dan formulir tanggapan solusi terintegrasi API.
+  - Koreksi halaman `/financial-insights` sesuai struktur riil 5 departemen internal Toko LARAS (Makassar).
+
+---
+
 ## 2026-10-27 (malam) · Claude Code (Opus 5.5) — Mobile: sesi kadaluarsa langsung kembali ke login
 
 - **Masalah**: karyawan (kasus Dea Syikal Ananda) tidak bisa upload KTP/KK. Log nginx: semua request dari HP-nya (upload KTP/KK, izin, jadwal, istirahat) dibalas **401** — token login sudah tidak berlaku, tetapi aplikasi tetap di Home memakai data cadangan sesi sehingga setiap aksi gagal "Unauthorized" (kartu "Upload KTP/KK" juga muncul karena profil gagal dimuat).

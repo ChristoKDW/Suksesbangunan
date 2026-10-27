@@ -24,6 +24,7 @@ abstract class Routes {
   static const FORGOT_PASSWORD = _Paths.FORGOT_PASSWORD;
   static const COMPLETE_PROFILE = _Paths.COMPLETE_PROFILE;
   static const KASBON = _Paths.KASBON;
+  static const LAPORAN_MASALAH = _Paths.LAPORAN_MASALAH;
 }
 
 abstract class _Paths {
@@ -49,4 +50,5 @@ abstract class _Paths {
   static const FORGOT_PASSWORD = '/forgot-password';
   static const COMPLETE_PROFILE = '/complete-profile';
   static const KASBON = '/kasbon';
+  static const LAPORAN_MASALAH = '/laporan-masalah';
 }

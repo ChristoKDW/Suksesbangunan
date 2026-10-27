@@ -28,6 +28,14 @@ export class User {
   @Column({ name: 'username', type: 'varchar', unique: true })
   username: string;
 
+  @ApiProperty({ description: 'Email resmi user / Super Admin', required: false })
+  @Column({ name: 'email', type: 'varchar', nullable: true })
+  email: string;
+
+  @ApiProperty({ description: 'Status aktif user', required: false, default: true })
+  @Column({ name: 'is_active', type: 'boolean', default: true })
+  isActive: boolean;
+
   @ApiProperty({ description: 'Path foto profil', required: false })
   @Column({ name: 'foto_profil', type: 'text', nullable: true })
   fotoProfil: string;

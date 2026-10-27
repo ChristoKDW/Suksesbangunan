@@ -1,13 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { Search, ChevronDown, Moon, Sun, Eye, EyeOff, Menu } from "lucide-react"
+import { Search, ChevronDown, Moon, Sun, Eye, EyeOff, Menu, LifeBuoy } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { useSidebar } from "@/lib/sidebar-context"
 import { userApi } from "@/lib/api"
 import { NotificationDropdown } from "./NotificationDropdown"
+import { ReportIssueModal } from "../ReportIssueModal/ReportIssueModal"
 import { confirmLogout, showError, showSuccess, showWarning } from "@/lib/swal"
 
 export function TopBar() {
@@ -17,6 +18,7 @@ export function TopBar() {
   const [mounted, setMounted] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
   const [profileForm, setProfileForm] = useState({
     nama: "",
@@ -183,6 +185,18 @@ export function TopBar() {
           {/* Notification bell */}
           <NotificationDropdown />
 
+          {/* Help & Report Issue Button */}
+          <button
+            type="button"
+            onClick={() => setIsReportModalOpen(true)}
+            className="relative flex items-center justify-center rounded-lg transition-colors text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"
+            style={{ width: "2.25rem", height: "2.25rem" }}
+            title="Bantuan & Laporkan Kendala"
+            aria-label="Bantuan & Laporkan Kendala"
+          >
+            <LifeBuoy style={{ width: "1.125rem", height: "1.125rem" }} />
+          </button>
+
           {/* Divider */}
           <div
             className="h-6 w-px mx-1 bg-slate-200 dark:bg-white/10"
@@ -246,6 +260,16 @@ export function TopBar() {
                     >
                       Halaman Profil Saya
                     </Link>
+                    <button
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        setIsReportModalOpen(true);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors flex items-center justify-between"
+                    >
+                      <span>Laporkan Kendala</span>
+                      <span className="text-[10px] bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded font-medium">Bantuan</span>
+                    </button>
                     <button
                       onClick={async () => {
                         setIsUserMenuOpen(false);
@@ -366,6 +390,12 @@ export function TopBar() {
           </div>
         </div>
       )}
+
+      {/* Report Issue Modal */}
+      <ReportIssueModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+      />
     </>
   )
 }

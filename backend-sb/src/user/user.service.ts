@@ -44,6 +44,8 @@ export class UserService {
         nama: true,
         role: true,
         username: true,
+        email: true,
+        isActive: true,
         fotoProfil: true,
         idDepartemen: true,
         createdAt: true,
@@ -115,6 +117,33 @@ export class UserService {
 
   async remove(id: number): Promise<void> {
     const user = await this.findOne(id);
+    await this.userRepo.remove(user);
+  }
+
+  async findSuperAdmins(): Promise<User[]> {
+    return this.userRepo.find({
+      select: {
+        idUser: true,
+        nama: true,
+        role: true,
+        username: true,
+        email: true,
+        fotoProfil: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      order: {
+        idUser: 'ASC',
+      },
+    });
+  }
+
+  async removeSuperAdmin(id: number): Promise<void> {
+    const user = await this.findOne(id);
+    if (user.idUser === 1 || user.username === 'superadmin') {
+      throw new ForbiddenException('Akun utama Super Admin dilindungi dan tidak dapat dihapus');
+    }
     await this.userRepo.remove(user);
   }
 }

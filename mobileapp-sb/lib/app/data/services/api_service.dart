@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:get/get.dart';
@@ -754,6 +755,94 @@ class ApiService extends GetConnect {
       query['tanggal'] = tanggal;
     }
     final res = await get('/penggajian/me/slip', query: query);
+    return _handle(res);
+  }
+
+  /// POST /laporan-masalah/mobile → kirim laporan kendala aplikasi (multipart jika ada lampiran).
+  Future<Map<String, dynamic>> submitLaporanMasalah({
+    required String kategori,
+    required String judul,
+    required String deskripsi,
+    String? langkahReproduksi,
+    Map<String, dynamic>? deviceInfo,
+    String? filePath,
+  }) async {
+    final Map<String, dynamic> formMap = {
+      'kategori': kategori,
+      'judul': judul,
+      'deskripsi': deskripsi,
+    };
+    if (langkahReproduksi != null && langkahReproduksi.isNotEmpty) {
+      formMap['langkahReproduksi'] = langkahReproduksi;
+    }
+    if (deviceInfo != null) {
+      formMap['deviceInfo'] = jsonEncode(deviceInfo);
+    }
+    if (filePath != null && filePath.isNotEmpty) {
+      final file = File(filePath);
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        final fileName = filePath.split(RegExp(r'[\\/]')).last;
+        final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
+        final mime = ext == 'png' ? 'image/png' : ext == 'webp' ? 'image/webp' : 'image/jpeg';
+        formMap['file'] = MultipartFile(bytes, filename: fileName, contentType: mime);
+      }
+    }
+    final res = await post('/laporan-masalah/mobile', FormData(formMap));
+    return _handle(res);
+  }
+
+  /// GET /laporan-masalah/my-mobile → daftar laporan kendala milik karyawan.
+  Future<List<dynamic>> getMyLaporanMasalah() async {
+    final res = await get('/laporan-masalah/my-mobile');
+    if (!res.isOk) {
+      throw ApiException(
+        res.body is Map && res.body['message'] != null
+            ? res.body['message'].toString()
+            : 'Gagal memuat riwayat laporan',
+        res.statusCode,
+      );
+    }
+    if (res.body is List) {
+      return res.body as List<dynamic>;
+    }
+    return [];
+  }
+
+  /// GET /tunda-off/pengajuan/my → daftar pengajuan tunda off milik karyawan.
+  Future<List<dynamic>> getMyTundaOff() async {
+    final res = await get('/tunda-off/pengajuan/my');
+    if (!res.isOk) {
+      throw ApiException(
+        res.body is Map && res.body['message'] != null
+            ? res.body['message'].toString()
+            : 'Gagal memuat tunda off',
+        res.statusCode,
+      );
+    }
+    if (res.body is List) {
+      return res.body as List<dynamic>;
+    }
+    return [];
+  }
+
+  /// POST /tunda-off/pengajuan → buat pengajuan tunda off baru.
+  Future<Map<String, dynamic>> createTundaOff({
+    required String tanggalOffAsal,
+    required String tanggalOffBaru,
+    required String alasan,
+  }) async {
+    final res = await post('/tunda-off/pengajuan', {
+      'tanggalOffAsal': tanggalOffAsal,
+      'tanggalOffBaru': tanggalOffBaru,
+      'alasan': alasan,
+    });
+    return _handle(res);
+  }
+
+  /// PATCH /tunda-off/pengajuan/:id/cancel → batalkan pengajuan tunda off.
+  Future<Map<String, dynamic>> cancelTundaOff(int id) async {
+    final res = await patch('/tunda-off/pengajuan/$id/cancel', {});
     return _handle(res);
   }
 }
