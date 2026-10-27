@@ -7,6 +7,7 @@ import { LatticeLoader, TableRowSkeleton } from "@/components/atoms"
 import { Search, Plus, X, Briefcase, Edit2, Trash2, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Jabatan } from "@/lib/types"
+import { confirmDelete, showError } from "@/lib/swal"
 
 export default function PositionsPage() {
   // ponytail: SWR caching - instan 0ms saat navigasi
@@ -29,19 +30,19 @@ export default function PositionsPage() {
       setNewPosition({ namaJabatan: "" })
       mutate()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menambahkan jabatan")
+      showError(err instanceof Error ? err.message : "Gagal menambahkan jabatan")
     } finally {
       setSubmitting(false)
     }
   }
 
   const handleDeletePosition = async (id: number) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus jabatan ini?")) return
+    if (!await confirmDelete("Apakah Anda yakin ingin menghapus jabatan ini?")) return
     try {
       await api.delete(`jabatan/${id}`)
       mutate()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus jabatan")
+      showError(err instanceof Error ? err.message : "Gagal menghapus jabatan")
     }
   }
 
@@ -60,7 +61,7 @@ export default function PositionsPage() {
       setEditingPosition(null)
       mutate()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal mengupdate jabatan")
+      showError(err instanceof Error ? err.message : "Gagal mengupdate jabatan")
     } finally {
       setSubmitting(false)
     }
@@ -80,9 +81,9 @@ export default function PositionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Jabatan</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)]">Jabatan</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             {loading ? "Memuat data jabatan..." : `Total ${positions.length} jabatan terdaftar`}
           </p>
@@ -95,7 +96,7 @@ export default function PositionsPage() {
 
       {/* Add Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-[var(--bg-surface)] w-full max-w-md rounded-xl shadow-xl border border-[var(--border-default)] overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
               <h3 className="font-semibold text-[var(--text-primary)]">Tambah Jabatan Baru</h3>
@@ -123,7 +124,7 @@ export default function PositionsPage() {
 
       {/* Edit Modal */}
       {isEditModalOpen && editingPosition && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-[var(--bg-surface)] w-full max-w-md rounded-xl shadow-xl border border-[var(--border-default)] overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
               <h3 className="font-semibold text-[var(--text-primary)]">Edit Jabatan</h3>

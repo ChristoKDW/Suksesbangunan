@@ -9,6 +9,7 @@ import { Check, X, Search, Loader2, Calendar, CheckCircle2, Clock, AlertCircle, 
 import { regularOffApi } from "@/lib/api-ro"
 import { useAuth } from "@/lib/auth-context"
 import type { PengajuanRo } from "@/lib/types-ro"
+import { showError } from "@/lib/swal"
 
 function getStatusVariant(status: string): "success" | "warning" | "destructive" | "secondary" {
   switch (status) {
@@ -126,7 +127,7 @@ export default function RegularOffTab() {
       setActionModal((prev) => ({ ...prev, open: false }))
       mutate()
     } catch (err: any) {
-      alert(`Gagal memproses persetujuan: ${err?.message || "Terjadi kesalahan"}`)
+      showError(`Gagal memproses persetujuan: ${err?.message || "Terjadi kesalahan"}`)
     } finally {
       setSubmittingId(null)
     }
@@ -357,7 +358,7 @@ export default function RegularOffTab() {
 
       {/* Modal Dialog Konfirmasi Approval / Rejection */}
       {actionModal.open && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-start justify-center overflow-y-auto p-4 [&>*]:my-auto">
           <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b pb-3 border-slate-100">
               <h3 className="font-semibold text-slate-900 flex items-center gap-2 text-sm sm:text-base">

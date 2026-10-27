@@ -9,6 +9,7 @@ import { Search, Plus, Edit2, Trash2, Smartphone, Loader2, Key, Eye, ShieldCheck
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import type { Karyawan } from "@/lib/types"
+import { confirmDelete, confirmDialog, showError, showSuccess, showWarning } from "@/lib/swal"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id"
 
@@ -80,11 +81,11 @@ export default function EmployeesPage() {
 
     const handleResetApk = async (id: number, nama: string) => {
     if (user?.role !== "Admin" && user?.role !== "HRD") {
-      alert("Hanya Admin atau HRD yang berhak menghapus/mereset data APK karyawan.")
+      showWarning("Hanya Admin atau HRD yang berhak menghapus/mereset data APK karyawan.")
       return
     }
     if (
-      !confirm(
+      !await confirmDelete(
         `Apakah Anda yakin ingin menghapus data APK (biometrik wajah & akun mobile) untuk ${nama}?\n\nData akan direset sehingga karyawan dapat mendaftar ulang di aplikasi mobile.`
       )
     )
@@ -92,20 +93,20 @@ export default function EmployeesPage() {
 
     try {
       const res: any = await api.post(`karyawan/${id}/reset-apk`)
-      alert(res?.message || `Data APK untuk ${nama} berhasil dihapus/direset.`)
+      showSuccess(res?.message || `Data APK untuk ${nama} berhasil dihapus/direset.`)
       mutate()
     } catch (err: any) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus data APK karyawan.")
+      showError(err instanceof Error ? err.message : "Gagal menghapus data APK karyawan.")
     }
   }
 
   const handleDeleteEmployee = async (id: number) => {
     if (user?.role !== "Admin") {
-      alert("Hanya Admin yang berhak menghapus data karyawan.")
+      showWarning("Hanya Admin yang berhak menghapus data karyawan.")
       return
     }
     if (
-      !confirm(
+      !await confirmDelete(
         "Apakah Anda yakin ingin menghapus data karyawan ini secara permanen? Data riwayat jadwal, absensi, izin, dan penggajian terkait karyawan ini juga akan ikut dibersihkan."
       )
     )
@@ -114,27 +115,27 @@ export default function EmployeesPage() {
       await api.delete(`karyawan/${id}`)
       await mutate()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus karyawan")
+      showError(err instanceof Error ? err.message : "Gagal menghapus karyawan")
     }
   }
 
   const handleApproveReset = async (id: number) => {
-    if (!confirm("Setujui permintaan reset password untuk karyawan ini? Karyawan akan dapat membuat password baru."))
+    if (!await confirmDialog("Setujui permintaan reset password untuk karyawan ini? Karyawan akan dapat membuat password baru."))
       return
     try {
       await api.patch(`karyawan/${id}/approve-reset`, {})
-      alert("Permintaan reset password disetujui.")
+      showSuccess("Permintaan reset password disetujui.")
       await mutate()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menyetujui reset password")
+      showError(err instanceof Error ? err.message : "Gagal menyetujui reset password")
     }
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Karyawan</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)]">Karyawan</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             {loading ? "Memuat data karyawan..." : `${employees.length} total · ${activeCount} aktif`}
           </p>

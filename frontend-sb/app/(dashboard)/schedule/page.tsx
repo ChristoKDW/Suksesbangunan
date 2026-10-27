@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth-context"
 import { getIndonesianHolidayForDate, type HolidayItem } from "@/lib/indonesia-holidays"
 import { fetchCalendarEvents, type CalendarEvent } from "@/lib/opica-calendar"
 import type { Karyawan, Shift, JadwalKerja, Departemen, PengaturanPenggajian, HariLibur } from "@/lib/types"
+import { showError, showSuccess, showWarning } from "@/lib/swal"
 
 // Color palette for shifts
 const shiftColors = [
@@ -390,7 +391,7 @@ export default function SchedulePage() {
   // Terapkan pola rolling shift ke bulan ini
   const handleApplyRolling = async (saveImmediately: boolean = false) => {
     if (departmentShifts.length === 0) {
-      alert("Tidak ada shift yang terdaftar untuk departemen ini. Buat shift terlebih dahulu di menu Shift.")
+      showWarning("Tidak ada shift yang terdaftar untuk departemen ini. Buat shift terlebih dahulu di menu Shift.")
       return
     }
 
@@ -466,15 +467,15 @@ export default function SchedulePage() {
         await api.post("jadwal-kerja/bulk", bulkItems)
         setHasChanges(false)
         await fetchData()
-        alert(`Berhasil! Jadwal rolling untuk ${editableEmployees.length} karyawan bulan ${monthLabel} telah berhasil dibuat dan disimpan otomatis ke sistem.`)
+        showSuccess(`Berhasil! Jadwal rolling untuk ${editableEmployees.length} karyawan bulan ${monthLabel} telah berhasil dibuat dan disimpan otomatis ke sistem.`)
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Gagal menyimpan jadwal otomatis")
+        showError(err instanceof Error ? err.message : "Gagal menyimpan jadwal otomatis")
       } finally {
         setSaving(false)
       }
     } else {
       setHasChanges(true)
-      alert(`Jadwal rolling untuk ${editableEmployees.length} karyawan berhasil digenerate ke tabel! Silakan periksa atau sesuaikan jadwal, lalu klik "Simpan Perubahan" di atas.`)
+      showSuccess(`Jadwal rolling untuk ${editableEmployees.length} karyawan berhasil digenerate ke tabel! Silakan periksa atau sesuaikan jadwal, lalu klik "Simpan Perubahan" di atas.`)
     }
   }
 
@@ -538,7 +539,7 @@ export default function SchedulePage() {
   // Buka dialog untuk edit 1 sel hari
   const handleOpenCell = (emp: Karyawan, date: number) => {
     if (!canUserEditEmployee(emp)) {
-      alert(`Anda tidak memiliki wewenang untuk mengubah jadwal karyawan ${emp.nama}.`)
+      showWarning(`Anda tidak memiliki wewenang untuk mengubah jadwal karyawan ${emp.nama}.`)
       return
     }
     setSelectedCell({
@@ -586,7 +587,7 @@ export default function SchedulePage() {
         await fetchData()
         setSelectedCell(null)
       } catch (err: any) {
-        alert(err instanceof Error ? err.message : "Gagal menyimpan jadwal hari ini")
+        showError(err instanceof Error ? err.message : "Gagal menyimpan jadwal hari ini")
       } finally {
         setSavingSingle(false)
       }
@@ -653,9 +654,9 @@ export default function SchedulePage() {
 
       setHasChanges(false)
       await fetchData()
-      alert(`Berhasil! Perubahan jadwal telah tersimpan ke sistem.`)
+      showSuccess(`Berhasil! Perubahan jadwal telah tersimpan ke sistem.`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menyimpan jadwal")
+      showError(err instanceof Error ? err.message : "Gagal menyimpan jadwal")
     } finally {
       setSaving(false)
     }
@@ -686,7 +687,7 @@ export default function SchedulePage() {
       link.remove()
       window.URL.revokeObjectURL(blobUrl)
     } catch (err: any) {
-      alert(err instanceof Error ? err.message : "Terjadi kesalahan saat mengekspor Excel")
+      showError(err instanceof Error ? err.message : "Terjadi kesalahan saat mengekspor Excel")
     } finally {
       setExporting(false)
     }
@@ -711,7 +712,7 @@ export default function SchedulePage() {
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Jadwal Kerja</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)]">Jadwal Kerja</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             {isSPV ? (
               <span className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium">
@@ -1256,7 +1257,7 @@ export default function SchedulePage() {
 
       {/* MODAL 1: ATUR JADWAL HARIAN 1 HARI (Single Day Picker Modal) */}
       {selectedCell && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-[#0B0F17] w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
             {/* Modal Header */}
             <div className="flex items-start justify-between p-4 border-b border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02]">
@@ -1431,7 +1432,7 @@ export default function SchedulePage() {
 
       {/* MODAL GENERATE JADWAL OTOMATIS (SISTEM ROLLING SHIFT) */}
       {showAutoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-xs p-4">
           <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-[var(--border-default)] flex items-center justify-between bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-blue-950/20 dark:to-indigo-950/20">

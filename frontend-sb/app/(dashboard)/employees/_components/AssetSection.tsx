@@ -1,6 +1,6 @@
 "use client"
 
-import { confirmDialog, showError, showWarning } from "@/lib/swal"
+import { confirmDelete, confirmDialog, showError, showWarning } from "@/lib/swal"
 import { useEffect, useState } from "react"
 import { Loader2, Trash2 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/molecules"
@@ -109,7 +109,7 @@ export default function AssetSection({
   }
 
   const remove = async (id: number) => {
-    if (!(await confirmDialog("Hapus data peminjaman aset ini?"))) return
+    if (!(await confirmDelete("Hapus data peminjaman aset ini?"))) return
     await api.delete(`aset/${id}`)
     await load()
   }

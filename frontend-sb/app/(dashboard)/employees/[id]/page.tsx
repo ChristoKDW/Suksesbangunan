@@ -29,6 +29,7 @@ import { Badge, Skeleton } from "@/components/atoms"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Karyawan } from "@/lib/types"
+import { confirmDelete, showError, showSuccess, showWarning } from "@/lib/swal"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id"
 
@@ -121,11 +122,11 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
     const handleResetApk = async () => {
     if (!employee) return
     if (user?.role !== "Admin" && user?.role !== "HRD") {
-      alert("Hanya Admin atau HRD yang berhak menghapus/mereset data APK karyawan.")
+      showWarning("Hanya Admin atau HRD yang berhak menghapus/mereset data APK karyawan.")
       return
     }
     if (
-      !confirm(
+      !await confirmDelete(
         `Apakah Anda yakin ingin menghapus data APK (biometrik wajah & akun mobile) untuk ${employee.nama}?\n\nData akan direset sehingga karyawan dapat mendaftar ulang di aplikasi mobile.`
       )
     )
@@ -133,10 +134,10 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
 
     try {
       const res: any = await api.post(`karyawan/${employee.idKaryawan}/reset-apk`)
-      alert(res?.message || `Data APK untuk ${employee.nama} berhasil dihapus/direset.`)
+      showSuccess(res?.message || `Data APK untuk ${employee.nama} berhasil dihapus/direset.`)
       window.location.reload()
     } catch (err: any) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus data APK karyawan.")
+      showError(err instanceof Error ? err.message : "Gagal menghapus data APK karyawan.")
     }
   }
 

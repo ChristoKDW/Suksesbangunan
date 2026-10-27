@@ -9,6 +9,7 @@ import { userApi, User } from "@/lib/api"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Departemen } from "@/lib/types"
+import { confirmDelete, showError, showSuccess } from "@/lib/swal"
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth()
@@ -41,19 +42,19 @@ export default function UsersPage() {
       setNewUser({ nama: "", username: "", password: "", role: "HRD" })
       refreshAll()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menambahkan user")
+      showError(err instanceof Error ? err.message : "Gagal menambahkan user")
     } finally {
       setSubmitting(false)
     }
   }
 
   const handleDeleteUser = async (id: number) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus akun ini?")) return
+    if (!await confirmDelete("Apakah Anda yakin ingin menghapus akun ini?")) return
     try {
       await userApi.delete(id)
       refreshAll()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus user")
+      showError(err instanceof Error ? err.message : "Gagal menghapus user")
     }
   }
 
@@ -100,9 +101,9 @@ export default function UsersPage() {
       setIsEditModalOpen(false)
       setEditingUser(null)
       refreshAll()
-      alert("Data pengguna berhasil diperbarui.")
+      showSuccess("Data pengguna berhasil diperbarui.")
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal mengupdate user")
+      showError(err instanceof Error ? err.message : "Gagal mengupdate user")
     } finally {
       setSubmitting(false)
     }
@@ -126,9 +127,9 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
             Pengguna Sistem
           </h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -149,7 +150,7 @@ export default function UsersPage() {
 
       {/* Add User Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-white dark:bg-[#1E293B] w-full max-w-md rounded-xl shadow-xl border border-slate-200 dark:border-white/10 overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
               <h3 className="font-semibold text-slate-900 dark:text-slate-50">Tambah Pengguna Baru</h3>
@@ -211,7 +212,7 @@ export default function UsersPage() {
 
       {/* Edit User Modal */}
       {isEditModalOpen && editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-white dark:bg-[#1E293B] w-full max-w-md rounded-xl shadow-xl border border-slate-200 dark:border-white/10 overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
               <h3 className="font-semibold text-slate-900 dark:text-slate-50">Edit Pengguna</h3>
@@ -419,7 +420,7 @@ export default function UsersPage() {
       {/* Full Size Image Preview Modal */}
       {previewImage && (
         <div 
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4"
+          className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/80 backdrop-blur-sm px-4"
           onClick={() => setPreviewImage(null)}
         >
           <div className="relative max-w-3xl max-h-[90vh] w-full flex items-center justify-center">

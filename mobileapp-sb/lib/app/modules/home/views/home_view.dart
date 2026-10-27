@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:skeletonizer/skeletonizer.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/document_service.dart';
 import '../../../routes/app_pages.dart';
 import '../controllers/home_controller.dart';
 
@@ -340,10 +341,10 @@ class HomeView extends GetView<HomeController> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Kartu Logo Slip Gaji (Hanya untuk karyawan internal, disembunyikan untuk external)
+        // Internal: kartu Slip Gaji. External: kartu Rekap Absensi resmi (untuk brand).
         Obx(() {
           if (controller.isExternal.value) {
-            return const SizedBox.shrink();
+            return _buildRekapAbsensiCard();
           }
           return _buildSlipGajiLogoCard(context);
         }),
@@ -396,6 +397,65 @@ class HomeView extends GetView<HomeController> {
           );
         }),
       ],
+    );
+  }
+
+  Widget _buildRekapAbsensiCard() {
+    return InkWell(
+      onTap: () => DocumentService.showRekapAbsensiSheet(title: 'Rekap Absensi Resmi'),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderGrey),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.redContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Image.asset('assets/logo/logo.png', fit: BoxFit.contain),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Rekap Absensi Resmi',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: AppColors.slateDark,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'PDF berkop perusahaan + cap HRD, siap dikirim ke brand',
+                    style: TextStyle(fontSize: 12, color: AppColors.slateLight),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.download_rounded, color: AppColors.redPrimary),
+          ],
+        ),
+      ),
     );
   }
 

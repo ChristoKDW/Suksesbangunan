@@ -6,6 +6,7 @@ import { LatticeLoader, TableRowSkeleton } from "@/components/atoms"
 import { Search, Plus, X, Trash2, Edit2, MapPin, ExternalLink, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { PengaturanKantor, Departemen } from "@/lib/types"
+import { confirmDelete, showError } from "@/lib/swal"
 
 export default function OfficeLocationsPage() {
   const [offices, setOffices] = useState<PengaturanKantor[]>([])
@@ -85,27 +86,27 @@ export default function OfficeLocationsPage() {
       setIsModalOpen(false)
       await fetchData()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menyimpan")
+      showError(err instanceof Error ? err.message : "Gagal menyimpan")
     } finally {
       setSubmitting(false)
     }
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Hapus lokasi kantor ini?")) return
+    if (!await confirmDelete("Hapus lokasi kantor ini?")) return
     try {
       await api.delete(`pengaturan-kantor/${id}`)
       await fetchData()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus")
+      showError(err instanceof Error ? err.message : "Gagal menghapus")
     }
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Titik Kantor</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)]">Titik Kantor</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             {loading ? "Memuat titik kantor..." : `${offices.length} lokasi terdaftar — Radius geofence untuk validasi absensi`}
           </p>
@@ -118,7 +119,7 @@ export default function OfficeLocationsPage() {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-[var(--bg-surface)] w-full max-w-lg rounded-xl shadow-xl border border-[var(--border-default)] overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
               <h3 className="font-semibold text-[var(--text-primary)]">{isEditing ? "Edit Lokasi" : "Tambah Lokasi Baru"}</h3>
@@ -129,7 +130,7 @@ export default function OfficeLocationsPage() {
                 <label className="text-xs font-medium text-[var(--text-secondary)]">Nama Kantor *</label>
                 <input required type="text" value={formData.namaKantor} onChange={e => setFormData({...formData, namaKantor: e.target.value})} className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]" placeholder="Kantor Pusat Jakarta" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Latitude *</label>
                   <input required type="number" step="any" value={formData.latitude} onChange={e => setFormData({...formData, latitude: e.target.value})} className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]" placeholder="-6.2088" />
@@ -139,7 +140,7 @@ export default function OfficeLocationsPage() {
                   <input required type="number" step="any" value={formData.longitude} onChange={e => setFormData({...formData, longitude: e.target.value})} className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]" placeholder="106.8456" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Radius (meter) *</label>
                   <input required type="number" value={formData.radiusMeter} onChange={e => setFormData({...formData, radiusMeter: e.target.value})} className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-md px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]" placeholder="100" />

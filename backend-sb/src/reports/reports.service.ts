@@ -1,6 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, Repository } from 'typeorm';
+import { Between, In, Repository } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { Response } from 'express';
 import { Absensi } from '../absensi/entities/absensi.entity.js';
@@ -8,6 +13,7 @@ import { PengajuanIzin } from '../pengajuan-izin/entities/pengajuan-izin.entity.
 import { Penggajian } from '../penggajian/entities/penggajian.entity.js';
 import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
 import { JadwalKerja } from '../jadwal-kerja/entities/jadwal-kerja.entity.js';
+import { PenggajianService } from '../penggajian/penggajian.service.js';
 import {
   BUSINESS_TIME_ZONE,
   businessDateOf,
@@ -22,45 +28,36 @@ import {
   drawTable,
   streamPdf,
 } from './pdf.util.js';
-import { LEGEND_PURPOSE_IFT } from './bni-legend.const.js';
+import {
+  AbsensiRow,
+  AbsensiSheet,
+  SlipData,
+  addAbsensiWorksheet,
+  addSlipWorksheet,
+  drawAbsensiPage,
+  drawSlipPage,
+  uniqueSheetName,
+} from './dokumen.util.js';
+import {
+  BNI_SHEETS,
+  BniSheetKey,
+  BniTrx,
+  bankCode,
+  bniSheetName,
+  buildBniCsv,
+  buildBniWorkbook,
+  cleanRekening,
+  isBniBank,
+  sanitizeBni,
+} from './bni-direct.util.js';
 
-type ReportUser = { role?: string; idDepartemen?: number };
+export type ReportUser = { role?: string; idDepartemen?: number };
 
 const BULAN_ID = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ];
 const HARI_SINGKAT = ['Mgg', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-
-/** Pemetaan nama bank → kode peserta BI-FAST (bank besar umum di Indonesia). */
-const BIFAST_BANK_CODES: [RegExp, string][] = [
-  [/bsi|syariah indonesia/, 'BSMDIDJA'],
-  [/bca/, 'CENAIDJA'],
-  [/mandiri/, 'BMRIIDJA'],
-  [/bri\b|rakyat indonesia/, 'BRINIDJA'],
-  [/btn|tabungan negara/, 'BTANIDJA'],
-  [/cimb|niaga/, 'BNIAIDJA'],
-  [/danamon/, 'BDINIDJA'],
-  [/permata/, 'BBBAIDJA'],
-  [/panin/, 'PINBIDJA'],
-  [/maybank/, 'IBBKIDJA'],
-  [/ocbc|nisp/, 'NISPIDJA'],
-  [/mega/, 'MEGAIDJA'],
-  [/btpn|smbc/, 'SUNIIDJA'],
-  [/sinarmas/, 'SBJKIDJA'],
-  [/muamalat/, 'MUABIDJA'],
-  [/bjb|jabar/, 'PDJBIDJA'],
-  [/dbs/, 'DBSBIDJA'],
-  [/uob/, 'UOVBIDJA'],
-];
-
-function bifastCode(namaBank: string): string {
-  const nb = (namaBank || '').toLowerCase();
-  for (const [pattern, code] of BIFAST_BANK_CODES) {
-    if (pattern.test(nb)) return code;
-  }
-  return ''; // kolom wajib — HRD melengkapi manual jika bank tidak dikenali
-}
 
 const XLSX_MIME =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -75,18 +72,6 @@ function fmtTime(value: Date | string | null | undefined): string {
   });
 }
 
-function fmtDateTime(value: Date | string | null | undefined): string {
-  if (!value) return '-';
-  return new Date(value).toLocaleString('id-ID', {
-    timeZone: BUSINESS_TIME_ZONE,
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 function fmtRp(value: number): string {
   return `Rp ${Math.round(Number(value) || 0).toLocaleString('id-ID')}`;
 }
@@ -96,12 +81,21 @@ function bulanLabel(yyyyMm: string): string {
   return `${BULAN_ID[(m || 1) - 1]} ${y}`;
 }
 
-/** Hilangkan karakter yang dilarang BNIDirect (lihat sheet Restricted Characters). */
-function sanitizeBni(value: string): string {
-  return (value || '').replace(/[,`~!@#$%^&*_{}<>[\]=\\;]/g, ' ').trim();
+function isBulan(value?: string): value is string {
+  return !!value && /^\d{4}-\d{2}$/.test(value);
 }
 
-/** Kop surat perusahaan + judul untuk worksheet Excel. */
+function monthBounds(bulan: string) {
+  const [y, m] = bulan.split('-').map(Number);
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return { start: `${bulan}-01`, end: `${bulan}-${String(lastDay).padStart(2, '0')}` };
+}
+
+function fileSafe(text: string): string {
+  return text.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '');
+}
+
+/** Kop surat + judul untuk worksheet Excel laporan rekap. */
 function addExcelHeader(
   ws: ExcelJS.Worksheet,
   colCount: number,
@@ -149,8 +143,25 @@ function sendWorkbook(
   filename: string,
 ) {
   res.setHeader('Content-Type', XLSX_MIME);
-  res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   return workbook.xlsx.write(res);
+}
+
+export interface BniDirectOptions {
+  periode?: string; // YYYY-MM (bulan periode akhir cut-off)
+  periodeAwal?: string; // YYYY-MM-DD (kompatibilitas lama)
+  rekDebet?: string;
+  tglTransaksi?: string;
+  remark?: string;
+  format?: string; // excel | csv
+  sheet?: string; // sheet CSV: inhouse | kliring | rtgs | online | bifast
+  metodeBankLain?: string; // sheet untuk rekening non-BNI (default bifast)
+}
+
+export interface KaryawanFilter {
+  idKaryawan?: number;
+  statusKaryawan?: string; // Internal | External | all
+  departemen?: string;
 }
 
 @Injectable()
@@ -166,12 +177,13 @@ export class ReportsService {
     private readonly karyawanRepo: Repository<Karyawan>,
     @InjectRepository(JadwalKerja)
     private readonly jadwalRepo: Repository<JadwalKerja>,
+    private readonly penggajianService: PenggajianService,
   ) {}
 
   // ===================== DATA HELPERS =====================
 
   private resolveBulan(periodeBulan?: string): string {
-    if (periodeBulan && /^\d{4}-\d{2}$/.test(periodeBulan)) return periodeBulan;
+    if (isBulan(periodeBulan)) return periodeBulan;
     return businessDateOf(new Date()).slice(0, 7);
   }
 
@@ -181,28 +193,27 @@ export class ReportsService {
     return departemen;
   }
 
+  private hasDeptFilter(dept?: string): dept is string {
+    return !!dept && dept !== 'all' && dept !== 'undefined' && dept !== 'null';
+  }
+
   private async getKehadiranData(
     periodeBulan?: string,
     departemen?: string,
     user?: ReportUser,
   ) {
     const bulan = this.resolveBulan(periodeBulan);
-    const [y, m] = bulan.split('-').map(Number);
-    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    const { start, end } = businessDayRange(
-      `${bulan}-01`,
-      `${bulan}-${String(lastDay).padStart(2, '0')}`,
-    );
+    const { start: s, end: e } = monthBounds(bulan);
+    const { start, end } = businessDayRange(s, e);
     const deptFilter = this.scopeDepartemen(departemen, user);
     const records = await this.absensiRepo.find({
       where: { jamMasukAktual: Between(start, end) },
       relations: { karyawan: { departemen: true } },
       order: { jamMasukAktual: 'ASC' },
     });
-    const filtered =
-      deptFilter && deptFilter !== 'all' && deptFilter !== 'undefined'
-        ? records.filter((a) => a.karyawan?.idDepartemen === Number(deptFilter))
-        : records;
+    const filtered = this.hasDeptFilter(deptFilter)
+      ? records.filter((a) => a.karyawan?.idDepartemen === Number(deptFilter))
+      : records;
     return { bulan, records: filtered };
   }
 
@@ -216,24 +227,16 @@ export class ReportsService {
       .leftJoinAndSelect('izin.karyawan', 'karyawan')
       .leftJoinAndSelect('karyawan.departemen', 'departemen')
       .orderBy('izin.tanggal_mulai', 'DESC');
-    if (
-      statusApproval &&
-      statusApproval !== 'Semua Status' &&
-      statusApproval !== 'undefined'
-    ) {
-      qb.andWhere('izin.status = :status', {
-        status: statusApproval.toLowerCase(),
-      });
+    const status = (statusApproval || '').toLowerCase();
+    if (status && !status.startsWith('semua') && status !== 'undefined') {
+      // "menunggu" mencakup menunggu_spv/menunggu_hrd, "ditolak" mencakup ditolak_spv/hrd
+      qb.andWhere('izin.status LIKE :status', { status: `${status}%` });
     }
-    if (rentangWaktu && /^\d{4}-\d{2}$/.test(rentangWaktu)) {
-      const [y, m] = rentangWaktu.split('-').map(Number);
-      const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    if (isBulan(rentangWaktu)) {
+      const { start, end } = monthBounds(rentangWaktu);
       qb.andWhere(
         'izin.tanggal_mulai <= :selesai AND izin.tanggal_selesai >= :mulai',
-        {
-          mulai: `${rentangWaktu}-01`,
-          selesai: `${rentangWaktu}-${String(lastDay).padStart(2, '0')}`,
-        },
+        { mulai: start, selesai: end },
       );
     }
     if (user?.role === 'SPV') {
@@ -244,23 +247,92 @@ export class ReportsService {
     return qb.getMany();
   }
 
-  private async getPenggajianData(periode?: string) {
+  /**
+   * Slip gaji per periode. Bulan periode = bulan tanggal akhir cut-off
+   * (mis. Agustus = 25 Juli s/d 24 Agustus), sama seperti halaman Penggajian.
+   */
+  private async getPenggajianData(
+    periode?: string,
+    filter: { idKaryawan?: number; departemen?: string } = {},
+  ) {
     const qb = this.penggajianRepo
       .createQueryBuilder('gaji')
       .leftJoinAndSelect('gaji.karyawan', 'karyawan')
       .leftJoinAndSelect('karyawan.departemen', 'departemen')
       .leftJoinAndSelect('karyawan.jabatan', 'jabatan')
-      .orderBy('gaji.id_gaji', 'DESC');
-    if (periode && /^\d{4}-\d{2}$/.test(periode)) {
-      // Periode cut-off bisa mulai di tanggal berapa pun dalam bulan tsb
-      const [y, m] = periode.split('-').map(Number);
-      const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
-      qb.andWhere('gaji.periode_awal BETWEEN :a AND :b', {
-        a: `${periode}-01`,
-        b: `${periode}-${String(lastDay).padStart(2, '0')}`,
-      });
+      .orderBy('karyawan.nama', 'ASC');
+    if (isBulan(periode)) {
+      const { start, end } = monthBounds(periode);
+      qb.andWhere('gaji.periode_akhir BETWEEN :a AND :b', { a: start, b: end });
+    }
+    if (filter.idKaryawan) {
+      qb.andWhere('gaji.id_karyawan = :id', { id: filter.idKaryawan });
+    }
+    if (this.hasDeptFilter(filter.departemen)) {
+      qb.andWhere('karyawan.id_departemen = :dept', { dept: Number(filter.departemen) });
     }
     return qb.getMany();
+  }
+
+  // ===================== DAFTAR KARYAWAN (FILTER LAPORAN) =====================
+
+  /** Daftar karyawan untuk dropdown filter laporan (SPV: timnya saja). */
+  async getKaryawanOptions(user?: ReportUser, statusKaryawan?: string) {
+    const qb = this.karyawanRepo
+      .createQueryBuilder('k')
+      .leftJoinAndSelect('k.departemen', 'departemen')
+      .leftJoinAndSelect('k.jabatan', 'jabatan')
+      .orderBy('k.nama', 'ASC');
+    if (statusKaryawan === 'Internal' || statusKaryawan === 'External') {
+      qb.andWhere("COALESCE(k.status_karyawan, 'Internal') = :st", { st: statusKaryawan });
+    }
+    if (user?.role === 'SPV') {
+      qb.andWhere('k.id_departemen = :dept', { dept: user.idDepartemen ?? -1 });
+    }
+    const list = await qb.getMany();
+    return list.map((k) => ({
+      idKaryawan: k.idKaryawan,
+      nik: k.nik,
+      nama: k.nama,
+      namaPanggilan: k.namaPanggilan,
+      statusKaryawan: k.statusKaryawan || 'Internal',
+      statusAktif: k.statusAktif,
+      idDepartemen: k.idDepartemen,
+      departemen: k.departemen?.namaDepartemen || '-',
+      jabatan: k.jabatan?.namaJabatan || '-',
+    }));
+  }
+
+  private async resolveKaryawanList(filter: KaryawanFilter, user?: ReportUser) {
+    if (filter.idKaryawan) {
+      const k = await this.karyawanRepo.findOne({
+        where: { idKaryawan: filter.idKaryawan },
+        relations: { departemen: true, jabatan: true },
+      });
+      if (!k) throw new NotFoundException('Karyawan tidak ditemukan');
+      if (user?.role === 'SPV' && k.idDepartemen !== user.idDepartemen) {
+        throw new ForbiddenException('Karyawan ini bukan anggota tim Anda');
+      }
+      return [k];
+    }
+    const qb = this.karyawanRepo
+      .createQueryBuilder('k')
+      .leftJoinAndSelect('k.departemen', 'departemen')
+      .leftJoinAndSelect('k.jabatan', 'jabatan')
+      .where("COALESCE(k.status_aktif, 'aktif') = 'aktif'")
+      .orderBy('k.nama', 'ASC');
+    if (filter.statusKaryawan === 'Internal' || filter.statusKaryawan === 'External') {
+      qb.andWhere("COALESCE(k.status_karyawan, 'Internal') = :st", { st: filter.statusKaryawan });
+    }
+    const dept = this.scopeDepartemen(filter.departemen, user);
+    if (this.hasDeptFilter(dept)) {
+      qb.andWhere('k.id_departemen = :dept', { dept: Number(dept) });
+    }
+    const list = await qb.getMany();
+    if (list.length === 0) {
+      throw new NotFoundException('Tidak ada karyawan yang sesuai filter');
+    }
+    return list;
   }
 
   // ===================== LAPORAN KEHADIRAN =====================
@@ -381,9 +453,7 @@ export class ReportsService {
       user?.role === 'SPV'
         ? 'LAPORAN CUTI & IZIN TIM (SUPERVISOR)'
         : 'LAPORAN CUTI & IZIN KARYAWAN',
-      rentangWaktu && /^\d{4}-\d{2}$/.test(rentangWaktu)
-        ? `Periode ${bulanLabel(rentangWaktu)}`
-        : 'Semua Periode',
+      isBulan(rentangWaktu) ? `Periode ${bulanLabel(rentangWaktu)}` : 'Semua Periode',
     );
     const header = ws.getRow(headerRowIdx);
     header.values = [
@@ -424,9 +494,7 @@ export class ReportsService {
         user?.role === 'SPV'
           ? 'LAPORAN CUTI & IZIN TIM (SUPERVISOR)'
           : 'LAPORAN CUTI & IZIN KARYAWAN',
-        rentangWaktu && /^\d{4}-\d{2}$/.test(rentangWaktu)
-          ? `Periode ${bulanLabel(rentangWaktu)}`
-          : 'Semua Periode',
+        isBulan(rentangWaktu) ? `Periode ${bulanLabel(rentangWaktu)}` : 'Semua Periode',
       );
       drawTable(
         doc,
@@ -458,8 +526,8 @@ export class ReportsService {
 
   // ===================== LAPORAN PENGGAJIAN =====================
 
-  async exportPenggajian(res: Response, periode: string, _grup: string) {
-    const records = await this.getPenggajianData(periode);
+  async exportPenggajian(res: Response, periode: string, departemen?: string) {
+    const records = await this.getPenggajianData(periode, { departemen });
     const workbook = new ExcelJS.Workbook();
     const ws = workbook.addWorksheet('Laporan Penggajian');
     const columns = [
@@ -468,16 +536,14 @@ export class ReportsService {
       'Gaji Pokok', 'Gaji Sesuai Hari', 'Tunj. Konsumsi', 'Tunj. Transport',
       'Tunj. Komunikasi', 'Tunj. Jabatan', 'Lembur', 'Total Penghasilan',
       'Pot. BPJS', 'Pot. Terlambat', 'Pot. Pinjaman', 'Pot. Lainnya',
-      'Total Potongan', 'Take Home Pay',
+      'Total Potongan', 'Take Home Pay', 'No. Rekening', 'Bank',
     ];
     ws.columns = columns.map((_, i) => ({ width: i < 5 ? 20 : 16 }));
     const headerRowIdx = addExcelHeader(
       ws,
       columns.length,
       'LAPORAN PENGGAJIAN KARYAWAN',
-      periode && /^\d{4}-\d{2}$/.test(periode)
-        ? `Periode Cut-off Bulan ${bulanLabel(periode)}`
-        : 'Semua Periode',
+      isBulan(periode) ? `Periode Gaji ${bulanLabel(periode)}` : 'Semua Periode',
     );
     const header = ws.getRow(headerRowIdx);
     header.values = columns;
@@ -507,532 +573,439 @@ export class ReportsService {
         Number(r.potonganLainnya || 0),
         Number(r.potongan || 0),
         Number(r.totalGaji || 0),
+        r.karyawan?.noRekening || '-',
+        r.karyawan?.namaBank || '-',
       ]);
       for (let c = 10; c <= 23; c++) {
         row.getCell(c).numFmt = '#,##0';
       }
     });
-    return sendWorkbook(res, workbook, 'Laporan_Penggajian.xlsx');
+    if (records.length > 0) {
+      const sum = (pick: (r: Penggajian) => number) =>
+        records.reduce((s, r) => s + (Number(pick(r)) || 0), 0);
+      const totalRow = ws.addRow([
+        '', '', 'TOTAL', '', '', '', '', '', '',
+        sum((r) => r.gajiPokok), sum((r) => r.gajiPokokSesuaiHari),
+        sum((r) => r.tunjanganKonsumsi), sum((r) => r.tunjanganTransportasi),
+        sum((r) => r.tunjanganKomunikasi), sum((r) => r.tunjanganJabatan),
+        sum((r) => r.lembur), sum((r) => r.totalPenghasilan),
+        sum((r) => r.potonganBpjs), sum((r) => r.potonganTerlambat),
+        sum((r) => r.potonganPinjaman), sum((r) => r.potonganLainnya),
+        sum((r) => r.potongan), sum((r) => r.totalGaji),
+      ]);
+      totalRow.font = { bold: true };
+      for (let c = 10; c <= 23; c++) totalRow.getCell(c).numFmt = '#,##0';
+    }
+    return sendWorkbook(
+      res,
+      workbook,
+      `Laporan_Penggajian_${isBulan(periode) ? periode : 'Semua'}.xlsx`,
+    );
   }
 
-  async exportPenggajianPdf(res: Response, periode: string) {
-    const records = await this.getPenggajianData(periode);
-    streamPdf(res, 'Laporan_Penggajian.pdf', 'landscape', (doc) => {
-      drawCompanyHeader(
-        doc,
-        'LAPORAN PENGGAJIAN KARYAWAN',
-        periode && /^\d{4}-\d{2}$/.test(periode)
-          ? `Periode Cut-off Bulan ${bulanLabel(periode)}`
-          : 'Semua Periode',
-      );
-      drawTable(
-        doc,
-        [
-          { label: 'No', width: 25, align: 'center' },
-          { label: 'Nama', width: 125 },
-          { label: 'Departemen', width: 85 },
-          { label: 'HK', width: 28, align: 'center' },
-          { label: 'HH', width: 28, align: 'center' },
-          { label: 'Gaji Pokok', width: 75, align: 'right' },
-          { label: 'Penghasilan', width: 80, align: 'right' },
-          { label: 'Potongan', width: 75, align: 'right' },
-          { label: 'THP', width: 85, align: 'right' },
-          { label: 'Status', width: 70, align: 'center' },
-        ],
-        records.map((r, i) => [
-          String(i + 1),
-          r.karyawan?.nama || '-',
-          r.karyawan?.departemen?.namaDepartemen || '-',
-          String(r.totalHariKerja || 0),
-          String(r.totalHariHadir || 0),
-          fmtRp(Number(r.gajiPokok)),
-          fmtRp(Number(r.totalPenghasilan)),
-          fmtRp(Number(r.potongan)),
-          fmtRp(Number(r.totalGaji)),
-          r.tanggalBayar ? 'Dibayar' : 'Draft',
-        ]),
-      );
-      const total = records.reduce((s, r) => s + Number(r.totalGaji || 0), 0);
-      doc
-        .font('Helvetica-Bold')
-        .fontSize(10)
-        .text(`Total Take Home Pay: ${fmtRp(total)} (${records.length} karyawan)`);
-    });
+  async exportPenggajianPdf(res: Response, periode: string, departemen?: string) {
+    const records = await this.getPenggajianData(periode, { departemen });
+    streamPdf(
+      res,
+      `Laporan_Penggajian_${isBulan(periode) ? periode : 'Semua'}.pdf`,
+      'landscape',
+      (doc) => {
+        drawCompanyHeader(
+          doc,
+          'LAPORAN PENGGAJIAN KARYAWAN',
+          isBulan(periode) ? `Periode Gaji ${bulanLabel(periode)}` : 'Semua Periode',
+        );
+        drawTable(
+          doc,
+          [
+            { label: 'No', width: 25, align: 'center' },
+            { label: 'Nama', width: 125 },
+            { label: 'Departemen', width: 85 },
+            { label: 'HK', width: 28, align: 'center' },
+            { label: 'HH', width: 28, align: 'center' },
+            { label: 'Gaji Pokok', width: 75, align: 'right' },
+            { label: 'Penghasilan', width: 80, align: 'right' },
+            { label: 'Potongan', width: 75, align: 'right' },
+            { label: 'THP', width: 85, align: 'right' },
+            { label: 'Status', width: 70, align: 'center' },
+          ],
+          records.map((r, i) => [
+            String(i + 1),
+            r.karyawan?.nama || '-',
+            r.karyawan?.departemen?.namaDepartemen || '-',
+            String(r.totalHariKerja || 0),
+            String(r.totalHariHadir || 0),
+            fmtRp(Number(r.gajiPokok)),
+            fmtRp(Number(r.totalPenghasilan)),
+            fmtRp(Number(r.potongan)),
+            fmtRp(Number(r.totalGaji)),
+            r.tanggalBayar ? 'Dibayar' : 'Draft',
+          ]),
+        );
+        const total = records.reduce((s, r) => s + Number(r.totalGaji || 0), 0);
+        doc
+          .font('Helvetica-Bold')
+          .fontSize(10)
+          .text(`Total Take Home Pay: ${fmtRp(total)} (${records.length} karyawan)`);
+      },
+    );
   }
 
   // ===================== BNIDIRECT (TRANSFER PAYROLL) =====================
 
-  /**
-   * Excel format BNIDirect sheet "Inhouse" (template v1.9.6) untuk upload
-   * transfer gaji massal. Amount diambil dari THP slip gaji periode terpilih.
-   */
-  async exportBniDirect(
-    res: Response,
-    periodeAwal?: string,
-    rekDebet?: string,
-    tglTransaksi?: string,
-    remark?: string,
-    format?: string,
-  ) {
-    let periode = periodeAwal ? normalizeDateOnly(periodeAwal) : undefined;
-    if (!periode) {
+  /** Ambil slip gaji untuk BNIDirect berdasarkan bulan periode / tanggal periode awal. */
+  private async getBniRecords(opts: BniDirectOptions) {
+    if (isBulan(opts.periode)) {
+      const records = await this.getPenggajianData(opts.periode);
+      return { label: opts.periode, records };
+    }
+    let periodeAwal = opts.periodeAwal ? normalizeDateOnly(opts.periodeAwal) : undefined;
+    if (!periodeAwal) {
       const latest = await this.penggajianRepo
         .createQueryBuilder('gaji')
         .select('MAX(gaji.periode_awal)', 'max')
         .getRawOne<{ max: string }>();
       if (!latest?.max) {
-        throw new BadRequestException(
-          'Belum ada data penggajian untuk diekspor ke BNIDirect',
-        );
+        throw new BadRequestException('Belum ada data penggajian untuk diekspor ke BNIDirect');
       }
-      periode = normalizeDateOnly(latest.max);
+      periodeAwal = normalizeDateOnly(latest.max);
     }
     const records = await this.penggajianRepo.find({
-      where: { periodeAwal: periode as any },
+      where: { periodeAwal: periodeAwal as any },
       relations: { karyawan: true },
       order: { idGaji: 'ASC' },
     });
+    return { label: periodeAwal, records };
+  }
+
+  /**
+   * Template BNIDIRECT v1.9.6 lengkap 9 sheet. Rekening BNI → Inhouse,
+   * rekening bank lain → sheet metode pilihan (BIFAST/Online/Kliring/RTGS).
+   * format=csv&sheet=… menghasilkan file persis tombol "Create CSV" sheet tsb.
+   */
+  async exportBniDirect(res: Response, opts: BniDirectOptions) {
+    const { label, records: all } = await this.getBniRecords(opts);
+    const records = all.filter((r) => Math.round(Number(r.totalGaji) || 0) > 0);
     if (records.length === 0) {
-      throw new BadRequestException(
-        `Tidak ada slip gaji dengan periode awal ${periode}`,
-      );
+      throw new BadRequestException(`Tidak ada slip gaji untuk periode ${label}`);
     }
+    const metode = (
+      ['bifast', 'online', 'kliring', 'rtgs'].includes(opts.metodeBankLain || '')
+        ? opts.metodeBankLain
+        : 'bifast'
+    ) as BniSheetKey;
 
-    const withRekening = records.filter(
-      (r) => (r.karyawan?.noRekening || '').trim() !== '',
-    );
-    const tanpaRekening = records.filter(
-      (r) => (r.karyawan?.noRekening || '').trim() === '',
-    );
-    // Rekening BNI (atau nama bank kosong = dianggap BNI) → sheet Inhouse;
-    // bank lain → sheet BIFAST dengan kode bank otomatis dari nama bank.
-    const isBni = (r: Penggajian) => {
-      const nb = (r.karyawan?.namaBank || '').toLowerCase();
-      return nb === '' || (nb.includes('bni') && !nb.includes('bni syariah'));
+    const periodeLabel = isBulan(label) ? bulanLabel(label) : label;
+    const remark1 = sanitizeBni(opts.remark || 'PAYROLL SUKSES BANGUNINDO').slice(0, 33);
+    const remark2 = sanitizeBni(`GAJI ${periodeLabel}`.toUpperCase()).slice(0, 50);
+    const tglTransaksi = /^\d{8}$/.test(opts.tglTransaksi || '')
+      ? opts.tglTransaksi!
+      : businessDateOf(new Date()).replace(/-/g, '');
+    const header = {
+      tglTransaksi,
+      rekDebet: cleanRekening(opts.rekDebet),
+      namaFile: 'SUKSES BANGUNINDO',
     };
-    const bniRecords = withRekening.filter(isBni);
-    const bankLainRecords = withRekening.filter((r) => !isBni(r));
-    const jumlah = (list: Penggajian[]) =>
-      list.reduce((s, r) => s + Math.round(Number(r.totalGaji) || 0), 0);
-    const totalAmount = jumlah(bniRecords);
-    const remarkFinal = sanitizeBni(
-      remark || `PAYROLL ${COMPANY_NAME.replace('CV. ', '')}`,
-    ).slice(0, 33);
-    const tglTrx =
-      tglTransaksi && /^\d{8}$/.test(tglTransaksi)
-        ? tglTransaksi
-        : businessDateOf(new Date()).replace(/-/g, '');
 
-    // format=csv: hasilkan file CSV persis output macro "Create CSV"
-    // (Make_IH_CSV, template v1.9.6) — langsung siap upload ke BNIDirect.
-    if (format === 'csv') {
-      const now = new Date();
-      const tanggal = businessDateOf(now);
-      const jam = fmtTime(now).replace(':', ':');
-      const stamp = `${tanggal.replace(/-/g, '/')}_${jam}:00`;
-      const fileStamp = `${tanggal.replace(/-/g, '')}_${jam.replace(':', '')}00`;
-      const pad = (fields: string[]) => {
-        while (fields.length < 20) fields.push('');
-        return fields.join(',');
+    const data: Record<BniSheetKey, BniTrx[]> = {
+      inhouse: [], kliring: [], rtgs: [], online: [], bifast: [],
+    };
+    const masalah: { nik: string; nama: string; bank: string; rek: string; thp: number; catatan: string }[] = [];
+    for (const r of records) {
+      const k = r.karyawan;
+      const amount = Math.round(Number(r.totalGaji) || 0);
+      const rek = cleanRekening(k?.noRekening);
+      const base = {
+        nik: k?.nik || '-', nama: k?.nama || '-', bank: k?.namaBank || '-',
+        rek: k?.noRekening || '-', thp: amount,
       };
-      const lines = [
-        pad([stamp, String(bniRecords.length + 2), 'SUKSES BANGUNINDO']),
-        pad([
-          'P',
-          tglTrx,
-          sanitizeBni(rekDebet || '').replace(/\./g, ''),
-          String(bniRecords.length),
-          String(totalAmount),
-        ]),
-        ...bniRecords.map((r) => {
-          const fields = [
-            sanitizeBni(r.karyawan!.noRekening || ''),
-            sanitizeBni((r.karyawan?.nama || '').toUpperCase()).slice(0, 40),
-            String(Math.round(Number(r.totalGaji) || 0)),
-            remarkFinal,
-          ];
-          while (fields.length < 16) fields.push('');
-          // EMAIL FLAG, Email, Reff Num, FLAG — kosong = N sesuai macro
-          fields.push('N', '', '', 'N');
-          return fields.join(',');
-        }),
-      ];
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader(
-        'Content-Disposition',
-        `attachment; filename=SUKSES_BANGUNINDO_IH_${fileStamp}.csv`,
-      );
-      res.send(lines.join('\r\n') + '\r\n');
-      return;
-    }
-
-    const workbook = new ExcelJS.Workbook();
-    const now = new Date();
-    const stampNow = `${businessDateOf(now).replace(/-/g, '/')}_${fmtTime(now)}:00`;
-
-    /** Kerangka sheet transfer persis template v1.9.6 (baris 1-9). */
-    const addBniSheet = (
-      name: string,
-      row7: (string | number)[],
-      row8: (string | number)[],
-      row9: string[],
-      namaFile = '',
-      dataRows: (string | number)[][] = [],
-    ) => {
-      const sheet = workbook.addWorksheet(name);
-      sheet.columns = row9.map((_, i) => ({
-        width: i === 0 ? 20 : i === 1 ? 32 : 16,
-      }));
-      sheet.getCell('B1').value = 'Langkah Penggunaan:';
-      sheet.getCell('C1').value =
-        '1. Lakukan pengisian tabel di bawah, kolom merah wajib diisi';
-      sheet.getCell('C2').value =
-        '2. Klik tombol Create CSV. Lokasi File CSV = Lokasi Template Excel';
-      sheet.getCell('C3').value = '3. Total Record Max 5000';
-      sheet.getCell('A5').value = 'File Creation(auto)';
-      sheet.getCell('C5').value = 'Nama File';
-      sheet.getCell('A6').value = stampNow;
-      if (namaFile) sheet.getCell('C6').value = namaFile;
-      const r7 = sheet.getRow(7);
-      r7.values = row7;
-      r7.eachCell((c) => (c.font = { bold: true }));
-      sheet.getRow(8).values = row8;
-      const r9 = sheet.getRow(9);
-      r9.values = row9;
-      styleHeaderRow(r9);
-      for (const dr of dataRows) sheet.addRow(dr);
-      return sheet;
-    };
-
-    const headerUtama = [
-      'P(auto)', 'Tgl Transaksi', 'Rek. Debet(16)',
-      'Total Record(auto)', 'Total Amount(auto)',
-    ];
-    const kolomBankLengkap = [
-      'NAMA CABANG(100)', 'ALAMAT BANK1(50)', 'ALAMAT BANK2(50)',
-      'ALAMAT BANK3(50)', 'NAMA KOTA(100)', 'NAMA NEGARA(100)',
-      'WARGA NEGARA(40)', 'KODE WN(40)', 'EMAIL FLAG(1)', 'Email(100)',
-      'Reff Num(16)', 'FLAG(1)',
-    ];
-
-    // Sheet 1: Inhouse — satu-satunya yang terisi data payroll (transfer antar
-    // rekening BNI). Sheet lain adalah kerangka kosong sesuai template.
-    const ws = addBniSheet(
-      'Inhouse',
-      headerUtama,
-      ['P', tglTrx, sanitizeBni(rekDebet || ''), bniRecords.length, totalAmount],
-      [
-        'Rek. Tujuan(16)', 'Nama Penerima(40)', 'Amount', 'Remark1(33)',
-        'Remark2(50)', 'Remark3(50)', 'KODEBANK(8)--(M)',
-        'NAMA BANK TUJUAN(100)--(M)', ...kolomBankLengkap,
-      ],
-      'SUKSES BANGUNINDO',
-    );
-    for (const r of bniRecords) {
-      ws.addRow([
-        sanitizeBni(r.karyawan!.noRekening || ''),
-        sanitizeBni((r.karyawan?.nama || '').toUpperCase()).slice(0, 40),
-        Math.round(Number(r.totalGaji) || 0),
-        remarkFinal,
-      ]);
-    }
-
-    // Sheet 2-7: jenis transfer lain (kerangka kosong, sesuai template)
-    addBniSheet('Kliring', headerUtama, ['P'], [
-      'Rek. Tujuan(34)', 'Nama Penerima(40)', 'Amount', 'Remark1(33)',
-      'Remark2(50)', 'Remark3(50)', 'Clearing Code(7)', 'Bank Tujuan(35)',
-      ...kolomBankLengkap,
-    ]);
-    addBniSheet('RTGS', headerUtama, ['P'], [
-      'Rek. Tujuan(16)', 'Nama Penerima(80)', 'Amount', 'Remark1(33)',
-      'Remark2(50)', 'Remark3(50)', 'RTGS Member(8)', 'Bank Tujuan(35)',
-      ...kolomBankLengkap,
-    ]);
-    addBniSheet('Online', headerUtama, ['P'], [
-      'Rek. Tujuan(16)', 'Nama Penerima(80)', 'Amount', 'Remark1(33)',
-      'Remark2(50)', 'Remark3(50)', 'Online Bank Code(3)', 'Bank Tujuan(35)',
-      ...kolomBankLengkap,
-    ]);
-    addBniSheet(
-      'IFT',
-      [...headerUtama, 'Remitter Country Code(oto)', 'ID Code(auto)', '', 'N(oto)'],
-      ['P', '', '', '', '', 'ID', 'ID', '', 'N'],
-      [
-        'Rek. Tujuan(35)', 'Nama Penerima(35)', 'Amount', 'Remark(50)',
-        'Remark2(50)', 'Remark3(40)', 'Alamat Penerima (35)',
-        'Kota Penerima(35)', 'Beneficiary Address3 (50)', 'BIC Swift Code(11)',
-        'Bank Tujuan(35)', 'BeneficiaryBankBranchName (35)',
-        'Kota Bank Tujuan(35)', 'Negara Bank Tujuan(35)',
-        'BeneficiaryBankAddress3 (50)', 'BeneficiaryBankCityName (100)',
-        'BeneBankCountry(35)', 'BeneficiaryCountryResidence (40)',
-        'BeneficiaryCitizenshipCode (40)', 'BeneficiaryNotificationFlag (1)',
-        'Email (100)', 'BeneficiaryNotificationFlag-SMS (1)',
-        'BeneficiaryNotificationTargetValue-SMS (100)',
-        'BeneficiaryNotificationFlag-Fax (1)',
-        'BeneficiaryNotificationTargetValue-Fax (100)',
-        'CorrespondentBankName (40)', 'Transaction Purpose Code (40)',
-        'Affiliated Flag (1)', 'Identical Flag (1)',
-        'Beneficiary Category Code (40)', 'LLD Desc(18)', 'Reff Num(16)',
-        'FinalizePaymentFlag (1)',
-      ],
-    );
-    addBniSheet(
-      'Autodebet',
-      ['P(auto)', 'Tgl Transaksi', 'Rek. Kredit(16)', 'Total Record(auto)', 'Total Amount(auto)'],
-      ['P'],
-      [
-        'Rek. Terdebit(16)', 'Nama Terdebit(40)', 'Amount', 'Remark1(33)',
-        'Remark2(50)', 'Remark3(50)', 'EMAIL FLAG(1)', 'Email(100)',
-        'Reff Num(16)', 'FLAG(1)--(M)', 'Ben Ref Num (16)',
-      ],
-    );
-    addBniSheet(
-      'BIFAST',
-      headerUtama,
-      bankLainRecords.length > 0
-        ? ['P', tglTrx, sanitizeBni(rekDebet || ''), bankLainRecords.length, jumlah(bankLainRecords)]
-        : ['P'],
-      [
-        'Rek. Tujuan(17)', 'Nama Penerima(100)', 'Amount', 'Remark1(100)',
-        'Remark2(100)', 'Remark3(100)', 'BIFast Code(40)', 'Bank Tujuan(100)',
-        ...kolomBankLengkap.slice(0, 10), 'Reff Num(16)', 'FLAG RefNum',
-        'Counter Party Reference No/ Beneficiary Reference No', 'Tipe Kode',
-        'Flag Proxy', 'User Proxy', 'Transaction Purpose',
-      ],
-      bankLainRecords.length > 0 ? 'SUKSES BANGUNINDO' : '',
-      // Karyawan dengan rekening bank selain BNI otomatis masuk sini,
-      // kode BI-FAST terisi dari nama bank di data karyawan.
-      bankLainRecords.map((r) => [
-        sanitizeBni(r.karyawan!.noRekening || ''),
-        sanitizeBni((r.karyawan?.nama || '').toUpperCase()).slice(0, 100),
-        Math.round(Number(r.totalGaji) || 0),
-        remarkFinal,
-        '',
-        '',
-        bifastCode(r.karyawan?.namaBank || ''),
-        sanitizeBni((r.karyawan?.namaBank || '').toUpperCase()),
-      ]),
-    );
-
-    // Sheet 8: Restricted Characters (disalin dari template)
-    const wsChar = workbook.addWorksheet('Restricted Characters');
-    wsChar.columns = [{ width: 10 }, { width: 30 }];
-    wsChar.getCell('A1').value = 'Restricted Characters List';
-    wsChar.getCell('A1').font = { bold: true };
-    const restricted: [string, string][] = [
-      [',', 'Comma'], ['`', 'grave accent'], ['~', 'tilde'],
-      ['!', 'exclamation mark'], ['@', 'at sign'], ['#', 'number sign'],
-      ['$', 'dollar sign'], ['%', 'percent sign'], ['^', 'circumflex accent'],
-      ['&', 'ampersand'], ['*', 'asterisk'], ['_', 'underscore'],
-      ['{', 'left curly bracket'], ['}', 'right curly bracket'],
-      ['<', 'less-than'], ['>', 'greater-than'], ['[', 'left bracket'],
-      [']', 'right bracket'], ['=', 'equals'], ['\\', 'backslash'],
-      [';', 'semicolon'],
-    ];
-    const hdrChar = wsChar.getRow(3);
-    wsChar.getCell('B3').value = 'Glyph';
-    wsChar.getCell('C3').value = 'Description';
-    hdrChar.font = { bold: true };
-    restricted.forEach(([g, d]) => wsChar.addRow(['', g, d]));
-    wsChar.columns = [{ width: 4 }, { width: 10 }, { width: 30 }];
-
-    // Sheet 9: Legend — kode Transaction Purpose IFT & BIFAST (dari template)
-    const wsLegend = workbook.addWorksheet('Legend');
-    wsLegend.columns = [{ width: 4 }, { width: 110 }, { width: 4 }, { width: 30 }];
-    wsLegend.getCell('B2').value = 'Transaction_Purpose_IFT';
-    wsLegend.getCell('D3').value = 'Transaction_Purpose_BIFAST';
-    wsLegend.getCell('B2').font = { bold: true };
-    wsLegend.getCell('D3').font = { bold: true };
-    const purposeBifast = [
-      '01 - Pemindahan Dana', '02 - Investasi', '03 - Pembelian', '99 - Lainnya',
-    ];
-    purposeBifast.forEach((v, i) => (wsLegend.getCell(`D${5 + i}`).value = v));
-    LEGEND_PURPOSE_IFT.forEach((v, i) => (wsLegend.getCell(`B${4 + i}`).value = v));
-
-    // Sheet tambahan sistem: karyawan tanpa nomor rekening agar HRD melengkapi
-    if (tanpaRekening.length > 0) {
-      const ws2 = workbook.addWorksheet('Tanpa Rekening');
-      ws2.columns = [{ width: 8 }, { width: 18 }, { width: 32 }, { width: 18 }];
-      const hdr = ws2.getRow(1);
-      hdr.values = ['No', 'NIK', 'Nama Karyawan', 'THP'];
-      styleHeaderRow(hdr);
-      tanpaRekening.forEach((r, i) => {
-        ws2.addRow([
-          i + 1,
-          r.karyawan?.nik || '-',
-          r.karyawan?.nama || '-',
-          Math.round(Number(r.totalGaji) || 0),
-        ]);
+      if (!rek) {
+        masalah.push({ ...base, catatan: 'Nomor rekening belum diisi (tidak masuk file transfer)' });
+        continue;
+      }
+      const sheet: BniSheetKey = isBniBank(k?.namaBank) ? 'inhouse' : metode;
+      const code = bankCode(k?.namaBank, sheet);
+      if (sheet !== 'inhouse' && !code) {
+        masalah.push({
+          ...base,
+          catatan: sheet === 'kliring'
+            ? 'Clearing Code 7 digit (sandi kliring cabang) wajib diisi manual'
+            : `Kode bank ${bniSheetName(sheet)} tidak dikenali dari nama bank — isi manual`,
+        });
+      }
+      if (sheet === 'inhouse' && rek.length > 16) {
+        masalah.push({ ...base, catatan: 'Rekening BNI lebih dari 16 digit' });
+      }
+      data[sheet].push({
+        rek,
+        nama: sanitizeBni((k?.nama || '').toUpperCase()),
+        amount,
+        remark1,
+        remark2,
+        code,
+        bank: sheet === 'inhouse' ? '' : sanitizeBni((k?.namaBank || '').toUpperCase()).slice(0, 35),
       });
     }
 
-    return sendWorkbook(res, workbook, `BNIDIRECT_Payroll_${periode}.xlsx`);
+    if (opts.format === 'csv') {
+      const key = (BNI_SHEETS.includes(opts.sheet as BniSheetKey) ? opts.sheet : 'inhouse') as BniSheetKey;
+      if (!header.rekDebet) {
+        throw new BadRequestException('Rek. Debet (rekening perusahaan) wajib diisi untuk membuat CSV');
+      }
+      if (data[key].length === 0) {
+        throw new BadRequestException(`Tidak ada transaksi untuk sheet ${bniSheetName(key)} pada periode ini`);
+      }
+      const { filename, content } = buildBniCsv(key, data[key], header);
+      res.setHeader('Content-Type', 'text/csv; charset=windows-1252');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(content);
+      return;
+    }
+
+    const wb = buildBniWorkbook(data, header);
+    if (masalah.length > 0) {
+      const ws = wb.addWorksheet('Perlu Dilengkapi');
+      ws.columns = [{ width: 6 }, { width: 18 }, { width: 32 }, { width: 18 }, { width: 22 }, { width: 16 }, { width: 60 }];
+      const hdr = ws.getRow(1);
+      hdr.values = ['No', 'NIK', 'Nama Karyawan', 'Bank', 'No. Rekening', 'THP', 'Catatan'];
+      styleHeaderRow(hdr);
+      masalah.forEach((m, i) => {
+        const row = ws.addRow([i + 1, m.nik, m.nama, m.bank, m.rek, m.thp, m.catatan]);
+        row.getCell(6).numFmt = '#,##0';
+      });
+    }
+    return sendWorkbook(res, wb, `BNIDIRECT_Payroll_${fileSafe(label)}.xlsx`);
   }
 
-  // ===================== ABSENSI PERORANGAN =====================
+  // ===================== REKAP ABSENSI PERORANGAN =====================
 
   /**
-   * Data absensi bulanan perorangan dengan format identik template
-   * "ABSENSI <NAMA> <BULAN>" (TGL | MASUK | KELUAR, OFF untuk hari libur).
+   * Bangun baris rekap absensi (format template "ABSENSI <NAMA> <BULAN>")
+   * untuk banyak karyawan sekaligus dengan 3 query total.
    */
-  private async getAbsensiKaryawanData(idKaryawan: number, bulan?: string) {
-    const karyawan = await this.karyawanRepo.findOne({
-      where: { idKaryawan },
-      relations: { departemen: true, jabatan: true },
-    });
-    if (!karyawan) {
-      throw new NotFoundException('Karyawan tidak ditemukan');
-    }
+  private async buildAbsensiSheets(karyawanList: Karyawan[], bulan?: string) {
     const bulanStr = this.resolveBulan(bulan);
     const [y, m] = bulanStr.split('-').map(Number);
-    const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    const startStr = `${bulanStr}-01`;
-    const endStr = `${bulanStr}-${String(lastDay).padStart(2, '0')}`;
+    const { start: startStr, end: endStr } = monthBounds(bulanStr);
     const { start, end } = businessDayRange(startStr, endStr);
+    const ids = karyawanList.map((k) => k.idKaryawan);
+    const today = businessDateOf(new Date());
 
-    const absensiList = await this.absensiRepo.find({
-      where: { idKaryawan, jamMasukAktual: Between(start, end) },
-      order: { jamMasukAktual: 'ASC' },
-    });
-    const byDate = new Map<string, { masuk: string; keluar: string }>();
+    const [absensiList, jadwalList, izinList] = await Promise.all([
+      this.absensiRepo.find({
+        where: { idKaryawan: In(ids), jamMasukAktual: Between(start, end) },
+        order: { jamMasukAktual: 'ASC' },
+      }),
+      this.jadwalRepo.find({
+        where: { idKaryawan: In(ids), tanggal: Between(startStr as any, endStr as any) },
+      }),
+      this.pengajuanIzinRepo
+        .createQueryBuilder('izin')
+        .where('izin.id_karyawan IN (:...ids)', { ids })
+        .andWhere("izin.status = 'disetujui'")
+        .andWhere('izin.tanggal_mulai <= :selesai AND izin.tanggal_selesai >= :mulai', {
+          mulai: startStr,
+          selesai: endStr,
+        })
+        .getMany(),
+    ]);
+
+    const absenMap = new Map<string, { masuk: string; keluar: string }>();
     for (const a of absensiList) {
       if (!a.jamMasukAktual) continue;
-      const key = businessDateOf(new Date(a.jamMasukAktual));
-      const existing = byDate.get(key);
+      const key = `${a.idKaryawan}|${businessDateOf(new Date(a.jamMasukAktual))}`;
+      const existing = absenMap.get(key);
       if (!existing) {
-        byDate.set(key, {
+        absenMap.set(key, {
           masuk: fmtTime(a.jamMasukAktual),
-          keluar: fmtTime(a.jamKeluarAktual),
+          keluar: a.jamKeluarAktual ? fmtTime(a.jamKeluarAktual) : '-',
         });
       } else if (a.jamKeluarAktual) {
         existing.keluar = fmtTime(a.jamKeluarAktual);
       }
     }
-
-    const jadwalList = await this.jadwalRepo.find({
-      where: { idKaryawan, tanggal: Between(startStr as any, endStr as any) },
-    });
-    const liburDates = new Set(
+    const liburSet = new Set(
       jadwalList
         .filter((j) => j.isLibur)
-        .map((j) => normalizeDateOnly(j.tanggal)),
+        .map((j) => `${j.idKaryawan}|${normalizeDateOnly(j.tanggal)}`),
     );
+    const izinMap = new Map<string, string>();
+    for (const iz of izinList) {
+      const jenis = (iz.jenisIzin || 'izin').toLowerCase();
+      if (jenis.includes('sementara')) continue; // izin beberapa jam tetap tercatat jam absennya
+      for (const d of dateRange(
+        normalizeDateOnly(iz.tanggalMulai),
+        normalizeDateOnly(iz.tanggalSelesai),
+      )) {
+        izinMap.set(`${iz.idKaryawan}|${d}`, jenis.toUpperCase());
+      }
+    }
 
-    const rows = dateRange(startStr, endStr).map((tanggal) => {
-      const day = new Date(`${tanggal}T00:00:00.000Z`).getUTCDay();
-      const label = `${tanggal.slice(8, 10)} ${HARI_SINGKAT[day]}`;
-      const absen = byDate.get(tanggal);
-      if (absen) return [label, absen.masuk, absen.keluar];
-      if (liburDates.has(tanggal)) return [label, 'OFF', ''];
-      return [label, '-', '-'];
-    });
+    const tanggalList = dateRange(startStr, endStr);
+    const sheets: AbsensiSheet[] = karyawanList.map((k) => ({
+      nama: (k.namaPanggilan || k.nama).toUpperCase(),
+      namaLengkap: k.nama,
+      rows: tanggalList.map((tanggal): AbsensiRow => {
+        const day = new Date(`${tanggal}T00:00:00.000Z`).getUTCDay();
+        const tgl = `${tanggal.slice(8, 10)} ${HARI_SINGKAT[day]}`;
+        const key = `${k.idKaryawan}|${tanggal}`;
+        const absen = absenMap.get(key);
+        if (absen) return { tgl, masuk: absen.masuk, keluar: absen.keluar };
+        if (izinMap.has(key)) return { tgl, label: izinMap.get(key) };
+        if (liburSet.has(key)) return { tgl, label: 'OFF' };
+        if (tanggal > today) return { tgl, masuk: '', keluar: '' };
+        return { tgl, label: '-' };
+      }),
+    }));
 
+    return { judulBulan: `${BULAN_ID[m - 1].toUpperCase()} ${y}`, sheets };
+  }
+
+  /** Rekap absensi (perorangan / semua karyawan External / filter) — PDF atau Excel. */
+  async exportRekapAbsensi(
+    res: Response,
+    filter: KaryawanFilter,
+    bulan: string | undefined,
+    format: string | undefined,
+    user?: ReportUser,
+  ) {
+    const karyawanList = await this.resolveKaryawanList(filter, user);
+    const { judulBulan, sheets } = await this.buildAbsensiSheets(karyawanList, bulan);
+    const subjek =
+      sheets.length === 1
+        ? fileSafe(sheets[0].nama)
+        : filter.statusKaryawan === 'External'
+          ? 'KARYAWAN_EXTERNAL'
+          : 'KARYAWAN';
+    const base = `ABSENSI_${subjek}_${fileSafe(judulBulan)}`;
+
+    if (format === 'excel') {
+      const wb = new ExcelJS.Workbook();
+      const used = new Set<string>();
+      for (const s of sheets) addAbsensiWorksheet(wb, s, uniqueSheetName(s.nama, used));
+      return sendWorkbook(res, wb, `${base}.xlsx`);
+    }
+    streamPdf(
+      res,
+      `${base}.pdf`,
+      'portrait',
+      (doc) => {
+        sheets.forEach((s, i) => {
+          if (i > 0) doc.addPage();
+          drawAbsensiPage(doc, s);
+        });
+      },
+      { footer: false },
+    );
+  }
+
+  // ===================== SLIP GAJI =====================
+
+  private slipFromPenggajian(r: Penggajian): SlipData {
+    const akhir = normalizeDateOnly(r.periodeAkhir);
     return {
-      karyawan,
-      bulanStr,
-      judulBulan: `${BULAN_ID[m - 1].toUpperCase()} ${y}`,
-      rows,
+      nama: r.karyawan?.nama || '-',
+      jabatan: r.karyawan?.jabatan?.namaJabatan || '-',
+      divisi: r.karyawan?.departemen?.namaDepartemen || '-',
+      periodeLabel: bulanLabel(akhir.slice(0, 7)),
+      totalHariKerja: Number(r.totalHariKerja) || 0,
+      gajiPokok: Number(r.gajiPokok) || 0,
+      gajiPokokSesuaiHari: Number(r.gajiPokokSesuaiHari) || 0,
+      tarifKonsumsi: Number(r.tarifKonsumsiPerHari) || 0,
+      tunjanganKonsumsi: Number(r.tunjanganKonsumsi) || 0,
+      tunjanganTransportasi: Number(r.tunjanganTransportasi) || 0,
+      tunjanganKomunikasi: Number(r.tunjanganKomunikasi) || 0,
+      tunjanganJabatan: Number(r.tunjanganJabatan) || 0,
+      lembur: Number(r.lembur) || 0,
+      totalPenghasilan: Number(r.totalPenghasilan) || 0,
+      potonganBpjs: Number(r.potonganBpjs) || 0,
+      potonganTerlambat: Number(r.potonganTerlambat) || 0,
+      potonganPinjaman: Number(r.potonganPinjaman) || 0,
+      potonganLainnya: Number(r.potonganLainnya) || 0,
+      sisaPinjaman: Number(r.sisaPinjaman) || 0,
+      totalGaji: Number(r.totalGaji) || 0,
     };
   }
 
-  async exportAbsensiKaryawanExcel(
-    res: Response,
-    idKaryawan: number,
-    bulan?: string,
-  ) {
-    const { karyawan, bulanStr, judulBulan, rows } =
-      await this.getAbsensiKaryawanData(idKaryawan, bulan);
-    const workbook = new ExcelJS.Workbook();
-    const ws = workbook.addWorksheet('Absensi');
-    ws.columns = [{ width: 14 }, { width: 12 }, { width: 12 }];
-    const headerRowIdx = addExcelHeader(
-      ws,
-      3,
-      karyawan.nama.toUpperCase(),
-      `ABSENSI ${judulBulan}`,
-    );
-    const header = ws.getRow(headerRowIdx);
-    header.values = ['TGL', 'MASUK', 'KELUAR'];
-    styleHeaderRow(header);
-    for (const r of rows) {
-      const row = ws.addRow(r);
-      row.eachCell((cell) => {
-        cell.alignment = { horizontal: 'center' };
-        cell.border = {
-          top: { style: 'thin' },
-          bottom: { style: 'thin' },
-          left: { style: 'thin' },
-          right: { style: 'thin' },
-        };
-      });
-      if (r[1] === 'OFF') {
-        ws.mergeCells(row.number, 2, row.number, 3);
-      }
+  private sendSlips(res: Response, slips: SlipData[], baseName: string, format?: string) {
+    if (format === 'excel') {
+      const wb = new ExcelJS.Workbook();
+      const used = new Set<string>();
+      for (const s of slips) addSlipWorksheet(wb, s, uniqueSheetName(s.nama, used));
+      return sendWorkbook(res, wb, `${baseName}.xlsx`);
     }
-    ws.addRow([]);
-    ws.addRow([]);
-    const today = new Date();
-    const tglCetak = `${today.getDate()} ${BULAN_ID[today.getMonth()]} ${today.getFullYear()}`;
-    ws.addRow(['', '', tglCetak]);
-    ws.addRow(['', '', 'Hormat saya']);
-    ws.addRow(['', '', COMPANY_NAME]);
-    ws.addRow([]);
-    ws.addRow([]);
-    ws.addRow(['', '', '(______________)']);
-    return sendWorkbook(
+    streamPdf(
       res,
-      workbook,
-      `Absensi_${karyawan.nama.replace(/\s+/g, '_')}_${bulanStr}.xlsx`,
+      `${baseName}.pdf`,
+      'portrait',
+      (doc) => {
+        slips.forEach((s, i) => {
+          if (i > 0) doc.addPage();
+          drawSlipPage(doc, s);
+        });
+      },
+      { footer: false },
     );
   }
 
-  async exportAbsensiKaryawanPdf(
+  /** Slip gaji HRD: per orang (idKaryawan) atau semua karyawan dalam periode. */
+  async exportSlipGaji(
     res: Response,
-    idKaryawan: number,
-    bulan?: string,
+    periode: string | undefined,
+    idKaryawan: number | undefined,
+    departemen: string | undefined,
+    format?: string,
   ) {
-    const { karyawan, bulanStr, judulBulan, rows } =
-      await this.getAbsensiKaryawanData(idKaryawan, bulan);
-    streamPdf(
-      res,
-      `Absensi_${karyawan.nama.replace(/\s+/g, '_')}_${bulanStr}.pdf`,
-      'portrait',
-      (doc) => {
-        drawCompanyHeader(
-          doc,
-          karyawan.nama.toUpperCase(),
-          `ABSENSI ${judulBulan}`,
-        );
-        // Tabel dipusatkan seperti template absensi perorangan
-        const tableWidth = 90 + 80 + 80;
-        doc.x =
-          doc.page.margins.left +
-          (doc.page.width - doc.page.margins.left - doc.page.margins.right - tableWidth) / 2;
-        const startX = doc.x;
-        const colDefs = [
-          { label: 'TGL', width: 90, align: 'center' as const },
-          { label: 'MASUK', width: 80, align: 'center' as const },
-          { label: 'KELUAR', width: 80, align: 'center' as const },
-        ];
-        const marginBackup = doc.page.margins.left;
-        doc.page.margins.left = startX;
-        drawTable(doc, colDefs, rows, { rowHeight: 15, fontSize: 8 });
-        doc.page.margins.left = marginBackup;
+    const bulan = this.resolveBulan(periode);
+    const records = await this.getPenggajianData(bulan, { idKaryawan, departemen });
+    if (records.length === 0) {
+      throw new NotFoundException(
+        `Slip gaji periode ${bulanLabel(bulan)} belum dibuat. Jalankan Generate Payroll terlebih dahulu.`,
+      );
+    }
+    const slips = records.map((r) => this.slipFromPenggajian(r));
+    const subjek = records.length === 1 ? fileSafe(slips[0].nama) : 'SEMUA_KARYAWAN';
+    return this.sendSlips(res, slips, `SLIP_GAJI_${subjek}_${fileSafe(bulanLabel(bulan))}`, format);
+  }
 
-        const today = new Date();
-        const tglCetak = `${today.getDate()} ${BULAN_ID[today.getMonth()]} ${today.getFullYear()}`;
-        doc.moveDown(1);
-        const rightX = doc.page.width - doc.page.margins.right - 180;
-        doc.font('Helvetica').fontSize(9);
-        doc.text(tglCetak, rightX, doc.y, { width: 180, align: 'center' });
-        doc.text('Hormat saya', rightX, doc.y, { width: 180, align: 'center' });
-        doc.text(COMPANY_NAME, rightX, doc.y, { width: 180, align: 'center' });
-        doc.moveDown(3);
-        doc.text('(______________)', rightX, doc.y, {
-          width: 180,
-          align: 'center',
-        });
-      },
+  // ===================== EKSPOR MOBILE (KARYAWAN SENDIRI) =====================
+
+  /** Slip gaji karyawan yang login (resmi atau pratinjau berjalan). */
+  async exportMySlip(res: Response, idKaryawan: number, tanggal?: string, format?: string) {
+    const s: any = await this.penggajianService.getMySlip(idKaryawan, tanggal);
+    const slip: SlipData = {
+      nama: s.karyawan?.nama || '-',
+      jabatan: s.karyawan?.jabatan || '-',
+      divisi: s.karyawan?.departemen || '-',
+      periodeLabel: bulanLabel(normalizeDateOnly(s.periodeAkhir).slice(0, 7)),
+      totalHariKerja: Number(s.totalHariKerja) || 0,
+      gajiPokok: Number(s.gajiPokok) || 0,
+      gajiPokokSesuaiHari: Number(s.gajiPokokSesuaiHari) || 0,
+      tarifKonsumsi: Number(s.tarifKonsumsiPerHari) || 0,
+      tunjanganKonsumsi: Number(s.tunjanganKonsumsi) || 0,
+      tunjanganTransportasi: Number(s.tunjanganTransportasi) || 0,
+      tunjanganKomunikasi: Number(s.tunjanganKomunikasi) || 0,
+      tunjanganJabatan: Number(s.tunjanganJabatan) || 0,
+      lembur: Number(s.lembur) || 0,
+      totalPenghasilan: Number(s.totalPenghasilan) || 0,
+      potonganBpjs: Number(s.potonganBpjs) || 0,
+      potonganTerlambat: Number(s.potonganTerlambat) || 0,
+      potonganPinjaman: Number(s.potonganPinjaman) || 0,
+      potonganLainnya: Number(s.potonganLainnya) || 0,
+      sisaPinjaman: Number(s.sisaPinjaman) || 0,
+      totalGaji: Number(s.totalGaji) || 0,
+      isPreview: !s.isOfficial,
+    };
+    return this.sendSlips(
+      res,
+      [slip],
+      `SLIP_GAJI_${fileSafe(slip.nama)}_${fileSafe(slip.periodeLabel)}`,
+      format,
     );
+  }
+
+  /** Rekap/riwayat absensi bulanan karyawan yang login (format kop resmi). */
+  async exportMyAbsensi(res: Response, idKaryawan: number, bulan?: string, format?: string) {
+    return this.exportRekapAbsensi(res, { idKaryawan }, bulan, format);
   }
 }

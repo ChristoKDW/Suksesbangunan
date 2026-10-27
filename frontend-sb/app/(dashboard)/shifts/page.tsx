@@ -31,6 +31,7 @@ import {
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Shift, Departemen } from "@/lib/types"
+import { confirmDelete, showError, showWarning } from "@/lib/swal"
 
 export default function ShiftsPage() {
   const { user } = useAuth()
@@ -117,7 +118,7 @@ export default function ShiftsPage() {
   const handleAddShift = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newShift.idDepartemen) {
-      alert("Departemen wajib dipilih untuk setiap shift.")
+      showWarning("Departemen wajib dipilih untuk setiap shift.")
       return
     }
 
@@ -133,7 +134,7 @@ export default function ShiftsPage() {
       setIsModalOpen(false)
       refreshAll()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menambahkan shift")
+      showError(err instanceof Error ? err.message : "Gagal menambahkan shift")
     } finally {
       setSubmitting(false)
     }
@@ -147,7 +148,7 @@ export default function ShiftsPage() {
   const handleUpdateShift = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingShift || !editingShift.idDepartemen) {
-      alert("Departemen wajib dipilih untuk setiap shift.")
+      showWarning("Departemen wajib dipilih untuk setiap shift.")
       return
     }
 
@@ -163,19 +164,19 @@ export default function ShiftsPage() {
       setEditingShift(null)
       refreshAll()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal mengupdate shift")
+      showError(err instanceof Error ? err.message : "Gagal mengupdate shift")
     } finally {
       setSubmitting(false)
     }
   }
 
   const handleDeleteShift = async (id: number) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus shift ini?")) return
+    if (!await confirmDelete("Apakah Anda yakin ingin menghapus shift ini?")) return
     try {
       await api.delete(`shift/${id}`)
       refreshAll()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus shift")
+      showError(err instanceof Error ? err.message : "Gagal menghapus shift")
     }
   }
 
@@ -456,7 +457,7 @@ export default function ShiftsPage() {
       {/* MODAL TAMBAH SHIFT BARU                                        */}
       {/* ============================================================== */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/60 backdrop-blur-sm px-4">
           <div className="bg-[var(--bg-surface)] w-full max-w-md rounded-2xl shadow-2xl border border-[var(--border-default)] overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-[var(--border-default)]">
               <div>
@@ -534,7 +535,7 @@ export default function ShiftsPage() {
               </div>
 
               {/* Working Hours */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-[var(--text-secondary)]">
                     Jam Mulai <span className="text-red-500">*</span>
@@ -602,7 +603,7 @@ export default function ShiftsPage() {
       {/* MODAL EDIT SHIFT                                               */}
       {/* ============================================================== */}
       {isEditModalOpen && editingShift && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/60 backdrop-blur-sm px-4">
           <div className="bg-[var(--bg-surface)] w-full max-w-md rounded-2xl shadow-2xl border border-[var(--border-default)] overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-[var(--border-default)]">
               <div>
@@ -676,7 +677,7 @@ export default function ShiftsPage() {
               </div>
 
               {/* Working Hours */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-[var(--text-secondary)]">
                     Jam Mulai <span className="text-red-500">*</span>

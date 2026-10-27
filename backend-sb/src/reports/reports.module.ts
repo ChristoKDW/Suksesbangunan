@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ReportsController } from './reports.controller.js';
+import { ReportsController, ReportsMobileController } from './reports.controller.js';
 import { ReportsService } from './reports.service.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
@@ -7,6 +7,7 @@ import { Absensi } from '../absensi/entities/absensi.entity.js';
 import { PengajuanIzin } from '../pengajuan-izin/entities/pengajuan-izin.entity.js';
 import { Penggajian } from '../penggajian/entities/penggajian.entity.js';
 import { JadwalKerja } from '../jadwal-kerja/entities/jadwal-kerja.entity.js';
+import { PenggajianModule } from '../penggajian/penggajian.module.js';
 
 @Module({
   imports: [
@@ -17,8 +18,9 @@ import { JadwalKerja } from '../jadwal-kerja/entities/jadwal-kerja.entity.js';
       Penggajian,
       JadwalKerja,
     ]),
+    PenggajianModule,
   ],
-  controllers: [ReportsController],
+  controllers: [ReportsController, ReportsMobileController],
   providers: [ReportsService],
 })
 export class ReportsModule {}

@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useSidebar } from "@/lib/sidebar-context"
 import { userApi } from "@/lib/api"
 import { NotificationDropdown } from "./NotificationDropdown"
+import { confirmLogout, showError, showSuccess, showWarning } from "@/lib/swal"
 
 export function TopBar() {
   const { theme, setTheme } = useTheme()
@@ -45,7 +46,7 @@ export function TopBar() {
     if (!file) return
 
     if (file.size > 2 * 1024 * 1024) {
-      alert("Ukuran foto maksimal 2 MB")
+      showError("Ukuran foto maksimal 2 MB")
       e.target.value = ""
       return
     }
@@ -62,12 +63,12 @@ export function TopBar() {
 
     if (profileForm.password) {
       if (profileForm.password !== profileForm.konfirmasiPassword) {
-        alert("Konfirmasi password baru tidak cocok!")
+        showError("Konfirmasi password baru tidak cocok!")
         return
       }
       const pwdRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^_\-.~+=#<>])[A-Za-z\d@$!%*?&#^_\-.~+=#<>]{8,}$/
       if (!pwdRegex.test(profileForm.password)) {
-        alert(
+        showWarning(
           "Password baru harus minimal 8 karakter dan merupakan kombinasi huruf besar, huruf kecil, angka, dan karakter khusus/simbol (contoh: Spv#2026)."
         )
         return
@@ -105,11 +106,11 @@ export function TopBar() {
         }
       }
 
-      alert("Profil dan akun berhasil diperbarui! Halaman akan dimuat ulang.")
+      await showSuccess("Profil dan akun berhasil diperbarui! Halaman akan dimuat ulang.")
       setIsProfileModalOpen(false)
       window.location.reload()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menyimpan profil")
+      showError(err instanceof Error ? err.message : "Gagal menyimpan profil")
     } finally {
       setIsUpdatingProfile(false)
     }
@@ -246,9 +247,9 @@ export function TopBar() {
                       Halaman Profil Saya
                     </Link>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         setIsUserMenuOpen(false);
-                        logout();
+                        if (await confirmLogout()) logout();
                       }}
                       className="w-full text-left px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                     >
@@ -264,7 +265,7 @@ export function TopBar() {
 
       {/* Profile Settings Modal */}
       {isProfileModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-white dark:bg-[#0B0F17] w-full max-w-md rounded-xl shadow-xl border border-slate-200 dark:border-white/10 overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
               <div>

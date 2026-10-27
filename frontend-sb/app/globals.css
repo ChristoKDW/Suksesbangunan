@@ -296,3 +296,34 @@ input::-ms-clear {
   display: none;
 }
 
+
+/* Cegah halaman bergeser horizontal di layar HP (tabel lebar tetap scroll di wadahnya) */
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* SweetAlert2 mengikuti font & tema aplikasi */
+.swal2-container {
+  z-index: 10000 !important;
+}
+.swal2-popup.swal-laras {
+  font-family: inherit;
+  border-radius: 14px;
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 1.25rem 1rem 1.25rem;
+}
+.swal2-popup.swal-laras .swal2-title {
+  font-size: 1.15rem;
+}
+.swal2-popup.swal-laras .swal2-html-container {
+  font-size: 0.9rem;
+}
+.dark .swal2-popup {
+  background: #111827;
+  color: #e5e7eb;
+}
+.dark .swal2-popup .swal2-title,
+.dark .swal2-popup .swal2-html-container {
+  color: #e5e7eb;
+}

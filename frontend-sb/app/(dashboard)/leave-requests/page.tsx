@@ -8,6 +8,7 @@ import { Check, X, FileText, Search, Paperclip, Loader2, ArrowLeftRight, CheckCi
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { PengajuanIzin, PengajuanPertukaran } from "@/lib/types"
+import { confirmDialog, showError, showSuccess } from "@/lib/swal"
 
 const jenisIzinLabelMap: Record<string, string> = {
   izin: "Izin",
@@ -149,9 +150,9 @@ export default function LeaveRequestsPage() {
       if (selectedRequest?.idIzin === id) {
         setSelectedRequest(prev => prev ? { ...prev, status: "menunggu_hrd" } : null)
       }
-      alert("Persetujuan SPV berhasil. Pengajuan izin diteruskan ke HRD untuk persetujuan akhir.")
+      showSuccess("Persetujuan SPV berhasil. Pengajuan izin diteruskan ke HRD untuk persetujuan akhir.")
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menyetujui")
+      showError(err instanceof Error ? err.message : "Gagal menyetujui")
     } finally {
       setSubmitting(false)
     }
@@ -168,7 +169,7 @@ export default function LeaveRequestsPage() {
         setSelectedRequest(prev => prev ? { ...prev, status: "ditolak_spv", catatanSpv: catatan } : null)
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menolak")
+      showError(err instanceof Error ? err.message : "Gagal menolak")
     } finally {
       setSubmitting(false)
     }
@@ -176,7 +177,7 @@ export default function LeaveRequestsPage() {
 
   const handleApproveIzinHrd = async (id: number, e?: React.MouseEvent) => {
     e?.stopPropagation()
-    if (!confirm("Setujui pengajuan izin ini? Sistem akan otomatis mencatat status kehadiran karyawan.")) {
+    if (!await confirmDialog("Setujui pengajuan izin ini? Sistem akan otomatis mencatat status kehadiran karyawan.")) {
       return
     }
     setSubmitting(true)
@@ -186,9 +187,9 @@ export default function LeaveRequestsPage() {
       if (selectedRequest?.idIzin === id) {
         setSelectedRequest(prev => prev ? { ...prev, status: "disetujui" } : null)
       }
-      alert("Pengajuan izin disetujui! Status kehadiran karyawan telah otomatis diperbarui.")
+      showSuccess("Pengajuan izin disetujui! Status kehadiran karyawan telah otomatis diperbarui.")
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menyetujui")
+      showError(err instanceof Error ? err.message : "Gagal menyetujui")
     } finally {
       setSubmitting(false)
     }
@@ -205,7 +206,7 @@ export default function LeaveRequestsPage() {
         setSelectedRequest(prev => prev ? { ...prev, status: "ditolak_hrd", catatanHrd: catatan } : null)
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menolak")
+      showError(err instanceof Error ? err.message : "Gagal menolak")
     } finally {
       setSubmitting(false)
     }
@@ -221,9 +222,9 @@ export default function LeaveRequestsPage() {
       if (selectedSwap?.idPertukaran === id) {
         setSelectedSwap(prev => prev ? { ...prev, status: "menunggu_hrd" } : null)
       }
-      alert("Persetujuan SPV berhasil. Pengajuan diteruskan ke HRD untuk persetujuan akhir.")
+      showSuccess("Persetujuan SPV berhasil. Pengajuan diteruskan ke HRD untuk persetujuan akhir.")
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menyetujui")
+      showError(err instanceof Error ? err.message : "Gagal menyetujui")
     } finally {
       setSubmitting(false)
     }
@@ -240,7 +241,7 @@ export default function LeaveRequestsPage() {
         setSelectedSwap(prev => prev ? { ...prev, status: "ditolak_spv", catatanSpv: catatan } : null)
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menolak")
+      showError(err instanceof Error ? err.message : "Gagal menolak")
     } finally {
       setSubmitting(false)
     }
@@ -248,7 +249,7 @@ export default function LeaveRequestsPage() {
 
   const handleApproveSwapHrd = async (id: number, e?: React.MouseEvent) => {
     e?.stopPropagation()
-    if (!confirm("Setujui pertukaran ini? Jadwal kerja kedua karyawan akan otomatis diperbarui di sistem.")) {
+    if (!await confirmDialog("Setujui pertukaran ini? Jadwal kerja kedua karyawan akan otomatis diperbarui di sistem.")) {
       return
     }
     setSubmitting(true)
@@ -258,9 +259,9 @@ export default function LeaveRequestsPage() {
       if (selectedSwap?.idPertukaran === id) {
         setSelectedSwap(prev => prev ? { ...prev, status: "disetujui" } : null)
       }
-      alert("Pertukaran disetujui! Jadwal kerja telah otomatis diperbarui di database.")
+      showSuccess("Pertukaran disetujui! Jadwal kerja telah otomatis diperbarui di database.")
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menyetujui")
+      showError(err instanceof Error ? err.message : "Gagal menyetujui")
     } finally {
       setSubmitting(false)
     }
@@ -277,7 +278,7 @@ export default function LeaveRequestsPage() {
         setSelectedSwap(prev => prev ? { ...prev, status: "ditolak_hrd", catatanHrd: catatan } : null)
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menolak")
+      showError(err instanceof Error ? err.message : "Gagal menolak")
     } finally {
       setSubmitting(false)
     }
@@ -325,7 +326,7 @@ export default function LeaveRequestsPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
             Pengajuan
           </h1>
           <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
@@ -812,14 +813,14 @@ export default function LeaveRequestsPage() {
       {/* PREVIEW MODAL: IZIN                                                       */}
       {/* ========================================================================= */}
       {isPreviewOpen && selectedRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 sm:p-6" onClick={() => setIsPreviewOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm p-4 sm:p-6" onClick={() => setIsPreviewOpen(false)}>
           <div className="bg-[var(--bg-surface)] w-full max-w-5xl max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)] rounded-xl shadow-xl border border-[var(--border-default)] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)] shrink-0">
               <h3 className="font-semibold text-[var(--text-primary)]">Detail Pengajuan Izin</h3>
               <button onClick={() => setIsPreviewOpen(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X size={20} /></button>
             </div>
             <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <div className="text-xs font-medium text-[var(--text-muted)] mb-1">Karyawan</div>
                   <div className="font-medium text-[var(--text-primary)]">{selectedRequest.karyawan?.nama || "—"}</div>
@@ -1014,7 +1015,7 @@ export default function LeaveRequestsPage() {
       {/* PREVIEW MODAL: PERTUKARAN                                                 */}
       {/* ========================================================================= */}
       {isSwapPreviewOpen && selectedSwap && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4" onClick={() => setIsSwapPreviewOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4" onClick={() => setIsSwapPreviewOpen(false)}>
           <div className="bg-[var(--bg-surface)] w-full max-w-xl rounded-xl shadow-xl border border-[var(--border-default)] overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
               <div className="flex items-center gap-2">
@@ -1059,7 +1060,7 @@ export default function LeaveRequestsPage() {
               </div>
 
               {/* Schedule Details Comparison */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
                   <div className="text-xs font-bold text-slate-500 uppercase">Pemohon</div>
                   <div className="text-sm font-bold text-slate-800 dark:text-white mt-1">

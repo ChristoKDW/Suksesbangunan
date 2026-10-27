@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/document_service.dart';
 import '../controllers/slip_gaji_controller.dart';
 
 class SlipGajiView extends GetView<SlipGajiController> {
@@ -21,6 +22,32 @@ class SlipGajiView extends GetView<SlipGajiController> {
         foregroundColor: AppColors.white,
         elevation: 0,
         actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.download_rounded),
+            tooltip: 'Unduh Slip Gaji',
+            onSelected: (format) => DocumentService.downloadSlip(
+              controller.selectedDate.value ?? DateTime.now(),
+              format,
+            ),
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'pdf',
+                child: ListTile(
+                  leading: Icon(Icons.picture_as_pdf_rounded, color: AppColors.redPrimary),
+                  title: Text('Unduh PDF'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'excel',
+                child: ListTile(
+                  leading: Icon(Icons.table_chart_rounded, color: AppColors.success),
+                  title: Text('Unduh Excel'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Muat Ulang',

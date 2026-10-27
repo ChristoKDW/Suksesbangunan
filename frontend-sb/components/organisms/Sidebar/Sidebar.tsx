@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth-context"
 import { useSidebar } from "@/lib/sidebar-context"
+import { confirmLogout } from "@/lib/swal"
 import {
   LayoutDashboard,
   Users,
@@ -127,9 +128,9 @@ export function Sidebar() {
     return pathname === href || (pathname?.startsWith(`${href}/`) && href !== "/")
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsMobileOpen(false)
-    logout()
+    if (await confirmLogout()) logout()
   }
 
   if (!mounted || isLoading) return null // Prevent hydration mismatch

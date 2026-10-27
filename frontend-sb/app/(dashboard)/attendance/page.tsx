@@ -7,6 +7,7 @@ import { Badge, Skeleton, TableRowSkeleton } from "@/components/atoms"
 import { Search, Download, UserCheck, UserX, Clock, Trash2, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Absensi } from "@/lib/types"
+import { confirmDelete, showError } from "@/lib/swal"
 
 function formatTime(iso: string | null): string {
   if (!iso) return "—"
@@ -34,12 +35,12 @@ export default function AttendancePage() {
   const [pageSize, setPageSize] = useState(10)
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Hapus record absensi ini?")) return
+    if (!await confirmDelete("Hapus record absensi ini?")) return
     try {
       await api.delete(`absensi/${id}`)
       await mutate()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus")
+      showError(err instanceof Error ? err.message : "Gagal menghapus")
     }
   }
 
@@ -73,9 +74,9 @@ export default function AttendancePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>Data Absensi</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>Data Absensi</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
             Hari ini — {today.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </p>
@@ -93,7 +94,7 @@ export default function AttendancePage() {
           {loading ? (
             <Skeleton className="h-8 w-16 mb-1" />
           ) : (
-            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.hadir}</div>
+            <div className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.hadir}</div>
           )}
           <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Tepat Waktu</div>
         </div>
@@ -106,7 +107,7 @@ export default function AttendancePage() {
           {loading ? (
             <Skeleton className="h-8 w-16 mb-1" />
           ) : (
-            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.terlambat}</div>
+            <div className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.terlambat}</div>
           )}
           <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Terlambat</div>
         </div>
@@ -119,7 +120,7 @@ export default function AttendancePage() {
           {loading ? (
             <Skeleton className="h-8 w-16 mb-1" />
           ) : (
-            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.tidakHadir}</div>
+            <div className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{stats.tidakHadir}</div>
           )}
           <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Tidak Hadir</div>
         </div>

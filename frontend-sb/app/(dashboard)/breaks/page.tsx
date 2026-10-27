@@ -7,6 +7,7 @@ import { Badge, Skeleton, TableRowSkeleton } from "@/components/atoms"
 import { Search, Download, Coffee, AlertCircle, CheckCircle2, Loader2, Trash2 } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Istirahat, Absensi, Karyawan } from "@/lib/types"
+import { confirmDelete, showError } from "@/lib/swal"
 
 function formatTime(iso: string | null): string {
   if (!iso) return "—"
@@ -22,12 +23,12 @@ export default function BreaksPage() {
   const [searchQuery, setSearchQuery] = useState("")
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Hapus record istirahat ini?")) return
+    if (!await confirmDelete("Hapus record istirahat ini?")) return
     try {
       await api.delete(`istirahat/${id}`)
       await mutate()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus")
+      showError(err instanceof Error ? err.message : "Gagal menghapus")
     }
   }
 
@@ -65,9 +66,9 @@ export default function BreaksPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>Waktu Istirahat</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>Waktu Istirahat</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
             {loading ? "Memuat data istirahat..." : `${enrichedBreaks.length} total record`}
           </p>
@@ -85,7 +86,7 @@ export default function BreaksPage() {
           {loading ? (
             <Skeleton className="h-8 w-16 mb-1" />
           ) : (
-            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{activeBreaks}</div>
+            <div className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{activeBreaks}</div>
           )}
           <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Sedang Istirahat</div>
         </div>
@@ -98,7 +99,7 @@ export default function BreaksPage() {
           {loading ? (
             <Skeleton className="h-8 w-16 mb-1" />
           ) : (
-            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{overtimeBreaks}</div>
+            <div className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{overtimeBreaks}</div>
           )}
           <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Terlambat Kembali</div>
         </div>
@@ -111,7 +112,7 @@ export default function BreaksPage() {
           {loading ? (
             <Skeleton className="h-8 w-16 mb-1" />
           ) : (
-            <div className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{onTimeBreaks}</div>
+            <div className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{onTimeBreaks}</div>
           )}
           <div className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Tepat Waktu</div>
         </div>

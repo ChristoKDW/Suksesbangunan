@@ -24,6 +24,8 @@ import {
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Penggajian, PengaturanPenggajian } from "@/lib/types"
+import { showApiError, showError, showSuccess, toast } from "@/lib/swal"
+import { downloadReport, qs } from "@/lib/download"
 
 const fmt = (n: number | null | undefined) => "Rp " + Number(n || 0).toLocaleString("id-ID")
 
@@ -196,7 +198,7 @@ export default function PayrollPage() {
       setIsGenerateModalOpen(false)
       await fetchPayroll()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal generate payroll")
+      showError(err instanceof Error ? err.message : "Gagal generate payroll")
     } finally {
       setGenerating(false)
     }
@@ -209,9 +211,9 @@ export default function PayrollPage() {
       const updated = await api.patch<PengaturanPenggajian>("penggajian/settings", settingsForm)
       setSettings(updated)
       setIsSettingsModalOpen(false)
-      alert("Pengaturan periode cut-off & denda penggajian berhasil disimpan!")
+      showSuccess("Pengaturan periode cut-off & denda penggajian berhasil disimpan!")
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menyimpan pengaturan penggajian")
+      showError(err instanceof Error ? err.message : "Gagal menyimpan pengaturan penggajian")
     } finally {
       setSavingSettings(false)
     }
@@ -256,7 +258,7 @@ export default function PayrollPage() {
       }
       setEditingSlip(null)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal memperbarui rincian slip gaji")
+      showError(err instanceof Error ? err.message : "Gagal memperbarui rincian slip gaji")
     } finally {
       setSavingEdit(false)
     }
@@ -372,7 +374,18 @@ export default function PayrollPage() {
     window.print()
   }
 
-  const exportExcelUrl = `/api/reports/penggajian/excel?periode=${selectedMonth}&grup=all`
+  const [downloading, setDownloading] = useState<string | null>(null)
+  const download = async (key: string, endpoint: string, fallback: string) => {
+    setDownloading(key)
+    try {
+      await downloadReport(endpoint, fallback)
+      toast("File berhasil diunduh")
+    } catch (err) {
+      showApiError(err, "Gagal mengunduh file")
+    } finally {
+      setDownloading(null)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -406,7 +419,7 @@ export default function PayrollPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)]">
             Penggajian & Slip Gaji
           </h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
@@ -429,15 +442,15 @@ export default function PayrollPage() {
             />
           </div>
 
-          <a
-            href={exportExcelUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2 rounded-lg px-3.5 py-2.5 text-sm font-semibold border border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-raised)] transition-colors"
+          <button
+            type="button"
+            onClick={() => download("excel", `reports/penggajian${qs({ periode: selectedMonth, format: "excel" })}`, `Laporan_Penggajian_${selectedMonth}.xlsx`)}
+            disabled={downloading !== null}
+            className="flex items-center gap-2 rounded-lg px-3.5 py-2.5 text-sm font-semibold border border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-raised)] transition-colors disabled:opacity-60"
           >
-            <Download className="w-4 h-4 text-[var(--text-muted)]" />
+            {downloading === "excel" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-[var(--text-muted)]" />}
             Export Excel
-          </a>
+          </button>
 
           {(user?.role === "HRD" || user?.role === "Admin") && (
             <>
@@ -637,7 +650,7 @@ export default function PayrollPage() {
 
       {/* Generate Modal */}
       {isGenerateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-[var(--bg-surface)] w-full max-w-md rounded-xl shadow-xl border border-[var(--border-default)] overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
               <h3 className="font-semibold text-[var(--text-primary)]">Generate Payroll</h3>
@@ -661,7 +674,7 @@ export default function PayrollPage() {
               </div>
 
               {/* Rentang Periode Cut-Off */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Awal Hitung Gaji</label>
                   <input
@@ -797,7 +810,7 @@ export default function PayrollPage() {
 
       {/* Settings Modal (Pengaturan Cut-Off) */}
       {isSettingsModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-[var(--bg-surface)] w-full max-w-md rounded-xl shadow-xl border border-[var(--border-default)] overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
               <div className="flex items-center gap-2">
@@ -816,7 +829,7 @@ export default function PayrollPage() {
                 Tentukan siklus tanggal awal hitung dan tanggal tutup buku penggajian. Pengaturan ini akan ditandai pada Jadwal Kerja dan digunakan sebagai acuan perhitungan absensi.
               </p>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Tanggal Awal Hitung Gaji</label>
                   <div className="flex items-center gap-1.5">
@@ -854,7 +867,7 @@ export default function PayrollPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Denda Telat Default (Rp)</label>
                   <input
@@ -910,12 +923,26 @@ export default function PayrollPage() {
 
       {/* OFFICIAL SLIP GAJI MODAL (EXACT MATCH CV SUKSES BANGUNINDO) */}
       {viewingSlip && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-white text-black w-full max-w-xl rounded-xl shadow-2xl overflow-hidden my-6 border border-gray-300">
             {/* Action Bar (Not printed) */}
-            <div className="no-print bg-gray-100 px-4 py-3 border-b border-gray-300 flex items-center justify-between">
+            <div className="no-print bg-gray-100 px-4 py-3 border-b border-gray-300 flex flex-wrap items-center justify-between gap-2">
               <div className="text-sm font-semibold text-gray-700">Preview Slip Gaji Resmi</div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() =>
+                    download(
+                      "slip",
+                      `reports/slip-gaji${qs({ idKaryawan: viewingSlip.idKaryawan, periode: String(viewingSlip.periodeAkhir).slice(0, 7), format: "pdf" })}`,
+                      "Slip_Gaji.pdf",
+                    )
+                  }
+                  disabled={downloading !== null}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition-colors disabled:opacity-60"
+                >
+                  {downloading === "slip" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  PDF
+                </button>
                 <button
                   onClick={handlePrintSlip}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors"
@@ -1126,7 +1153,7 @@ export default function PayrollPage() {
 
       {/* EDIT SLIP GAJI MODAL (HRD & ADMIN) */}
       {editingSlip && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="bg-[var(--bg-surface)] w-full max-w-xl rounded-xl shadow-xl border border-[var(--border-default)] overflow-hidden my-6">
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
               <div>
@@ -1148,7 +1175,7 @@ export default function PayrollPage() {
 
             <form onSubmit={handleSaveEdit} className="p-4 space-y-4 text-sm max-h-[80vh] overflow-y-auto">
               {/* Hari Kerja & Kehadiran */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Total Hari Kerja Standar</label>
                   <input
@@ -1181,7 +1208,7 @@ export default function PayrollPage() {
               </div>
 
               {/* Gaji Pokok */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Gaji Pokok Penuh (Rp)</label>
                   <input
@@ -1209,7 +1236,7 @@ export default function PayrollPage() {
               </div>
 
               {/* Tunjangan Konsumsi */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">
                     Tarif Konsumsi / Hari (Rp)
@@ -1246,7 +1273,7 @@ export default function PayrollPage() {
               </div>
 
               {/* Tunjangan Lainnya */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">Transportasi (Rp)</label>
                   <input
@@ -1296,7 +1323,7 @@ export default function PayrollPage() {
               </div>
 
               {/* Potongan BPJS & Terlambat */}
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-[var(--border-default)]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[var(--border-default)]">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">BPJS Ketenagakerjaan (Rp)</label>
                   <input
@@ -1322,7 +1349,7 @@ export default function PayrollPage() {
               </div>
 
               {/* Pinjaman / Kasbon / Lainnya */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-[var(--text-secondary)]">
                     Potongan Pinjaman / Kasbon (Rp)

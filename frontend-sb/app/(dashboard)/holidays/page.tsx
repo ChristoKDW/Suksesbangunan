@@ -7,6 +7,7 @@ import { LatticeLoader, TableRowSkeleton } from "@/components/atoms"
 import { Search, Plus, X, CalendarCheck, Edit2, Trash2, Loader2, AlertCircle, Clock } from "lucide-react"
 import { api } from "@/lib/api"
 import type { HariLibur, Shift } from "@/lib/types"
+import { confirmDelete, showError, showSuccess, showWarning } from "@/lib/swal"
 
 export default function HolidaysPage() {
   // ponytail: SWR caching - instan 0ms saat navigasi
@@ -44,7 +45,7 @@ export default function HolidaysPage() {
   const handleAddHoliday = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newHoliday.isLibur && !newHoliday.idShift) {
-      alert("Harap pilih shift untuk hari penting ini.")
+      showWarning("Harap pilih shift untuk hari penting ini.")
       return
     }
     setSubmitting(true)
@@ -56,7 +57,7 @@ export default function HolidaysPage() {
         idShift: newHoliday.isLibur ? undefined : Number(newHoliday.idShift),
         isLibur: newHoliday.isLibur,
       })
-      alert(res.message || "Hari penting berhasil ditambahkan dan jadwal kerja karyawan telah disesuaikan.")
+      showSuccess(res.message || "Hari penting berhasil ditambahkan dan jadwal kerja karyawan telah disesuaikan.")
       setIsModalOpen(false)
       setNewHoliday({
         nama: "",
@@ -67,22 +68,22 @@ export default function HolidaysPage() {
       })
       refreshAll()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menambahkan hari penting")
+      showError(err instanceof Error ? err.message : "Gagal menambahkan hari penting")
     } finally {
       setSubmitting(false)
     }
   }
 
   const handleDeleteHoliday = async (id: number, nama: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus hari penting "${nama}"? Jadwal kerja karyawan di tanggal tersebut akan dikembalikan.`)) {
+    if (!await confirmDelete(`Apakah Anda yakin ingin menghapus hari penting "${nama}"? Jadwal kerja karyawan di tanggal tersebut akan dikembalikan.`)) {
       return
     }
     try {
       const res: any = await api.delete(`hari-libur/${id}`)
-      alert(res.message || "Hari penting berhasil dihapus")
+      showSuccess(res.message || "Hari penting berhasil dihapus")
       refreshAll()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus hari penting")
+      showError(err instanceof Error ? err.message : "Gagal menghapus hari penting")
     }
   }
 
@@ -102,7 +103,7 @@ export default function HolidaysPage() {
     e.preventDefault()
     if (!editingHoliday) return
     if (!editingHoliday.isLibur && !editingHoliday.idShift) {
-      alert("Harap pilih shift untuk hari penting ini.")
+      showWarning("Harap pilih shift untuk hari penting ini.")
       return
     }
     setSubmitting(true)
@@ -114,12 +115,12 @@ export default function HolidaysPage() {
         idShift: editingHoliday.isLibur ? undefined : Number(editingHoliday.idShift),
         isLibur: editingHoliday.isLibur,
       })
-      alert(res.message || "Hari penting berhasil diperbarui")
+      showSuccess(res.message || "Hari penting berhasil diperbarui")
       setIsEditModalOpen(false)
       setEditingHoliday(null)
       refreshAll()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal memperbarui hari penting")
+      showError(err instanceof Error ? err.message : "Gagal memperbarui hari penting")
     } finally {
       setSubmitting(false)
     }
@@ -135,9 +136,9 @@ export default function HolidaysPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)]">
             Hari Penting
           </h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
@@ -171,7 +172,7 @@ export default function HolidaysPage() {
 
       {/* Add Holiday Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-[var(--bg-surface)] w-full max-w-lg rounded-xl shadow-xl border border-[var(--border-default)] overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
               <h3 className="font-semibold text-[var(--text-primary)]">Tambah Hari Penting Baru</h3>
@@ -278,7 +279,7 @@ export default function HolidaysPage() {
 
       {/* Edit Holiday Modal */}
       {isEditModalOpen && editingHoliday && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-[var(--bg-surface)] w-full max-w-lg rounded-xl shadow-xl border border-[var(--border-default)] overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
               <h3 className="font-semibold text-[var(--text-primary)]">Edit Hari Penting</h3>

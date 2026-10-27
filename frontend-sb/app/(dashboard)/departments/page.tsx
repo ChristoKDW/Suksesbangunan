@@ -7,6 +7,7 @@ import { LatticeLoader, TableRowSkeleton, Skeleton } from "@/components/atoms"
 import { Search, Plus, X, Building2, Edit2, Trash2, Loader2, UserCheck, Users } from "lucide-react"
 import { api, userApi, User } from "@/lib/api"
 import type { Departemen } from "@/lib/types"
+import { confirmDelete, showError, showWarning } from "@/lib/swal"
 
 export default function DepartmentsPage() {
   // ponytail: SWR caching - instan 0ms saat navigasi
@@ -54,7 +55,7 @@ export default function DepartmentsPage() {
   const toggleNewDeptUser = (userId: number) => {
     const targetUser = users.find(u => u.idUser === userId)
     if (targetUser && isUserDisabled(targetUser, newDept.idPengelola)) {
-      alert("Pengelola dengan role SPV tidak dapat digabung dengan Admin atau HRD.")
+      showWarning("Pengelola dengan role SPV tidak dapat digabung dengan Admin atau HRD.")
       return
     }
     setNewDept(prev => {
@@ -72,7 +73,7 @@ export default function DepartmentsPage() {
     if (!editingDept) return
     const targetUser = users.find(u => u.idUser === userId)
     if (targetUser && isUserDisabled(targetUser, editingDept.idPengelola)) {
-      alert("Pengelola dengan role SPV tidak dapat digabung dengan Admin atau HRD.")
+      showWarning("Pengelola dengan role SPV tidak dapat digabung dengan Admin atau HRD.")
       return
     }
     const exists = editingDept.idPengelola.includes(userId)
@@ -87,14 +88,14 @@ export default function DepartmentsPage() {
   const handleAddDept = async (e: React.FormEvent) => {
     e.preventDefault()
     if (newDept.idPengelola.length === 0) {
-      alert("Harap pilih minimal 1 orang pengelola untuk departemen ini")
+      showWarning("Harap pilih minimal 1 orang pengelola untuk departemen ini")
       return
     }
     const selectedUsers = users.filter(u => newDept.idPengelola.includes(u.idUser))
     const hasSpv = selectedUsers.some(u => u.role === "SPV")
     const hasAdminOrHrd = selectedUsers.some(u => u.role === "Admin" || u.role === "HRD")
     if (hasSpv && hasAdminOrHrd) {
-      alert("Pengelola dengan role SPV tidak dapat digabung dengan Admin atau HRD dalam satu departemen.")
+      showWarning("Pengelola dengan role SPV tidak dapat digabung dengan Admin atau HRD dalam satu departemen.")
       return
     }
     setSubmitting(true)
@@ -107,19 +108,19 @@ export default function DepartmentsPage() {
       setNewDept({ namaDepartemen: "", idPengelola: [] })
       refreshAll()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menambahkan departemen")
+      showError(err instanceof Error ? err.message : "Gagal menambahkan departemen")
     } finally {
       setSubmitting(false)
     }
   }
 
   const handleDeleteDept = async (id: number) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus departemen ini?")) return
+    if (!await confirmDelete("Apakah Anda yakin ingin menghapus departemen ini?")) return
     try {
       await api.delete(`departemen/${id}`)
       refreshAll()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menghapus departemen")
+      showError(err instanceof Error ? err.message : "Gagal menghapus departemen")
     }
   }
 
@@ -140,7 +141,7 @@ export default function DepartmentsPage() {
     const hasSpv = selectedUsers.some(u => u.role === "SPV")
     const hasAdminOrHrd = selectedUsers.some(u => u.role === "Admin" || u.role === "HRD")
     if (hasSpv && hasAdminOrHrd) {
-      alert("Pengelola dengan role SPV tidak dapat digabung dengan Admin atau HRD dalam satu departemen.")
+      showWarning("Pengelola dengan role SPV tidak dapat digabung dengan Admin atau HRD dalam satu departemen.")
       return
     }
     setSubmitting(true)
@@ -153,7 +154,7 @@ export default function DepartmentsPage() {
       setEditingDept(null)
       refreshAll()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal mengupdate departemen")
+      showError(err instanceof Error ? err.message : "Gagal mengupdate departemen")
     } finally {
       setSubmitting(false)
     }
@@ -175,9 +176,9 @@ export default function DepartmentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)]">
             Departemen
           </h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
@@ -195,7 +196,7 @@ export default function DepartmentsPage() {
 
       {/* Add Dept Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-[var(--bg-surface)] w-full max-w-lg rounded-xl shadow-xl border border-[var(--border-default)] overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
               <h3 className="font-semibold text-[var(--text-primary)]">Tambah Departemen Baru</h3>
@@ -287,7 +288,7 @@ export default function DepartmentsPage() {
 
       {/* Edit Dept Modal */}
       {isEditModalOpen && editingDept && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-[var(--bg-surface)] w-full max-w-lg rounded-xl shadow-xl border border-[var(--border-default)] overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
               <h3 className="font-semibold text-[var(--text-primary)]">Edit Departemen</h3>

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/document_service.dart';
 import '../controllers/history_controller.dart';
 
 class HistoryView extends GetView<HistoryController> {
@@ -18,16 +19,39 @@ class HistoryView extends GetView<HistoryController> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Riwayat Absensi',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Catatan kehadiran anda',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppColors.slateLight,
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Riwayat Absensi',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Catatan kehadiran anda',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.slateLight,
+                              ),
+                        ),
+                      ],
                     ),
+                  ),
+                  FilledButton.tonalIcon(
+                    onPressed: () => DocumentService.showRekapAbsensiSheet(
+                      title: 'Rekap Absensi',
+                    ),
+                    icon: const Icon(Icons.download_rounded, size: 18),
+                    label: const Text('Unduh'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.redContainer,
+                      foregroundColor: AppColors.redVariant,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               // -- Date Filter --

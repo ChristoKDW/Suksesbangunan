@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Trash2, Calendar, AlertTriangle, Loader2, CheckCircle2, X, Users, CalendarRange } from "lucide-react"
 import { api } from "@/lib/api"
 import type { Karyawan } from "@/lib/types"
+import { confirmDelete } from "@/lib/swal"
 
 interface DeleteScheduleModalProps {
   isOpen: boolean
@@ -115,7 +116,7 @@ export function DeleteScheduleModal({
     }
 
     const confirmText = `Apakah Anda yakin ingin menghapus jadwal untuk:\n- Target: ${targetName}\n- Periode: ${effective.desc}\n\nJadwal yang dihapus akan kembali kosong.`
-    if (!window.confirm(confirmText)) return
+    if (!await confirmDelete(confirmText, "Hapus jadwal?")) return
 
     setLoading(true)
     setErrorMsg(null)
@@ -141,7 +142,7 @@ export function DeleteScheduleModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
       <div className="bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col">
         {/* Header Modal */}
         <div className="px-6 py-4 border-b border-[var(--border-default)] flex items-center justify-between bg-gradient-to-r from-rose-50/80 to-amber-50/60 dark:from-rose-950/20 dark:to-amber-950/10">

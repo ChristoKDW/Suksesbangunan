@@ -35,6 +35,7 @@ import { getIndonesianHolidayForDate, type HolidayItem } from "@/lib/indonesia-h
 import { fetchCalendarEvents, type CalendarEvent } from "@/lib/opica-calendar"
 import { DeleteScheduleModal } from "@/components/organisms/DeleteScheduleModal/DeleteScheduleModal"
 import type { Karyawan, Shift, JadwalKerja, Departemen, PengaturanPenggajian, HariLibur } from "@/lib/types"
+import { showError, showSuccess, showWarning } from "@/lib/swal"
 
 // Color palette for shifts
 const shiftColors = [
@@ -305,7 +306,7 @@ export default function SupervisorSchedulePage() {
   // Terapkan pola rolling shift ke supervisor yang ditampilkan
   const handleApplyRolling = async (saveImmediately: boolean = false) => {
     if (shiftList.length === 0) {
-      alert("Tidak ada shift yang terdaftar di sistem. Buat shift terlebih dahulu di menu Daftar Shift.")
+      showWarning("Tidak ada shift yang terdaftar di sistem. Buat shift terlebih dahulu di menu Daftar Shift.")
       return
     }
 
@@ -390,15 +391,15 @@ export default function SupervisorSchedulePage() {
         await api.post("jadwal-kerja/bulk", bulkItems)
         setHasChanges(false)
         await fetchData()
-        alert(`Berhasil! Jadwal rotasi shift untuk ${displayedSupervisors.length} Supervisor telah disimpan ke database.`)
+        showSuccess(`Berhasil! Jadwal rotasi shift untuk ${displayedSupervisors.length} Supervisor telah disimpan ke database.`)
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Gagal menyimpan jadwal otomatis")
+        showError(err instanceof Error ? err.message : "Gagal menyimpan jadwal otomatis")
       } finally {
         setSaving(false)
       }
     } else {
       setHasChanges(true)
-      alert(`Jadwal rotasi untuk ${displayedSupervisors.length} Supervisor telah digenerate ke tabel! Klik tombol "Simpan Perubahan" di atas untuk menyimpan permanen.`)
+      showSuccess(`Jadwal rotasi untuk ${displayedSupervisors.length} Supervisor telah digenerate ke tabel! Klik tombol "Simpan Perubahan" di atas untuk menyimpan permanen.`)
     }
   }
 
@@ -451,7 +452,7 @@ export default function SupervisorSchedulePage() {
         await fetchData()
         setSelectedCell(null)
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Gagal menyimpan jadwal harian")
+        showError(err instanceof Error ? err.message : "Gagal menyimpan jadwal harian")
       } finally {
         setSavingSingle(false)
       }
@@ -508,9 +509,9 @@ export default function SupervisorSchedulePage() {
 
       setHasChanges(false)
       await fetchData()
-      alert(`Berhasil! Perubahan jadwal supervisor telah tersimpan ke sistem.`)
+      showSuccess(`Berhasil! Perubahan jadwal supervisor telah tersimpan ke sistem.`)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Gagal menyimpan perubahan jadwal")
+      showError(err instanceof Error ? err.message : "Gagal menyimpan perubahan jadwal")
     } finally {
       setSaving(false)
     }
@@ -550,7 +551,7 @@ export default function SupervisorSchedulePage() {
       link.remove()
       window.URL.revokeObjectURL(blobUrl)
     } catch (err: any) {
-      alert(err instanceof Error ? err.message : "Terjadi kesalahan saat mengekspor Excel")
+      showError(err instanceof Error ? err.message : "Terjadi kesalahan saat mengekspor Excel")
     } finally {
       setExporting(false)
     }
@@ -975,7 +976,7 @@ export default function SupervisorSchedulePage() {
 
       {/* MODAL 1: ATUR JADWAL 1 PER 1 HARI (Individual Day Shift Picker) */}
       {selectedCell && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-[#0B0F17] w-full max-w-md rounded-xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             {/* Modal Header */}
             <div className="flex items-start justify-between p-4 border-b border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02]">
@@ -1151,7 +1152,7 @@ export default function SupervisorSchedulePage() {
 
       {/* MODAL 2: AUTO-GENERATE ROLLING SHIFT (Bulk) */}
       {showAutoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto py-6 [&>*]:my-auto bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-[#0B0F17] w-full max-w-xl rounded-xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.02]">
               <div className="flex items-center gap-2">
