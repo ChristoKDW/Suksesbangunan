@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { ShieldAlert, ArrowRight, Lock, User, Eye, EyeOff, Sparkles, CheckCircle2 } from "lucide-react"
+import { ShieldAlert, ArrowRight, Lock, User, Eye, EyeOff, ShieldCheck, Mail } from "lucide-react"
 import { useSuperAdminAuth } from "@/lib/auth-context"
 import { toast } from "@/lib/swal"
 
 export default function LoginPage() {
-  const { loginHardcoded } = useSuperAdminAuth()
+  const { login } = useSuperAdminAuth()
   const [username, setUsername] = useState("superadmin")
   const [password, setPassword] = useState("admin123")
   const [showPassword, setShowPassword] = useState(false)
@@ -16,8 +16,10 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      await loginHardcoded(username, password)
-      await toast("Selamat datang di Super Admin LARAS", "success")
+      await login(username, password)
+      await toast("Kode OTP verifikasi telah dikirimkan ke email resmi Anda", "info")
+    } catch (err: any) {
+      toast(err.message || "Gagal masuk, periksa kredensial Anda", "error")
     } finally {
       setLoading(false)
     }
@@ -37,9 +39,9 @@ export default function LoginPage() {
           <p className="text-xs text-[var(--text-secondary)]">
             Executive & System Management Panel · CV. Sukses Bangunindo
           </p>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 mt-1">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Mode Demo: Hardcoded Login Aktif</span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 text-[11px] font-bold border border-red-200 dark:border-red-900 mt-1">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Autentikasi 2-Langkah Aktif (Email OTP)</span>
           </div>
         </div>
 
@@ -95,25 +97,21 @@ export default function LoginPage() {
               <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
-                <span>Masuk Panel Super Admin</span>
+                <span>Lanjut ke Verifikasi Email</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
         </form>
 
-        {/* Demo Helper Box */}
+        {/* Security Info Box */}
         <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-[var(--border-default)] text-[11px] text-[var(--text-secondary)] space-y-1.5 leading-relaxed">
-          <p className="font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Kredensial Default Siap Pakai</span>
+          <p className="font-semibold text-red-600 dark:text-red-400 flex items-center gap-1.5">
+            <Mail className="w-3.5 h-3.5" />
+            <span>Pengiriman Kode OTP via Email</span>
           </p>
           <p>
-            Username: <code className="font-mono font-bold text-red-600">superadmin</code> | Password:{" "}
-            <code className="font-mono font-bold text-red-600">admin123</code>
-          </p>
-          <p className="text-[10px] text-[var(--text-muted)]">
-            (Otentikasi OTP via email sengaja di-bypass sementara sesuai instruksi pengujian).
+            Setelah menekan tombol lanjut, 6 digit kode keamanan dikirimkan langsung ke inbox email resmi Anda untuk verifikasi identitas eksekutif.
           </p>
         </div>
       </div>

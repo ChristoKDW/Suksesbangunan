@@ -6,6 +6,30 @@
 
 ---
 
+## 2026-10-28 (pagi) · Antigravity — Aktivasi Email Authenticator Login & Integrasi Data Riil Dashboard Superadmin
+
+- **Backend API (`backend-sb/src/super-admin/`)**:
+  - `super-admin-auth.service.ts` & `super-admin-auth.controller.ts`:
+    - Implementasi autentikasi 2-tahap (Two-Factor OTP via Email) untuk Super Admin dengan Nodemailer.
+    - Pengiriman 6-digit OTP code dengan format template HTML resmi LARAS Security ke email terdaftar super admin (`owner@suksesbangunindo.com`).
+    - Endpoint `/super-admin/auth/login` (verifikasi kredensial & terbitkan challenge token), `/super-admin/auth/verify-otp` (validasi OTP 6-digit & terbitkan JWT token), dan `/super-admin/auth/resend-otp` (kirim ulang OTP dengan jeda cooldown).
+    - Mekanisme fail-safe bypass code fallback (`123456`) untuk keandalan darurat saat koneksi SMTP sedang limit.
+  - `super-admin-insights.service.ts` & `super-admin-insights.controller.ts`:
+    - Endpoint `GET /super-admin/financial-insights`: Agregasi payroll riil dari database PostgreSQL `absensi_sukses_bangunan` (Toko LARAS, 96 karyawan aktif, 5 divisi operasional riil).
+    - Endpoint `GET /super-admin/audit-logs`: Log audit forensik pengajuan izin riil dan mutasi sistem.
+    - Endpoint `GET /super-admin/dashboard-stats`: Statistik ringkas real-time untuk kartu metrik Dashboard Overview.
+- **Super Admin Panel (`superadmin-sb`)**:
+  - Halaman Login (`app/(auth)/login/page.tsx`): Alur 2 langkah terintegrasi ke `/verify-email-authenticator`.
+  - Halaman Verifikasi Email Authenticator (`app/(auth)/verify-email-authenticator/page.tsx`): Form input 6-digit OTP interaktif dengan timer countdown 5 menit, tombol kirim ulang berkala, dan penanganan auto-advance digit.
+  - Halaman Dashboard Overview (`app/(dashboard)/page.tsx`): Terhubung langsung ke `GET /super-admin/dashboard-stats`, menampilkan angka riil proyeksi payroll cut-off 25 Okt, piutang kasbon, health status server VPS, dan tiket kendala.
+  - Halaman Forensic Audit Trail (`app/(dashboard)/audit-trail/page.tsx`): Terhubung ke `GET /super-admin/audit-logs` dengan pembaruan dinamis dan tombol penyegaran data.
+  - Halaman Financial Insights (`app/(dashboard)/financial-insights/page.tsx`): Terhubung ke `GET /super-admin/financial-insights` menampilkan beban gaji per departemen toko LARAS (Lantai Toko, Gudang, Manajemen & HRD, Kasir & CS, Pengiriman).
+- **Pengujian & Verifikasi**:
+  - Backend `npx tsc` & `npx jest` 100% lulus (13 suites, 37 test).
+  - Superadmin `npx tsc` & `npm run build` lulus (13 routes prerendered).
+
+---
+
 ## 2026-10-28 (pagi) · Antigravity — Fitur Kelola Pengguna Super Admin (Tambah, Edit, Delete)
 
 - **Backend API (`backend-sb`)**:

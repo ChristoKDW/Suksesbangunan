@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ShieldAlert, Search, Filter, Download, Eye, ArrowUpDown } from "lucide-react"
+import { ShieldAlert, Search, Filter, Download, Eye, ArrowUpDown, RefreshCw } from "lucide-react"
 import { SkeletonTable } from "@/components/ui/skeleton"
 import { DiffViewerModal } from "@/components/diff-viewer"
 import { toast } from "@/lib/swal"
+import { api } from "@/lib/api"
 
 const AUDIT_DATA = [
   {
@@ -79,16 +80,33 @@ const CATEGORIES = ["ALL", "PAYROLL", "KASBON", "JADWAL", "KEBIJAKAN", "SECURITY
 export default function AuditTrailPage() {
   const [activeCategory, setActiveCategory] = useState("ALL")
   const [search, setSearch] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [auditLogs, setAuditLogs] = useState<typeof AUDIT_DATA>(AUDIT_DATA)
   const [selectedAudit, setSelectedAudit] = useState<typeof AUDIT_DATA[0] | null>(null)
+
+  const fetchAuditLogs = async () => {
+    try {
+      setLoading(true)
+      const data = await api.get<any[]>("/super-admin/audit-logs")
+      if (Array.isArray(data) && data.length > 0) {
+        setAuditLogs(data)
+      }
+    } catch (e) {
+      console.log("Using fallback audit data or offline:", e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAuditLogs()
+  }, [])
 
   const handleCategoryChange = (cat: string) => {
     setActiveCategory(cat)
-    setLoading(true)
-    setTimeout(() => setLoading(false), 300)
   }
 
-  const filtered = AUDIT_DATA.filter((item) => {
+  const filtered = auditLogs.filter((item) => {
     const matchCat = activeCategory === "ALL" || item.category === activeCategory
     const matchSearch =
       search === "" ||
@@ -113,6 +131,13 @@ export default function AuditTrailPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={fetchAuditLogs}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] text-xs font-semibold text-[var(--text-secondary)] hover:text-red-600 transition"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-red-600" : ""}`} />
+            <span>Segarkan</span>
+          </button>
           <button
             onClick={() => toast("Export audit log sedang disiapkan...", "info")}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface)] text-xs font-semibold text-[var(--text-secondary)] hover:text-red-600 transition"

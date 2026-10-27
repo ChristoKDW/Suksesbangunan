@@ -35,6 +35,7 @@ import { KebijakanLiburModule } from './kebijakan-libur/kebijakan-libur.module.j
 import { AturanPengajuanModule } from './aturan-pengajuan/aturan-pengajuan.module.js';
 import { AsetModule } from './aset/aset.module.js';
 import { LaporanMasalahModule } from './laporan-masalah/laporan-masalah.module.js';
+import { SuperAdminModule } from './super-admin/super-admin.module.js';
 
 @Module({
   imports: [
@@ -103,6 +104,7 @@ import { LaporanMasalahModule } from './laporan-masalah/laporan-masalah.module.j
     AturanPengajuanModule,
     AsetModule,
     LaporanMasalahModule,
+    SuperAdminModule,
   ],
   providers: [
     {
