@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserLog } from './entities/user-log.entity.js';
 import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
+import { RedisService } from '../redis/redis.service.js';
+import { RealtimeGateway } from '../realtime/realtime.gateway.js';
 
 export interface CreateUserLogDto {
   idUser?: number | null;
@@ -23,6 +25,10 @@ export class UserLogService {
     private readonly userLogRepo: Repository<UserLog>,
     @InjectRepository(Karyawan)
     private readonly karyawanRepo: Repository<Karyawan>,
+    @Optional()
+    private readonly redisService?: RedisService,
+    @Optional()
+    private readonly realtimeGateway?: RealtimeGateway,
   ) {}
 
   /**
@@ -89,7 +95,25 @@ export class UserLogService {
       lastActiveAt: new Date(),
     });
 
-    return this.userLogRepo.save(log);
+    const savedLog = await this.userLogRepo.save(log);
+
+    // Daftarkan heartbeat ke Redis & broadcast update status via WebSocket
+    if (this.redisService) {
+      await this.redisService.setHeartbeat(dto.username, dto.platform, {
+        role: dto.role,
+        nama: dto.nama,
+      });
+    }
+    if (this.realtimeGateway) {
+      this.realtimeGateway.broadcastToSuperAdmin('user_status_changed', {
+        username: dto.username,
+        platform: dto.platform,
+        isOnline: true,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    return savedLog;
   }
 
   /**
@@ -99,6 +123,21 @@ export class UserLogService {
     const where = typeof sessionTokenOrId === 'number'
       ? { idLog: sessionTokenOrId }
       : { sessionToken: sessionTokenOrId };
+
+    const log = await this.userLogRepo.findOne({ where });
+    if (log) {
+      if (this.redisService) {
+        await this.redisService.removeHeartbeat(log.username, log.platform);
+      }
+      if (this.realtimeGateway) {
+        this.realtimeGateway.broadcastToSuperAdmin('user_status_changed', {
+          username: log.username,
+          platform: log.platform,
+          isOnline: false,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
 
     await this.userLogRepo.update(where, {
       isOnline: false,
@@ -137,6 +176,20 @@ export class UserLogService {
         { idKaryawan: log.idKaryawan },
         { token: null as any, tokenKadaluarsa: null as any },
       );
+    }
+
+    // Hapus dari Redis Heartbeat & Broadcast WebSocket paksa logout seketika (realtime)
+    if (this.redisService) {
+      await this.redisService.removeHeartbeat(log.username, log.platform);
+    }
+    if (this.realtimeGateway) {
+      this.realtimeGateway.emitForceLogout(log.username);
+      this.realtimeGateway.broadcastToSuperAdmin('user_status_changed', {
+        username: log.username,
+        platform: log.platform,
+        isOnline: false,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     return log;

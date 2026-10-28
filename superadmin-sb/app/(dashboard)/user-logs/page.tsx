@@ -17,6 +17,7 @@ import {
   Activity,
 } from "lucide-react"
 import { api } from "@/lib/api"
+import { getSocket } from "@/lib/socket"
 import { useSuperAdminAuth } from "@/lib/auth-context"
 import { confirmDialog, showSuccess, toast } from "@/lib/swal"
 import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton"
@@ -80,6 +81,19 @@ export default function UserLogsPage() {
 
   useEffect(() => {
     fetchData()
+
+    const socket = getSocket()
+    if (socket) {
+      const onStatusChanged = (data: any) => {
+        console.log("[WebSocket] Realtime user_status_changed event:", data)
+        fetchData()
+      }
+      socket.on("user_status_changed", onStatusChanged)
+
+      return () => {
+        socket.off("user_status_changed", onStatusChanged)
+      }
+    }
   }, [])
 
   const handleKickSession = async (log: UserLogItem) => {

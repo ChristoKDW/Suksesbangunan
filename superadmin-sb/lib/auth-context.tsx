@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, type React
 import { useRouter } from "next/navigation"
 import type { SuperAdminUser, LoginChallengeResponse } from "@/lib/types"
 import { api } from "@/lib/api"
+import { getSocket, disconnectSocket } from "@/lib/socket"
 
 interface AuthContextValue {
   user: SuperAdminUser | null
@@ -56,10 +57,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
-  // Real-time Session Watchdog: deteksi otomatis jika sesi diputuskan oleh Super Admin
+  // Real-time WebSocket + Redis Heartbeat Watchdog
   useEffect(() => {
-    if (!token || !user) return
+    if (!token || !user) {
+      disconnectSocket()
+      return
+    }
 
+    const socket = getSocket(token)
+
+    // Interval Heartbeat Redis via WebSocket (tiap 10 detik)
+    const heartbeatTimer = setInterval(() => {
+      if (socket && socket.connected) {
+        socket.emit("client:heartbeat", {
+          platform: "superadmin",
+          meta: { username: user.username },
+        })
+      }
+    }, 10000)
+
+    // HTTP Heartbeat Fallback (tiap 10 detik)
     const checkInterval = setInterval(async () => {
       try {
         await api.get("/super-admin/auth/session-status")
@@ -69,14 +86,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem("superAdminToken")
           localStorage.removeItem("superAdminUser")
           document.cookie = "superAdminToken=; path=/; max-age=0; SameSite=Strict"
+          disconnectSocket()
           setToken(null)
           setUser(null)
           window.location.href = "/login?kicked=1"
         }
       }
-    }, 5000)
+    }, 10000)
 
-    return () => clearInterval(checkInterval)
+    return () => {
+      clearInterval(heartbeatTimer)
+      clearInterval(checkInterval)
+    }
   }, [token, user])
 
   const login = useCallback(
@@ -158,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("superAdminToken")
     localStorage.removeItem("superAdminUser")
     document.cookie = "superAdminToken=; path=/; max-age=0; SameSite=Strict"
+    disconnectSocket()
     setToken(null)
     setUser(null)
     setChallenge(null)

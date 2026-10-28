@@ -6,6 +6,34 @@
 
 ---
 
+## 2026-10-28 (siang) · Antigravity — Penerapan Realtime WebSocket Gateway & Redis Heartbeat Sesi
+
+- **Infrastruktur VPS (Non-Docker)**:
+  - Instalasi native `redis-server` (v7.0.15) via apt-get di Ubuntu VPS, diaktifkan & berjalan otomatis via systemd (`systemctl enable redis-server && systemctl start redis-server`).
+  - Konfigurasi proteksi default `bind 127.0.0.1` & `protected-mode yes` (port 6379) untuk keamanan lokal server.
+  - Verifikasi Nginx reverse proxy yang sudah mendukung HTTP/1.1 WebSocket upgrade (`Upgrade $http_upgrade`, `Connection "upgrade"`).
+  - Instalasi paket keterampilan `redis/agent-skills` (8 skills: redis-core, redis-connections, redis-security, dll).
+- **Backend API (`backend-sb`)**:
+  - Modul baru `redis/` (`RedisModule`, `RedisService` dengan library `ioredis`):
+    - Penyimpanan heartbeat sesi pengguna terstandarisasi: key `laras:heartbeat:{platform}:{username}` dengan TTL dinamis (25s).
+    - Pengecekan status online instan di memori Redis tanpa query disk database berulang.
+  - Modul baru `realtime/` (`RealtimeModule`, `RealtimeGateway` `@WebSocketGateway` namespace `/realtime`):
+    - Listener event heartbeat `client:heartbeat` dari klien.
+    - Penanganan koneksi & diskoneksi pengguna, penempatan ke room `room:user:{username}` dan `room:superadmin`.
+    - Mekanisme instan `emitForceLogout` via event WebSocket `session_kicked` dan broadcast pembaruan status `user_status_changed`.
+  - Integrasi di `UserLogService`:
+    - Saat login: mendaftarkan heartbeat di Redis dan broadcast online status.
+    - Saat kick session: menghapus heartbeat di Redis, memancarkan sinyal `session_kicked` seketika ke socket user, dan broadcast offline status ke panel Super Admin.
+- **Super Admin Panel (`superadmin-sb`)**:
+  - Helper WebSocket `lib/socket.ts` menggunakan `socket.io-client` dengan auto-reconnect dan penanganan event `session_kicked`.
+  - `lib/auth-context.tsx`: Pengiriman periodik heartbeat Redis via WebSocket (tiap 10 detik).
+  - `app/(dashboard)/user-logs/page.tsx`: Listener event `user_status_changed` via WebSocket untuk penyegaran data otomatis secara realtime tanpa reload halaman.
+- **Pengujian & Verifikasi**:
+  - `backend-sb`: `npx tsc --noEmit` & `npx jest` (13 suites, 37 test passed).
+  - `superadmin-sb`: `npx tsc --noEmit` & `npm run build` (14 static pages passed).
+
+---
+
 ## 2026-10-28 (siang) · Antigravity — Deduplikasi User Log & Otomatisasi Kick Session (Force Logout ke Login)
 
 - **Backend API (`backend-sb`)**:

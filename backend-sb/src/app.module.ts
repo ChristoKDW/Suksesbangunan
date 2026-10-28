@@ -37,6 +37,8 @@ import { AsetModule } from './aset/aset.module.js';
 import { LaporanMasalahModule } from './laporan-masalah/laporan-masalah.module.js';
 import { SuperAdminModule } from './super-admin/super-admin.module.js';
 import { UserLogModule } from './user-log/user-log.module.js';
+import { RedisModule } from './redis/redis.module.js';
+import { RealtimeModule } from './realtime/realtime.module.js';
 
 @Module({
   imports: [
@@ -107,6 +109,8 @@ import { UserLogModule } from './user-log/user-log.module.js';
     LaporanMasalahModule,
     SuperAdminModule,
     UserLogModule,
+    RedisModule,
+    RealtimeModule,
   ],
   providers: [
     {
