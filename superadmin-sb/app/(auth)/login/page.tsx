@@ -7,16 +7,20 @@ import { toast } from "@/lib/swal"
 
 export default function LoginPage() {
   const { login } = useSuperAdminAuth()
-  const [username, setUsername] = useState("superadmin")
-  const [password, setPassword] = useState("admin123")
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!username.trim() || !password) {
+      toast("Masukkan username dan password Anda", "warning")
+      return
+    }
     setLoading(true)
     try {
-      await login(username, password)
+      await login(username.trim(), password)
       await toast("Kode OTP verifikasi telah dikirimkan ke email resmi Anda", "info")
     } catch (err: any) {
       toast(err.message || "Gagal masuk, periksa kredensial Anda", "error")

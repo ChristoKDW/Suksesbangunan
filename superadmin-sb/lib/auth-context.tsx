@@ -58,33 +58,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (username: string, password?: string): Promise<LoginChallengeResponse> => {
-      try {
-        const res = await api.post<LoginChallengeResponse>("/super-admin/auth/login", {
-          username,
-          password,
-        })
+      const res = await api.post<LoginChallengeResponse>("/super-admin/auth/login", {
+        username: username.trim(),
+        password,
+      })
 
-        if (res && res.challengeToken) {
-          setChallenge(res)
-          sessionStorage.setItem("sa_challenge", JSON.stringify(res))
-          router.push("/verify-email-authenticator")
-          return res
-        }
-        throw new Error("Respon autentikasi tidak valid")
-      } catch (err: any) {
-        console.warn("API login failed, falling back to local challenge:", err)
-        // Fallback challenge if backend is unreachable
-        const fallbackChallenge: LoginChallengeResponse = {
-          step: "OTP_REQUIRED",
-          challengeToken: "challenge-" + Date.now(),
-          emailMasked: "o***r@suksesbangunindo.com",
-          expiresInSeconds: 300,
-        }
-        setChallenge(fallbackChallenge)
-        sessionStorage.setItem("sa_challenge", JSON.stringify(fallbackChallenge))
+      if (res && res.challengeToken) {
+        setChallenge(res)
+        sessionStorage.setItem("sa_challenge", JSON.stringify(res))
         router.push("/verify-email-authenticator")
-        return fallbackChallenge
+        return res
       }
+      throw new Error("Respon autentikasi tidak valid dari server")
     },
     [router]
   )
@@ -110,52 +95,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const verifyEmailOtp = useCallback(
     async (challengeToken: string, otp: string) => {
-      try {
-        const res = await api.post<{ accessToken: string; user: SuperAdminUser }>(
-          "/super-admin/auth/verify-otp",
-          {
-            challengeToken,
-            otp,
-          }
-        )
-
-        if (res && res.accessToken) {
-          localStorage.setItem("superAdminToken", res.accessToken)
-          localStorage.setItem("superAdminUser", JSON.stringify(res.user))
-          document.cookie = `superAdminToken=${res.accessToken}; path=/; max-age=86400; SameSite=Strict`
-
-          setToken(res.accessToken)
-          setUser(res.user)
-          setChallenge(null)
-          sessionStorage.removeItem("sa_challenge")
-
-          router.replace("/")
-          return
+      const res = await api.post<{ accessToken: string; user: SuperAdminUser }>(
+        "/super-admin/auth/verify-otp",
+        {
+          challengeToken,
+          otp: otp.trim(),
         }
-      } catch (err: any) {
-        // Fallback testing: allow 123456 or 999999
-        if (otp === "123456" || otp === "999999") {
-          await loginHardcoded("superadmin")
-          return
-        }
-        throw err
+      )
+
+      if (res && res.accessToken) {
+        localStorage.setItem("superAdminToken", res.accessToken)
+        localStorage.setItem("superAdminUser", JSON.stringify(res.user))
+        document.cookie = `superAdminToken=${res.accessToken}; path=/; max-age=86400; SameSite=Strict`
+
+        setToken(res.accessToken)
+        setUser(res.user)
+        setChallenge(null)
+        sessionStorage.removeItem("sa_challenge")
+
+        router.replace("/")
+        return
       }
+      throw new Error("Verifikasi OTP gagal")
     },
-    [loginHardcoded, router]
+    [router]
   )
 
   const resendEmailOtp = useCallback(async (challengeToken: string) => {
-    try {
-      const res = await api.post<{ message: string; challengeToken: string }>(
-        "/super-admin/auth/resend-otp",
-        {
-          challengeToken,
-        }
-      )
-      return res
-    } catch {
-      return { message: "Kode baru telah dikirimkan ke email resmi Anda", challengeToken }
-    }
+    const res = await api.post<{ message: string; challengeToken: string; emailMasked?: string }>(
+      "/super-admin/auth/resend-otp",
+      {
+        challengeToken,
+      }
+    )
+    return res
   }, [])
 
   const logout = useCallback(() => {

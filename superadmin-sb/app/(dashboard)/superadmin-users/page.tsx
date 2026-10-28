@@ -198,6 +198,9 @@ export default function SuperAdminUsersPage() {
     setIsEditModalOpen(true)
   }
 
+  const PASSWORD_REGEX =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^_\-.~+=#<>])[A-Za-z\d@$!%*?&#^_\-.~+=#<>]{8,}$/
+
   // Submit Create User
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -212,8 +215,10 @@ export default function SuperAdminUsersPage() {
       return
     }
 
-    if (formData.password.length < 8) {
-      showWarning("Password minimal 8 karakter dengan kombinasi angka & simbol!")
+    if (!PASSWORD_REGEX.test(formData.password)) {
+      showWarning(
+        "Password minimal 8 karakter dan harus kombinasi huruf besar, huruf kecil, angka, dan karakter khusus (@$!%*?&#^_-.~+=#<>)!"
+      )
       return
     }
 
@@ -224,34 +229,18 @@ export default function SuperAdminUsersPage() {
 
     setSubmitting(true)
     try {
-      try {
-        await api.post("/super-admin/users", {
-          nama: formData.nama.trim(),
-          username: formData.username.trim().toLowerCase(),
-          email: formData.email.trim() || undefined,
-          password: formData.password,
-          role: formData.role,
-          isActive: formData.isActive,
-        })
-      } catch (err) {
-        console.warn("API post failed, saving locally:", err)
-      }
-
-      // Update local state
-      const newUser: SuperAdminUserItem = {
-        idUser: users.length > 0 ? Math.max(...users.map((u) => u.idUser)) + 1 : 1,
+      await api.post("/super-admin/users", {
         nama: formData.nama.trim(),
         username: formData.username.trim().toLowerCase(),
-        email: formData.email.trim() || `${formData.username.trim().toLowerCase()}@laras.id`,
+        email: formData.email.trim() || undefined,
+        password: formData.password,
         role: formData.role,
         isActive: formData.isActive,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
+      })
 
-      setUsers([newUser, ...users])
+      await fetchUsers()
       setIsCreateModalOpen(false)
-      showSuccess(`Pengguna Super Admin "${newUser.nama}" berhasil ditambahkan!`, "Berhasil Dibuat")
+      showSuccess(`Pengguna Super Admin "${formData.nama}" berhasil ditambahkan!`, "Berhasil Dibuat")
     } catch (err: any) {
       showError(err.message || "Gagal membuat pengguna baru")
     } finally {
@@ -269,8 +258,10 @@ export default function SuperAdminUsersPage() {
       return
     }
 
-    if (formData.password && formData.password.length < 8) {
-      showWarning("Password minimal 8 karakter kombinasi angka & simbol!")
+    if (formData.password && !PASSWORD_REGEX.test(formData.password)) {
+      showWarning(
+        "Password minimal 8 karakter dan harus kombinasi huruf besar, huruf kecil, angka, dan karakter khusus (@$!%*?&#^_-.~+=#<>)!"
+      )
       return
     }
 
@@ -281,39 +272,19 @@ export default function SuperAdminUsersPage() {
 
     setSubmitting(true)
     try {
-      try {
-        const updatePayload: Record<string, any> = {
-          nama: formData.nama.trim(),
-          username: formData.username.trim().toLowerCase(),
-          email: formData.email.trim() || undefined,
-          role: formData.role,
-          isActive: formData.isActive,
-        }
-        if (formData.password) {
-          updatePayload.password = formData.password
-        }
-        await api.patch(`/super-admin/users/${selectedUser.idUser}`, updatePayload)
-      } catch (err) {
-        console.warn("API patch failed, updating locally:", err)
+      const updatePayload: Record<string, any> = {
+        nama: formData.nama.trim(),
+        username: formData.username.trim().toLowerCase(),
+        email: formData.email.trim() || undefined,
+        role: formData.role,
+        isActive: formData.isActive,
       }
+      if (formData.password) {
+        updatePayload.password = formData.password
+      }
+      await api.patch(`/super-admin/users/${selectedUser.idUser}`, updatePayload)
 
-      // Update local state
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.idUser === selectedUser.idUser
-            ? {
-                ...u,
-                nama: formData.nama.trim(),
-                username: formData.username.trim().toLowerCase(),
-                email: formData.email.trim() || u.email,
-                role: formData.role,
-                isActive: formData.isActive,
-                updatedAt: new Date().toISOString(),
-              }
-            : u
-        )
-      )
-
+      await fetchUsers()
       setIsEditModalOpen(false)
       showSuccess(`Pengguna "${formData.nama}" berhasil diperbarui!`, "Perubahan Disimpan")
     } catch (err: any) {
@@ -342,13 +313,8 @@ export default function SuperAdminUsersPage() {
     if (!confirmed) return
 
     try {
-      try {
-        await api.delete(`/super-admin/users/${user.idUser}`)
-      } catch (err) {
-        console.warn("API delete failed, removing locally:", err)
-      }
-
-      setUsers((prev) => prev.filter((u) => u.idUser !== user.idUser))
+      await api.delete(`/super-admin/users/${user.idUser}`)
+      await fetchUsers()
       showSuccess(`Akun Super Admin "${user.nama}" berhasil dihapus dari sistem.`, "Pengguna Dihapus")
     } catch (err: any) {
       showError(err.message || "Gagal menghapus pengguna")
@@ -715,6 +681,9 @@ export default function SuperAdminUsersPage() {
                       {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                    Wajib gabungan huruf besar, kecil, angka, dan simbol (cth: Admin#2026)
+                  </p>
                 </div>
 
                 <div>
@@ -887,6 +856,9 @@ export default function SuperAdminUsersPage() {
                         {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
                     </div>
+                    <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                      Min. 8 karakter gabungan huruf besar, kecil, angka & simbol
+                    </p>
                   </div>
 
                   <div>

@@ -6,6 +6,27 @@
 
 ---
 
+## 2026-10-28 (siang) · Antigravity — Perbaikan Login Super Admin (Penghapusan Fallback Email Lama) & Sinkronisasi Obsidian Vault
+
+- **Super Admin Panel (`superadmin-sb`)**:
+  - `lib/auth-context.tsx`:
+    - Menghapus blok fallback mock challenge pada catch login (`emailMasked: "o***r@suksesbangunindo.com"`). Seluruh error dari API backend (misal kredensial salah, akun dinonaktifkan) kini diteruskan transparan ke pengguna.
+    - Menghapus fallback hardcoded pada `verifyEmailOtp` dan `resendEmailOtp`.
+  - `app/(auth)/login/page.tsx`:
+    - Mengosongkan nilai inisialisasi default `username` dan `password` (dari sebelumnya terisi `superadmin`/`admin123`) agar pengguna memasukkan akun yang benar.
+  - `app/(dashboard)/superadmin-users/page.tsx`:
+    - Menyelaraskan validasi password dengan aturan DTO backend (`PASSWORD_REGEX` kombinasi huruf besar, kecil, angka, dan karakter khusus min. 8 karakter).
+    - Menambahkan petunjuk format password pada form pembuatan dan pengeditan user.
+    - Menghilangkan silent try-catch pada tambah, edit, dan hapus user super admin; mengintegrasikan otomatis pemanggilan `fetchUsers()` dari database VPS.
+- **Obsidian Vault & Dokumentasi**:
+  - Membuat catatan rangkuman sistem di Obsidian Vault: `RINGKASAN_PERUBAHAN_SUPERADMIN.md`.
+  - Memverifikasi status branch `origin/main` pada GitHub (tidak ada commit baru yang tertinggal di remote).
+- **Pengujian & Verifikasi**:
+  - `cd superadmin-sb && npx tsc --noEmit && npm run build` lulus (14 static pages).
+  - `cd backend-sb && npx tsc --noEmit -p tsconfig.build.json && npx jest` lulus (13 suites, 37 test).
+
+---
+
 ## 2026-10-28 (pagi) · Antigravity — Fitur User Log & Pemantauan Status Akses Pengguna
 
 - **Backend API (`backend-sb`)**:
