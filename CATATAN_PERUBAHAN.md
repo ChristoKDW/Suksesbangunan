@@ -8,6 +8,10 @@
 
 ## 2026-10-28 (siang) · Antigravity — Perbaikan Login Super Admin (Penghapusan Fallback Email Lama) & Sinkronisasi Obsidian Vault
 
+- **Backend API (`backend-sb`)**:
+  - `src/super-admin/super-admin-auth.service.ts`:
+    - Menambahkan timeout pada transporter nodemailer (`connectionTimeout: 5000`, `greetingTimeout: 5000`, `socketTimeout: 10000`).
+    - Menjadikan pengiriman email OTP bersifat asinkron (`sendOtpEmail().catch(...)`) pada endpoint `login` dan `resendOtp` agar tidak menahan siklus HTTP request dan mencegah 504 Gateway Time-out.
 - **Super Admin Panel (`superadmin-sb`)**:
   - `lib/auth-context.tsx`:
     - Menghapus blok fallback mock challenge pada catch login (`emailMasked: "o***r@suksesbangunindo.com"`). Seluruh error dari API backend (misal kredensial salah, akun dinonaktifkan) kini diteruskan transparan ke pengguna.

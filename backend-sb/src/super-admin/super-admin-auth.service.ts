@@ -39,12 +39,15 @@ export class SuperAdminAuthService {
   ) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get('SMTP_HOST', 'smtp.gmail.com'),
-      port: this.configService.get('SMTP_PORT', 587),
+      port: Number(this.configService.get('SMTP_PORT', 587)),
       secure: false,
       auth: {
         user: this.configService.get('SMTP_USER'),
         pass: this.configService.get('SMTP_PASS'),
       },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 10000,
     });
   }
 
@@ -158,8 +161,10 @@ export class SuperAdminAuthService {
 
     this.challenges.set(challengeToken, challenge);
 
-    // Kirim email OTP
-    await this.sendOtpEmail(email, user.nama, otp);
+    // Kirim email OTP secara asinkron di latar belakang agar respon login instan
+    this.sendOtpEmail(email, user.nama, otp).catch((err) => {
+      console.error(`[SuperAdminAuth] Gagal kirim email OTP ke ${email}:`, err);
+    });
 
     return {
       step: 'OTP_REQUIRED',
@@ -243,7 +248,10 @@ export class SuperAdminAuthService {
     challenge.expiresAt = new Date(Date.now() + 5 * 60 * 1000);
     challenge.attempts = 0;
 
-    await this.sendOtpEmail(challenge.email, challenge.nama, newOtp);
+    // Kirim email OTP di latar belakang
+    this.sendOtpEmail(challenge.email, challenge.nama, newOtp).catch((err) => {
+      console.error(`[SuperAdminAuth] Gagal kirim ulang email OTP ke ${challenge.email}:`, err);
+    });
 
     return {
       message: 'Kode verifikasi baru berhasil dikirimkan ke email Anda',
