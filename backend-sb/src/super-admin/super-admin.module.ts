@@ -15,9 +15,11 @@ import { SuperAdminAuthService } from './super-admin-auth.service.js';
 import { SuperAdminAuthController } from './super-admin-auth.controller.js';
 import { SuperAdminInsightsService } from './super-admin-insights.service.js';
 import { SuperAdminInsightsController } from './super-admin-insights.controller.js';
+import { UserLogModule } from '../user-log/user-log.module.js';
 
 @Module({
   imports: [
+    UserLogModule,
     TypeOrmModule.forFeature([
       User,
       Karyawan,

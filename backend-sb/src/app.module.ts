@@ -36,6 +36,7 @@ import { AturanPengajuanModule } from './aturan-pengajuan/aturan-pengajuan.modul
 import { AsetModule } from './aset/aset.module.js';
 import { LaporanMasalahModule } from './laporan-masalah/laporan-masalah.module.js';
 import { SuperAdminModule } from './super-admin/super-admin.module.js';
+import { UserLogModule } from './user-log/user-log.module.js';
 
 @Module({
   imports: [
@@ -105,6 +106,7 @@ import { SuperAdminModule } from './super-admin/super-admin.module.js';
     AsetModule,
     LaporanMasalahModule,
     SuperAdminModule,
+    UserLogModule,
   ],
   providers: [
     {

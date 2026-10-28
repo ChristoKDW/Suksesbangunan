@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   LifeBuoy,
   UserCog,
+  Users,
 } from "lucide-react"
 import { useSuperAdminAuth } from "@/lib/auth-context"
 import { confirmDialog } from "@/lib/swal"
@@ -42,6 +43,7 @@ const MENU_SECTIONS: MenuSection[] = [
     items: [
       { title: "Forensic Audit Trail", href: "/audit-trail", icon: ShieldAlert },
       { title: "Kelola User Superadmin", href: "/superadmin-users", icon: UserCog },
+      { title: "User Log & Status Akses", href: "/user-logs", icon: Users },
       { title: "Laporan Masalah", href: "/issue-reports", icon: LifeBuoy },
       { title: "Emergency Overrides", href: "/emergency-control", icon: SlidersHorizontal },
     ],

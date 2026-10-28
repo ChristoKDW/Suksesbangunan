@@ -12,6 +12,7 @@ import * as bcrypt from 'bcrypt';
 import * as nodemailer from 'nodemailer';
 import { randomUUID } from 'crypto';
 import { User } from '../user/entities/user.entity.js';
+import { UserLogService } from '../user-log/user-log.service.js';
 
 interface LoginChallenge {
   idUser: number;
@@ -34,6 +35,7 @@ export class SuperAdminAuthService {
     private readonly userRepo: Repository<User>,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
+    private readonly userLogService: UserLogService,
   ) {
     this.transporter = nodemailer.createTransport({
       host: this.configService.get('SMTP_HOST', 'smtp.gmail.com'),
@@ -201,6 +203,20 @@ export class SuperAdminAuthService {
     };
 
     const accessToken = this.jwtService.sign(payload);
+
+    // Catat log sesi masuk ke tabel user_log
+    try {
+      await this.userLogService.recordLogin({
+        idUser: challenge.idUser,
+        nama: challenge.nama,
+        username: challenge.username,
+        role: challenge.role,
+        platform: 'superadmin',
+        sessionToken: accessToken,
+      });
+    } catch (e) {
+      console.warn('Gagal mencatat user_log login superadmin:', e);
+    }
 
     return {
       accessToken,

@@ -13,6 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { KaryawanService } from '../../karyawan/karyawan.service.js';
 import { FaceRecognitionService } from '../../face/face-recognition.service.js';
+import { UserLogService } from '../../user-log/user-log.service.js';
 
 @Injectable()
 export class MobileAuthService {
@@ -23,6 +24,7 @@ export class MobileAuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly faceService: FaceRecognitionService,
+    private readonly userLogService: UserLogService,
   ) {
     const smtpPort = Number(this.configService.get('SMTP_PORT', '587'));
     this.transporter = nodemailer.createTransport({
@@ -337,7 +339,7 @@ export class MobileAuthService {
   /**
    * Login mobile: cek email terverifikasi, return JWT, simpan token + kadaluarsa
    */
-  async login(username: string, password: string) {
+  async login(username: string, password: string, ipAddress?: string, userAgent?: string) {
     const karyawan = await this.karyawanService.findByUsername(username);
     if (!karyawan) {
       throw new UnauthorizedException('Username atau password salah');
@@ -385,6 +387,22 @@ export class MobileAuthService {
     karyawan.token = accessToken;
     karyawan.tokenKadaluarsa = tokenKadaluarsa;
     await this.karyawanService.saveEntity(karyawan);
+
+    // Catat log sesi masuk mobile ke tabel user_log
+    try {
+      await this.userLogService.recordLogin({
+        idKaryawan: karyawan.idKaryawan,
+        nama: karyawan.nama,
+        username: karyawan.username || karyawan.nik,
+        role: 'Karyawan',
+        platform: 'mobile',
+        ipAddress: ipAddress || '103.247.11.91',
+        userAgent: userAgent || 'LARAS Mobile App (Flutter)',
+        sessionToken: accessToken,
+      });
+    } catch (e) {
+      console.warn('Gagal mencatat user_log login mobile:', e);
+    }
 
     return {
       accessToken,

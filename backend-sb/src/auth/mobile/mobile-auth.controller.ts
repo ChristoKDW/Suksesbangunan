@@ -9,6 +9,8 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Ip,
+  Headers,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -70,8 +72,12 @@ export class MobileAuthController {
 
   @Post('login')
   @ApiOperation({ summary: 'Login karyawan (mobile)' })
-  login(@Body() dto: LoginMobileDto) {
-    return this.mobileAuthService.login(dto.username, dto.password);
+  login(
+    @Body() dto: LoginMobileDto,
+    @Ip() ip?: string,
+    @Headers('user-agent') userAgent?: string,
+  ) {
+    return this.mobileAuthService.login(dto.username, dto.password, ip, userAgent);
   }
 
   @Post('forgot-password/request')

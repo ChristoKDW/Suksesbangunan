@@ -10,9 +10,11 @@ import { MobileAuthController } from './mobile/mobile-auth.controller.js';
 import { JwtMobileStrategy } from './mobile/jwt-mobile.strategy.js';
 import { UserModule } from '../user/user.module.js';
 import { KaryawanModule } from '../karyawan/karyawan.module.js';
+import { UserLogModule } from '../user-log/user-log.module.js';
 
 @Module({
   imports: [
+    UserLogModule,
     PassportModule.register({ defaultStrategy: 'jwt-web' }),
     // Kita pakai JwtModule.registerAsync untuk web secret sebagai default
     // Mobile strategy menggunakan secret sendiri via constructor

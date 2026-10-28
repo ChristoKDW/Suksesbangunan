@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Req, Headers, Ip } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { WebAuthService } from './web-auth.service.js';
 import { LoginWebDto } from './dto/login-web.dto.js';
@@ -10,7 +10,11 @@ export class WebAuthController {
 
   @Post('login')
   @ApiOperation({ summary: 'Login user web (Admin/HRD/SPV)' })
-  login(@Body() dto: LoginWebDto) {
-    return this.webAuthService.login(dto.username, dto.password);
+  login(
+    @Body() dto: LoginWebDto,
+    @Ip() ip?: string,
+    @Headers('user-agent') userAgent?: string,
+  ) {
+    return this.webAuthService.login(dto.username, dto.password, ip, userAgent);
   }
 }

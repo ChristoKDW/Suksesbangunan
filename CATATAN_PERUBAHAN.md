@@ -6,6 +6,30 @@
 
 ---
 
+## 2026-10-28 (pagi) · Antigravity — Fitur User Log & Pemantauan Status Akses Pengguna
+
+- **Backend API (`backend-sb`)**:
+  - Modul baru `user-log/` (`UserLogModule`, `UserLogService`, `UserLogController`, entitas `UserLog` tabel `user_log`):
+    - Menyimpan log riwayat login seluruh platform (Web Admin, Mobile App Karyawan, Super Admin).
+    - Kolom riil: `id_log`, `id_user`, `id_karyawan`, `nama`, `username`, `role`, `platform`, `ip_address`, `user_agent`, `device_info`, `is_online`, `login_at`, `last_active_at`, `logout_at`, `session_token`.
+    - Endpoint `GET /super-admin/user-logs`: Riwayat login dinamis dengan filter pencarian teks, platform, dan status online/offline.
+    - Endpoint `GET /super-admin/user-logs/stats`: Statistik ringkas sesi aktif saat ini, login hari ini, sesi mobile, dan web admin.
+    - Endpoint `POST /super-admin/user-logs/:id/kick`: Fitur putuskan sesi paksa (*Force Logout / Kick Session*).
+  - Integrasi pencatatan otomatis saat login berhasil pada `WebAuthService`, `MobileAuthService`, dan `SuperAdminAuthService`.
+- **Super Admin Panel (`superadmin-sb`)**:
+  - Halaman baru `/user-logs` (`app/(dashboard)/user-logs/page.tsx`):
+    - 4 Kartu Metrik: Pengguna Sedang Aktif (Online), Total Sesi Hari Ini, Sesi Mobile App, Sesi Web & Superadmin.
+    - Pencarian fleksibel (nama, username, IP, perangkat) dan filter platform serta status aktif.
+    - Tabel interaktif dengan avatar pengguna, badge role, icon platform & OS/browser, alamat IP, waktu login/logout, dan indikator status aktif (pulsing dot hijau vs abu-abu).
+    - Tombol aksi "Putuskan Sesi" (*Kick Session*) dengan konfirmasi dialog SweetAlert2.
+    - Empty state bersih tanpa data dummy.
+  - Sidebar (`components/layout/Sidebar.tsx`): Menambahkan menu "User Log & Status Akses" dengan icon `Users` di seksi `AUDIT & SECURITY`.
+- **Pengujian & Verifikasi**:
+  - Backend `npx tsc` & `npx jest` 100% lulus (13 suites, 37 test).
+  - Superadmin `npx tsc` & `npm run build` lulus (14/14 static routes prerendered).
+
+---
+
 ## 2026-10-28 (pagi) · Antigravity — Pembersihan Seluruh Data Dummy & Hardcoded (Peralihan Murni ke Data Dinamis)
 
 - **Backend API (`backend-sb/src/super-admin/super-admin-insights.service.ts`)**:
