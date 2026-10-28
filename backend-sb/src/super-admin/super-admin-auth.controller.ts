@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Headers, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { SuperAdminAuthService } from './super-admin-auth.service.js';
@@ -53,5 +53,11 @@ export class SuperAdminAuthController {
   @ApiOperation({ summary: 'Kirim ulang kode OTP Super Admin' })
   resendOtp(@Body() dto: SuperAdminResendOtpDto) {
     return this.authService.resendOtp(dto.challengeToken);
+  }
+
+  @Get('session-status')
+  @ApiOperation({ summary: 'Periksa status keaktifan sesi Super Admin secara real-time' })
+  checkSession(@Headers('authorization') authHeader?: string) {
+    return this.authService.checkSession(authHeader);
   }
 }

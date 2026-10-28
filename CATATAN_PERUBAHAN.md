@@ -6,6 +6,34 @@
 
 ---
 
+## 2026-10-28 (siang) · Antigravity — Deduplikasi User Log & Otomatisasi Kick Session (Force Logout ke Login)
+
+- **Backend API (`backend-sb`)**:
+  - `src/user-log/user-log.service.ts`:
+    - `findAll()`: Menggunakan query deduplikasi `DISTINCT ON (LOWER(l.username))` memprioritaskan sesi `is_online = true` dan `login_at` terbaru, sehingga setiap pengguna unik hanya muncul 1 kali di tabel User Log (tidak double).
+    - `recordLogin()`: Otomatis menonaktifkan sesi online sebelumnya untuk user/karyawan yang sama pada platform yang sama agar tidak meninggalkan sesi ganda.
+    - `kickSession()`: Menonaktifkan seluruh sesi online user tersebut dan, jika pengguna adalah mobile karyawan, mengosongkan `karyawan.token` dan `karyawan.tokenKadaluarsa` di database sehingga seketika 401 Unauthorized.
+    - `isUserSessionOnline()`: Helper validasi status keaktifan sesi di database.
+    - `getStats()`: Menghitung pengguna online aktif berdasarkan jumlah username unik.
+  - `src/user-log/user-log.module.ts`: Menambahkan entitas `Karyawan` ke `TypeOrmModule.forFeature`.
+  - `src/auth/web/jwt-web.strategy.ts`: Mengintegrasikan validasi status sesi `isUserSessionOnline(idUser, 'web')`. Jika sesi di-kick oleh Super Admin, seluruh rute Web Admin langsung menolak dengan 401 Unauthorized.
+  - `src/super-admin/super-admin-auth.service.ts` & `super-admin-auth.controller.ts`:
+    - Endpoint baru `GET /super-admin/auth/session-status` untuk pengecekan status sesi real-time.
+  - `src/auth/web/web-auth.controller.ts`:
+    - Endpoint baru `GET /auth/web/session-status` diproteksi `JwtWebGuard` untuk polling sesi Web Admin.
+- **Super Admin Panel (`superadmin-sb`)**:
+  - `lib/auth-context.tsx`: Menambahkan Session Watchdog interval (heartbeat 5 detik) ke `/super-admin/auth/session-status`. Bila status sesi menjadi 401 (di-kick), token otomatis dibersihkan dan dialihkan ke `/login?kicked=1`.
+  - `app/(dashboard)/user-logs/page.tsx`: Penanganan tombol "Putuskan Sesi": jika akun yang diputuskan adalah sesi akun yang sedang aktif di tab tersebut, seketika dialihkan ke `/login?kicked=1`; jika user lain, sesi dicabut dan data disegarkan.
+  - `app/(auth)/login/page.tsx`: Menampilkan alert peringatan khusus bila pengguna dialihkan akibat sesi diputuskan oleh administrator.
+- **Web Admin Panel (`frontend-sb`)**:
+  - `lib/auth-context.tsx`: Menambahkan Session Watchdog interval (8 detik) ke `auth/web/session-status`. Begitu sesi diputus oleh Super Admin, browser Web Admin otomatis memanggil `logout()` dan kembali ke halaman `/login`.
+- **Pengujian & Verifikasi**:
+  - `backend-sb`: `npx tsc --noEmit` & `npx jest` (13 suites, 37 test passed).
+  - `superadmin-sb`: `npx tsc --noEmit` & `npm run build` (14 pages static prerendered).
+  - `frontend-sb`: `npx tsc --noEmit` & `npm run build` (6 pages static, 21 dynamic routes).
+
+---
+
 ## 2026-10-28 (siang) · Antigravity — Perbaikan Login Super Admin (Penghapusan Fallback Email Lama) & Sinkronisasi Obsidian Vault
 
 - **Backend API (`backend-sb`)**:

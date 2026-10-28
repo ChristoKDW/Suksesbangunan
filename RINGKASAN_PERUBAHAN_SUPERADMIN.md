@@ -9,56 +9,50 @@
 ## 1. Status Commit GitHub & Repositori
 
 - **Pemeriksaan Remote:** `git fetch origin` telah dijalankan.
-- **Hasil:** Seluruh commit pada branch `main` GitHub telah selaras dengan commit lokal dan VPS (`7e98741` dan branch terkait). Tidak ada commit tertinggal atau bercabang di GitHub.
+- **Hasil:** Seluruh commit pada branch `main` GitHub telah selaras dengan commit lokal dan VPS. Tidak ada commit tertinggal atau bercabang di GitHub.
 - **Daftar Commit Terkini:**
-  1. `fix(super-admin): hilangkan fallback email lama pada login dan perbaiki validasi user baru` (Commit baru ini)
-  2. `7e98741` `feat: tambahkan fitur user log, status akses aktif/tidak dan integrasi sidebar superadmin`
-  3. `61ec12e` `feat: hapus seluruh data dummy dan beralih ke data dinamis murni dari database`
-  4. `c8218d2` `feat: batasi akses super admin khusus tim software engineer dan update email user powtahh`
-  5. `d709a61` `fix(super-admin): tambahkan validator decorators pada dto auth superadmin`
-  6. `86d1bf0` `fix(super-admin): sesuaikan nama kolom tabel kasbon dan cicilan pada agregasi financial insights`
+  1. `feat(super-admin): deduplikasi daftar user log dan paksa logout otomatis ke halaman login saat sesi diputuskan` (Commit ini)
+  2. `bd9e812` `fix(backend): optimasi asinkron kirim email otp dan timeout nodemailer`
+  3. `da9b11f` `fix(super-admin): hilangkan fallback email lama pada login dan perbaiki validasi user baru`
+  4. `7e98741` `feat: tambahkan fitur user log, status akses aktif/tidak dan integrasi sidebar superadmin`
+  5. `61ec12e` `feat: hapus seluruh data dummy dan beralih ke data dinamis murni dari database`
+  6. `c8218d2` `feat: batasi akses super admin khusus tim software engineer dan update email user powtahh`
   7. `28d356a` `feat: aktifkan email authenticator login dan integrasi data riil dashboard superadmin`
 
 ---
 
-## 2. Analisis & Solusi Bug: Email Super Admin Lama "Nyangkut" Saat Login
+## 2. Fitur Baru: Deduplikasi User Log & Otomatisasi Kick Session (Force Logout)
 
-### Penyebab Utama (Root Cause):
-1. **Fallback Mock Challenge pada Frontend (`superadmin-sb/lib/auth-context.tsx`)**:
-   - Terdapat blok `catch (err)` pada pemanggilan endpoint `/super-admin/auth/login`.
-   - Apabila login gagal atau mendapat respon error (misal kredensial belum ada di database atau salah input), error tersebut **ditelan secara diam-diam** dan frontend membuat objek challenge lokal dengan nilai hardcoded:
-     `emailMasked: "o***r@suksesbangunindo.com"`.
-   - Hal ini membuat pengguna mengira bahwa sistem masih menggunakan email lama, padahal sebenarnya request login ditolak atau gagal.
-2. **Nilai Awal Form Login Hardcoded (`superadmin-sb/app/(auth)/login/page.tsx`)**:
-   - State form login sebelumnya terinisialisasi dengan `useState("superadmin")` dan `useState("admin123")`. Jika pengguna tidak sengaja langsung menekan tombol Masuk, kredensial default yang dikirimkan.
-3. **Penyembunyian Error Pembuatan User Baru (`superadmin-sb/app/(dashboard)/superadmin-users/page.tsx`)**:
-   - Pembuatan user baru memiliki blok `try { await api.post(...) } catch { console.warn(...) }`.
-   - Backend mewajibkan password memenuhi kriteria kuat: minimal 8 karakter dengan kombinasi huruf besar, huruf kecil, angka, dan karakter khusus (`@$!%*?&#^_-.~+=#<>`).
-   - Karena form frontend sebelumnya hanya memvalidasi `password.length < 8`, password sederhana ditolak oleh backend (400 Bad Request), namun error tersebut ditelan dan modal langsung menampilkan "Berhasil Dibuat". Akibatnya user sebenarnya belum tersimpan di database PostgreSQL.
+### A. Deduplikasi Daftar Pengguna (Tidak Ada Baris Ganda)
+- **Masalah Sebelumnya:** Setiap kali seorang pengguna (misalnya `Administrator`) login ulang, sistem menambahkan baris baru ke tabel `user_log`. Akibatnya pada tabel User Log, nama `Administrator` muncul berulang kali (misal baris jam 11.39 Online dan baris jam 11.38 Offline).
+- **Solusi yang Diterapkan:**
+  - Query backend `findAll()` diperbarui dengan `DISTINCT ON (LOWER(l.username))` yang memprioritaskan sesi `is_online = true` dan `login_at` terbaru.
+  - Setiap pengguna unik kini hanya muncul **tepat 1 baris** di daftar dengan status sesi terbarunya.
+  - Saat pengguna login baru di platform yang sama, sistem secara otomatis menonaktifkan sesi-sesi lamanya (`isOnline: false, logoutAt: new Date()`) sehingga tidak ada sesi online yang menggantung.
 
-### Solusi & Perbaikan yang Diterapkan:
-1. **Peniadaan Fallback Mock**:
-   - Seluruh blok fallback hardcoded pada `auth-context.tsx` dihapus. Respon error backend (misal "Username atau password salah") kini langsung ditampilkan secara transparan kepada pengguna.
-2. **Form Login Bersih**:
-   - State default `username` dan `password` dikosongkan (`""`) sehingga pengguna selalu memasukkan kredensial asli.
-3. **Penyelarasan Validasi Password & Respon Database**:
-   - Frontend kini memvalidasi password dengan regex yang identik dengan DTO backend (`PASSWORD_REGEX`).
-   - Teks panduan password ditampilkan secara eksplisit pada modal Tambah & Edit Pengguna.
-   - Panggilan API `POST /super-admin/users`, `PATCH /super-admin/users/:id`, dan `DELETE /super-admin/users/:id` tidak lagi menelan error. Setelah operasi berhasil, antarmuka otomatis memanggil `fetchUsers()` untuk menyinkronkan data langsung dari database VPS.
+### B. Otomatisasi Tombol "Putuskan Sesi" (Kick Session ke Halaman Login)
+- **Masalah Sebelumnya:** Saat tombol "Putuskan Sesi" ditekan, status di tabel memang berubah menjadi offline, namun pengguna di browser lain masih tetap berada di dalam panel karena token JWT masih valid dan tidak ada mekanisme penolakan sesi di server.
+- **Solusi yang Diterapkan:**
+  1. **Revokasi di Sisi Server (Backend Guards & Strategy)**:
+     - `JwtWebStrategy` (Web Admin) kini secara aktif memeriksa status online di tabel `user_log` via `isUserSessionOnline(idUser, 'web')`. Jika sesi telah di-kick, seluruh request API Web Admin langsung ditolak dengan **HTTP 401 Unauthorized**.
+     - Untuk Mobile App Karyawan: saat sesi di-kick, token pada entitas `Karyawan` langsung dihapus (`null`), menyebabkan request aplikasi mobile seketika 401 dan otomatis logout.
+     - Endpoint baru real-time session status:
+       - `GET /super-admin/auth/session-status`
+       - `GET /auth/web/session-status`
+  2. **Session Watchdog Heartbeat (Frontend)**:
+     - Di `superadmin-sb/lib/auth-context.tsx`, dipasang poller interval setiap 5 detik. Begitu sesi diputuskan, browser langsung mendeteksi status 401, membersihkan storage/cookie, dan otomatis me-redirect pengguna ke `/login?kicked=1`.
+     - Di `frontend-sb/lib/auth-context.tsx` (Web Admin), dipasang poller interval setiap 8 detik. Begitu sesi diputuskan, browser otomatis memanggil `logout()` dan me-redirect ke `/login`.
+     - Di `superadmin-sb/app/(dashboard)/user-logs/page.tsx`, jika pengguna menekan "Putuskan Sesi" pada akunnya sendiri, sistem seketika logout dan mengalihkan ke halaman login.
+  3. **Notifikasi User-Friendly**:
+     - Halaman login kini menampilkan alert banner merah khusus: *"Sesi Anda telah diakhiri atau diputuskan oleh Super Administrator. Silakan login kembali."*
 
 ---
 
-## 3. Fitur Utama yang Telah Aktif di Produksi
-
-1. **Email Authenticator (2-Step Verification)**:
-   - Login Super Admin dilindungi kode OTP 6 digit yang dikirimkan ke email resmi masing-masing user.
-   - User `powtahh` telah terhubung ke `waisalqarni1712@gmail.com`.
-   - Hak akses Super Admin dibatasi ketat untuk Software Engineer, DevOps, Security Auditor, dan Super Admin eksekutif.
-2. **Pusat Log Pengguna (`/user-logs`)**:
-   - Pemantauan real-time status online/offline pengguna dari Web Admin, Mobile App Karyawan, dan Super Admin Panel.
-   - Metrik statistik sesi, pencarian multi-parameter, dan kemampuan *Force Logout / Kick Session*.
-3. **Data Dinamis Murni (Zero Mock Data)**:
-   - Seluruh halaman: *Financial Insights*, *Forensic Audit Trail*, *Emergency Control*, dan *Pusat Kendala* bersumber murni dari database PostgreSQL VPS tanpa data tiruan.
+## 3. Analisis Bug: Email Super Admin Lama "Nyangkut" Saat Login (Terselesaikan)
+- Dihapuskannya silent catch fallback `o***r@suksesbangunindo.com` di frontend.
+- Form login dibersihkan dari default username/password dummy.
+- Validasi password diselaraskan dengan backend regex kombinasi simbol & angka.
+- Pengiriman email OTP di backend diubah menjadi asinkron di latar belakang sehingga login berlangsung instan tanpa delay SMTP IPv6.
 
 ---
 

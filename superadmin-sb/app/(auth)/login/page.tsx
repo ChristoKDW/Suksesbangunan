@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { ShieldAlert, ArrowRight, Lock, User, Eye, EyeOff, ShieldCheck, Mail } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ShieldAlert, ArrowRight, Lock, User, Eye, EyeOff, ShieldCheck, Mail, AlertTriangle } from "lucide-react"
 import { useSuperAdminAuth } from "@/lib/auth-context"
 import { toast } from "@/lib/swal"
 
@@ -11,6 +11,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [kickReason, setKickReason] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get("kicked") === "1") {
+        setKickReason("Sesi Anda telah diputuskan oleh Super Administrator. Silakan login kembali.")
+      } else if (params.get("expired") === "1") {
+        setKickReason("Sesi login Anda telah berakhir. Silakan login kembali.")
+      }
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,6 +60,13 @@ export default function LoginPage() {
             <span>Autentikasi 2-Langkah Aktif (Email OTP)</span>
           </div>
         </div>
+
+        {kickReason && (
+          <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-400 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in duration-200">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-600" />
+            <span>{kickReason}</span>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

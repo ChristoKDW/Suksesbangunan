@@ -259,4 +259,34 @@ export class SuperAdminAuthService {
       expiresInSeconds: 300,
     };
   }
+
+  async checkSession(authHeader?: string) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Token autentikasi tidak ditemukan');
+    }
+    const token = authHeader.substring(7).trim();
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(token);
+    } catch {
+      throw new UnauthorizedException('Token tidak valid atau kedaluwarsa');
+    }
+
+    const idUser = payload.sub || payload.idUser;
+    const isOnline = await this.userLogService.isUserSessionOnline(idUser, 'superadmin');
+    if (!isOnline) {
+      throw new UnauthorizedException('Sesi Super Admin telah diputuskan oleh Administrator');
+    }
+
+    return {
+      active: true,
+      user: {
+        idUser,
+        username: payload.username,
+        email: payload.email,
+        role: payload.role,
+        isSuperAdmin: true,
+      },
+    };
+  }
 }

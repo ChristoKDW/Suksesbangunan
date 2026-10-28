@@ -17,6 +17,7 @@ import {
   Activity,
 } from "lucide-react"
 import { api } from "@/lib/api"
+import { useSuperAdminAuth } from "@/lib/auth-context"
 import { confirmDialog, showSuccess, toast } from "@/lib/swal"
 import { SkeletonCard, SkeletonTable } from "@/components/ui/skeleton"
 
@@ -37,6 +38,7 @@ interface UserLogItem {
 }
 
 export default function UserLogsPage() {
+  const { user } = useSuperAdminAuth()
   const [logs, setLogs] = useState<UserLogItem[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -82,7 +84,7 @@ export default function UserLogsPage() {
 
   const handleKickSession = async (log: UserLogItem) => {
     const ok = await confirmDialog(
-      `Apakah Anda yakin ingin memutuskan sesi aktif untuk "${log.nama}" (${log.username})? Pengguna akan dipaksa keluar.`,
+      `Apakah Anda yakin ingin memutuskan sesi aktif untuk "${log.nama}" (@${log.username})? Pengguna akan dipaksa keluar ke halaman login.`,
       {
         title: "Putuskan Sesi Pengguna",
         confirmText: "Ya, Putuskan Sesi",
@@ -93,8 +95,22 @@ export default function UserLogsPage() {
     if (ok) {
       try {
         await api.post(`/super-admin/user-logs/${log.idLog}/kick`, {})
-        showSuccess(`Sesi untuk ${log.nama} berhasil diputuskan.`, "Sesi Diputus")
-        fetchData()
+
+        // Jika akun yang di-kick adalah akun yang sedang digunakan saat ini di browser ini
+        if (
+          user &&
+          user.username?.toLowerCase() === log.username.toLowerCase() &&
+          log.platform === "superadmin"
+        ) {
+          localStorage.removeItem("superAdminToken")
+          localStorage.removeItem("superAdminUser")
+          document.cookie = "superAdminToken=; path=/; max-age=0; SameSite=Strict"
+          window.location.href = "/login?kicked=1"
+          return
+        }
+
+        showSuccess(`Sesi untuk ${log.nama} (@${log.username}) berhasil diputuskan. Pengguna akan dikeluarkan ke halaman login.`, "Sesi Diputus")
+        await fetchData()
       } catch (e: any) {
         toast(e.message || "Gagal memutuskan sesi", "error")
       }

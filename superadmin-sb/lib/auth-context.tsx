@@ -56,6 +56,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false)
   }, [])
 
+  // Real-time Session Watchdog: deteksi otomatis jika sesi diputuskan oleh Super Admin
+  useEffect(() => {
+    if (!token || !user) return
+
+    const checkInterval = setInterval(async () => {
+      try {
+        await api.get("/super-admin/auth/session-status")
+      } catch (err: any) {
+        if (err.status === 401) {
+          console.warn("[AuthContext] Sesi Super Admin telah diputuskan oleh server:", err)
+          localStorage.removeItem("superAdminToken")
+          localStorage.removeItem("superAdminUser")
+          document.cookie = "superAdminToken=; path=/; max-age=0; SameSite=Strict"
+          setToken(null)
+          setUser(null)
+          window.location.href = "/login?kicked=1"
+        }
+      }
+    }, 5000)
+
+    return () => clearInterval(checkInterval)
+  }, [token, user])
+
   const login = useCallback(
     async (username: string, password?: string): Promise<LoginChallengeResponse> => {
       const res = await api.post<LoginChallengeResponse>("/super-admin/auth/login", {

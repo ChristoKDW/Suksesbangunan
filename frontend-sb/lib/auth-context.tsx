@@ -86,6 +86,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/login")
   }, [router])
 
+  // Session Watchdog: periksa keaktifan sesi web secara berkala ke backend
+  useEffect(() => {
+    if (!token || !user) return
+
+    const sessionInterval = setInterval(async () => {
+      try {
+        await api.get("auth/web/session-status")
+      } catch (err: any) {
+        if (err.status === 401) {
+          console.warn("[AuthContext Web] Sesi diputuskan oleh Super Administrator:", err)
+          logout()
+        }
+      }
+    }, 8000)
+
+    return () => clearInterval(sessionInterval)
+  }, [token, user, logout])
+
   return (
     <AuthContext.Provider
       value={{
