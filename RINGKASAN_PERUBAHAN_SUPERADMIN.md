@@ -31,7 +31,30 @@
 
 ---
 
-## 2. Riwayat Pembaruan Sebelumnya
+## 2. Rincian Data Karyawan & Payroll per Departemen (Financial Insights)
+
+### A. Fitur Interaktif Modal Detail
+- Setiap baris/kartu departemen pada halaman **Financial Insights & Payroll Intelligence** (`/financial-insights`) kini dapat diklik langsung untuk menampilkan modal rincian daftar karyawan dan alokasi beban payroll.
+- Terdapat 4 ringkasan metrik khusus untuk departemen yang dipilih: Total Karyawan Aktif, Total THP Bersih, Total Beban Lembur, dan Piutang Kasbon Terpotong.
+- Fitur pencarian instan berdasarkan Nama, NIK, Jabatan, dan Status Kerja karyawan.
+
+### B. Tabel Detail Komprehensif per Karyawan
+- Menampilkan seluruh karyawan di departemen tersebut dengan rincian:
+  - Identitas: Foto profil, Nama Lengkap, dan NIK.
+  - Jabatan & Status Kerja (Karyawan Tetap/Kontrak).
+  - Kehadiran: Rasio Hari Hadir terhadap Hari Kerja (misal: 25 / 26 Hari).
+  - Gaji Pokok (prorata hari dibayar).
+  - Tunjangan Konsumsi (uang makan riil) dan Lembur.
+  - Potongan: Kasbon terpotong, Denda telat/istirahat > 60 menit, dan BPJS.
+  - THP Bersih (Take Home Pay) yang diterima karyawan.
+
+### C. Backend Endpoint Dinamis
+- `GET /super-admin/financial-insights/departments/:id/employees`
+- Mengambil data riil dari relasi `karyawan`, `jabatan`, dan `penggajian` di PostgreSQL tanpa manipulasi data tiruan (zero dummy data).
+
+---
+
+## 3. Riwayat Pembaruan Sebelumnya
 
 1. **Deduplikasi User Log**: Menggunakan query `DISTINCT ON (LOWER(username))` sehingga tiap akun unik hanya tampil 1 baris dengan status dan sesi login terbarunya.
 2. **Pembersihan Fallback Mock**: Menghapus silent error handling dan kredensial default pada form login superadmin.

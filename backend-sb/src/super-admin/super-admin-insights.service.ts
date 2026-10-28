@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Penggajian } from '../penggajian/entities/penggajian.entity.js';
@@ -96,6 +96,7 @@ export class SuperAdminInsightsService {
       const thpDept = Number(item.thpTotal || 0);
       const pct = thpNum > 0 ? Math.round((thpDept / thpNum) * 100) : 0;
       return {
+        idDepartemen: item.idDepartemen,
         name: item.namaDepartemen,
         roleDesc: `Departemen ${item.namaDepartemen} (${item.totalKaryawan} Karyawan Aktif)`,
         totalKaryawan: Number(item.totalKaryawan),
@@ -202,6 +203,111 @@ export class SuperAdminInsightsService {
       totalIssues,
       waitingIssues,
       recentAudits: audits.slice(0, 5),
+    };
+  }
+
+  /**
+   * Detail rincian karyawan & beban penggajian per departemen
+   */
+  async getDepartmentEmployees(idOrName: string | number) {
+    let dept: Departemen | null = null;
+    if (!isNaN(Number(idOrName))) {
+      dept = await this.deptRepo.findOne({ where: { idDepartemen: Number(idOrName) } });
+    }
+    if (!dept) {
+      dept = await this.deptRepo
+        .createQueryBuilder('d')
+        .where('LOWER(d.nama_departemen) = LOWER(:name)', { name: String(idOrName).trim() })
+        .getOne();
+    }
+
+    if (!dept) {
+      throw new NotFoundException(`Departemen "${idOrName}" tidak ditemukan`);
+    }
+
+    const formatRp = (num: number) =>
+      `Rp ${Math.round(num).toLocaleString('id-ID')}`;
+
+    const rawEmployees = await this.karyawanRepo
+      .createQueryBuilder('k')
+      .leftJoin('jabatan', 'j', 'j.id_jabatan = k.id_jabatan')
+      .leftJoin(
+        'penggajian',
+        'g',
+        'g.id_karyawan = k.id_karyawan AND g.periode_awal = (SELECT MAX(periode_awal) FROM penggajian)',
+      )
+      .select('k.id_karyawan', 'idKaryawan')
+      .addSelect('k.nik', 'nik')
+      .addSelect('k.nama', 'nama')
+      .addSelect('k.foto_profil', 'fotoProfil')
+      .addSelect('k.status_kerja', 'statusKerja')
+      .addSelect('COALESCE(j.nama_jabatan, \'Staf\')', 'namaJabatan')
+      .addSelect('COALESCE(g.total_hari_kerja, 26)', 'totalHariKerja')
+      .addSelect('COALESCE(g.total_hari_hadir, 0)', 'totalHariHadir')
+      .addSelect('COALESCE(g.gaji_pokok_sesuai_hari, 0)', 'gapok')
+      .addSelect('COALESCE(g.tunjangan_konsumsi, 0)', 'konsumsi')
+      .addSelect('COALESCE(g.lembur, 0)', 'lembur')
+      .addSelect('COALESCE(g.potongan_pinjaman, 0)', 'kasbon')
+      .addSelect('COALESCE(g.potongan_terlambat, 0)', 'denda')
+      .addSelect('COALESCE(g.potongan_bpjs, 0)', 'bpjs')
+      .addSelect('COALESCE(g.total_gaji, 0)', 'thp')
+      .where('k.id_departemen = :idDept', { idDept: dept.idDepartemen })
+      .andWhere('k.status_aktif = :status', { status: 'aktif' })
+      .orderBy('COALESCE(g.total_gaji, 0)', 'DESC')
+      .addOrderBy('k.nama', 'ASC')
+      .getRawMany();
+
+    const employees = rawEmployees.map((e) => {
+      const thpNum = Number(e.thp || 0);
+      const gapokNum = Number(e.gapok || 0);
+      const konsumsiNum = Number(e.konsumsi || 0);
+      const lemburNum = Number(e.lembur || 0);
+      const kasbonNum = Number(e.kasbon || 0);
+      const dendaNum = Number(e.denda || 0);
+      const bpjsNum = Number(e.bpjs || 0);
+
+      return {
+        idKaryawan: e.idKaryawan,
+        nik: e.nik,
+        nama: e.nama,
+        fotoProfil: e.fotoProfil,
+        jabatan: e.namaJabatan,
+        statusKerja: e.statusKerja || 'Tetap',
+        hariKerja: Number(e.totalHariKerja || 26),
+        hariHadir: Number(e.totalHariHadir || 0),
+        gapok: formatRp(gapokNum),
+        konsumsi: formatRp(konsumsiNum),
+        lembur: formatRp(lemburNum),
+        kasbon: formatRp(kasbonNum),
+        denda: formatRp(dendaNum),
+        bpjs: formatRp(bpjsNum),
+        thp: formatRp(thpNum),
+        raw: {
+          gapok: gapokNum,
+          konsumsi: konsumsiNum,
+          lembur: lemburNum,
+          kasbon: kasbonNum,
+          denda: dendaNum,
+          bpjs: bpjsNum,
+          thp: thpNum,
+        },
+      };
+    });
+
+    const totalDeptThp = employees.reduce((sum, e) => sum + e.raw.thp, 0);
+    const totalDeptLembur = employees.reduce((sum, e) => sum + e.raw.lembur, 0);
+    const totalDeptKasbon = employees.reduce((sum, e) => sum + e.raw.kasbon, 0);
+
+    return {
+      departemen: {
+        idDepartemen: dept.idDepartemen,
+        namaDepartemen: dept.namaDepartemen,
+        totalKaryawan: employees.length,
+        totalThpFormatted: formatRp(totalDeptThp),
+        totalLemburFormatted: formatRp(totalDeptLembur),
+        totalKasbonFormatted: formatRp(totalDeptKasbon),
+      },
+      employees,
     };
   }
 }

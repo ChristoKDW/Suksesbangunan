@@ -6,6 +6,33 @@
 
 ---
 
+## 2026-10-28 (malam) · Antigravity — Modal Interaktif Rincian Karyawan per Departemen (Financial Insights)
+
+- **Backend API (`backend-sb`)**:
+  - `src/super-admin/super-admin-insights.service.ts`:
+    - Memperbarui `getFinancialInsights()` agar menyertakan `idDepartemen` di setiap item `departmentBreakdown`.
+    - Menambahkan metode baru `getDepartmentEmployees(idOrName)` yang membaca data PostgreSQL secara dinamis:
+      - Menemukan departemen berdasarkan ID atau kemiripan nama (`LOWER(nama_departemen) LIKE ...`).
+      - Melakukan query LEFT JOIN karyawan dengan jabatan dan slip gaji periode cut-off aktif terbaru (`penggajian`).
+      - Menghitung agregat departemen (total karyawan aktif, total THP, total lembur, kasbon terpotong, total denda) beserta formatting Rupiah resmi.
+      - Memetakan per karyawan: NIK, nama, foto profil, jabatan, status kerja, rekap kehadiran (hari hadir / hari kerja), gaji pokok prorata, tunjangan konsumsi, lembur, kasbon, denda, BPJS, dan net THP.
+  - `src/super-admin/super-admin-insights.controller.ts`:
+    - Endpoint baru `GET /super-admin/financial-insights/departments/:id/employees` (diproteksi `SuperAdminGuard`).
+- **Super Admin Panel (`superadmin-sb`)**:
+  - `app/(dashboard)/financial-insights/page.tsx`:
+    - Menjadikan kartu departemen pada bagian *Distribusi Beban Penggajian per Departemen* interaktif & dapat diklik (`cursor-pointer`, efek hover border/shadow, chevron arrow, dan petunjuk visual "Klik untuk rincian data karyawan &rarr;").
+    - Menambahkan dialog modal rincian departemen:
+      - Header dengan nama departemen, deskripsi, cut-off aktif, dan tombol tutup.
+      - 4 mini-card metrik finansial departemen terpilih (Total Karyawan, Total THP, Total Lembur, Kasbon Terpotong).
+      - Fitur live search filter karyawan (nama, NIK, jabatan, status kerja).
+      - Tabel rincian komprehensif: Avatar & NIK, Jabatan & Status Kontrak, Badge Kehadiran, Gaji Pokok, Tunjangan & Lembur, Potongan (Kasbon + Denda + BPJS), dan THP Bersih.
+      - Loading spinner dan penanganan state hasil pencarian kosong.
+- **Pengujian & Verifikasi**:
+  - `backend-sb`: `npx tsc --noEmit` & `npx jest` (13 suites, 37 test passed).
+  - `superadmin-sb`: `npx tsc --noEmit` & `npm run build` (14 static pages generated successfully).
+
+---
+
 ## 2026-10-28 (siang) · Antigravity — Penerapan Realtime WebSocket Gateway & Redis Heartbeat Sesi
 
 - **Infrastruktur VPS (Non-Docker)**:
