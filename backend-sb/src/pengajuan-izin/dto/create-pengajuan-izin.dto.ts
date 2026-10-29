@@ -17,15 +17,15 @@ export class CreatePengajuanIzinDto {
 
   @ApiProperty({
     description: 'Jenis izin',
-    enum: ['izin', 'sakit', 'cuti', 'dinas luar', 'izin sementara'],
+    enum: ['izin', 'sakit', 'cuti', 'dinas luar', 'izin sementara', 'pulang cepat'],
     example: 'sakit',
   })
   @IsNotEmpty()
-  @IsIn(['izin', 'sakit', 'cuti', 'dinas luar', 'izin sementara'])
+  @IsIn(['izin', 'sakit', 'cuti', 'dinas luar', 'izin sementara', 'pulang cepat'])
   jenisIzin: string;
 
   @ApiPropertyOptional({
-    description: 'Jam mulai izin sementara (HH:mm), wajib untuk jenis izin sementara',
+    description: 'Jam mulai izin sementara / jam pulang untuk pulang cepat (HH:mm)',
     example: '10:00',
   })
   @IsOptional()

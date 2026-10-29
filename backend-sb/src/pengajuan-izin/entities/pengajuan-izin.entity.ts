@@ -26,13 +26,13 @@ export class PengajuanIzin {
   karyawan: Karyawan;
 
   @ApiProperty({
-    description: 'Jenis izin: izin, sakit, cuti, dinas luar, izin sementara',
+    description: 'Jenis izin: izin, sakit, cuti, dinas luar, izin sementara, pulang cepat',
   })
   @Column({ name: 'jenis_izin', type: 'varchar' })
   jenisIzin: string;
 
   @ApiProperty({
-    description: 'Jam mulai izin sementara (HH:mm), khusus jenis izin sementara',
+    description: 'Jam mulai izin sementara / jam pulang untuk pulang cepat (HH:mm)',
     required: false,
   })
   @Column({ name: 'jam_mulai', type: 'varchar', length: 5, nullable: true })

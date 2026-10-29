@@ -16,6 +16,20 @@ import { FaceRecognitionService } from '../face/face-recognition.service.js';
 import { Karyawan } from '../karyawan/entities/karyawan.entity.js';
 import { PengaturanKantor } from '../pengaturan-kantor/entities/pengaturan-kantor.entity.js';
 import { RegularOffService } from '../regular-off/regular-off.service.js';
+import {
+  BUSINESS_TIME_ZONE,
+  businessDayRange,
+  businessToday,
+} from '../common/utils/business-date.util.js';
+
+/** Jam (HH:mm) sebuah waktu menurut zona waktu bisnis (WITA), bukan zona server. */
+const jamBisnis = (d: Date) =>
+  d.toLocaleTimeString('en-GB', {
+    timeZone: BUSINESS_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 
 /** Ambang cosine similarity; di atas nilai ini dianggap orang yang sama. */
 const FACE_MATCH_THRESHOLD = 0.4;
@@ -141,17 +155,15 @@ export class AbsensiService {
       );
     }
 
+    // Semua perbandingan jam memakai zona waktu bisnis (WITA), bukan zona server (WIB)
     const now = new Date();
-    const todayDate = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
+    const todayStr = businessToday(now);
+    const { start: hariMulai, end: hariSelesai } = businessDayRange(todayStr, todayStr);
 
     // 1. VALIDASI JADWAL KERJA HARI INI
     const jadwal = await this.jadwalKerjaService.findByKaryawanAndTanggal(
       dto.idKaryawan,
-      todayDate,
+      todayStr,
     );
 
     if (!jadwal) {
@@ -180,17 +192,13 @@ export class AbsensiService {
 
     // 2. VALIDASI KESESUAIAN JAM KERJA DENGAN SHIFT
     const shift = jadwal.shift;
-    const [mulaiJam, mulaiMenit] = shift.jamMulai.split(':').map(Number);
-    const [selesaiJam, selesaiMenit] = shift.jamSelesai.split(':').map(Number);
-
-    const shiftMulai = new Date(todayDate);
-    shiftMulai.setHours(mulaiJam, mulaiMenit, 0, 0);
-
-    const shiftSelesai = new Date(todayDate);
-    shiftSelesai.setHours(selesaiJam, selesaiMenit, 0, 0);
+    const jamKeTanggal = (jam: string) =>
+      new Date(`${todayStr}T${jam.substring(0, 5)}:00+08:00`);
+    const shiftMulai = jamKeTanggal(shift.jamMulai);
+    const shiftSelesai = jamKeTanggal(shift.jamSelesai);
     // Jika shift lintas hari (misal 22:00 s/d 06:00)
     if (shiftSelesai <= shiftMulai) {
-      shiftSelesai.setDate(shiftSelesai.getDate() + 1);
+      shiftSelesai.setTime(shiftSelesai.getTime() + 24 * 60 * 60 * 1000);
     }
 
     const jamMulaiFmt = shift.jamMulai.substring(0, 5);
@@ -202,10 +210,7 @@ export class AbsensiService {
       absensiHariIni = await this.absensiRepo.findOne({
         where: {
           idKaryawan: dto.idKaryawan,
-          jamMasukAktual: Between(
-            todayDate,
-            new Date(todayDate.getTime() + 24 * 60 * 60 * 1000),
-          ),
+          jamMasukAktual: Between(hariMulai, hariSelesai),
         },
         relations: { istirahat: true },
       });
@@ -229,30 +234,41 @@ export class AbsensiService {
         );
       }
 
-      // Izin sementara tidak mengubah jadwal; jam pulang diperpanjang sesuai durasinya
+      // Absen pulang hanya setelah shift berakhir. Izin sementara memperpanjang jam pulang
+      // sesuai durasinya; pulang lebih awal wajib pengajuan "pulang cepat" yang disetujui.
       const menitKompensasi = await this.menitIzinSementaraHariIni(
         dto.idKaryawan,
-        todayDate,
+        todayStr,
       );
-      if (menitKompensasi > 0) {
-        const jamPulang = new Date(shiftSelesai.getTime() + menitKompensasi * 60 * 1000);
-        if (now < jamPulang) {
-          const fmt = (d: Date) =>
-            `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      const jamPulang = new Date(shiftSelesai.getTime() + menitKompensasi * 60 * 1000);
+      const pulangCepat = await this.pulangCepatHariIni(dto.idKaryawan, todayStr);
+      const jamPulangCepat =
+        pulangCepat?.status === 'disetujui' && pulangCepat.jam_mulai
+          ? jamKeTanggal(pulangCepat.jam_mulai)
+          : null;
+      if (now < jamPulang && !(jamPulangCepat && now >= jamPulangCepat)) {
+        if (jamPulangCepat) {
           throw new BadRequestException(
-            `Hari ini Anda memiliki izin sementara ${menitKompensasi} menit, sehingga jam pulang diperpanjang menjadi ${fmt(jamPulang)} (shift ${shift.namaShift} berakhir ${jamSelesaiFmt} + ${menitKompensasi} menit). Absen pulang dapat dilakukan mulai pukul ${fmt(jamPulang)}.`,
+            `Pengajuan pulang cepat Anda disetujui mulai pukul ${jamBisnis(jamPulangCepat)}. Absen pulang dapat dilakukan mulai jam tersebut.`,
           );
         }
+        if (pulangCepat) {
+          throw new BadRequestException(
+            'Pengajuan pulang cepat Anda masih menunggu persetujuan. Absen pulang sebelum shift berakhir dapat dilakukan setelah pengajuan disetujui.',
+          );
+        }
+        throw new BadRequestException(
+          menitKompensasi > 0
+            ? `Hari ini Anda memiliki izin sementara ${menitKompensasi} menit, sehingga jam pulang diperpanjang menjadi ${jamBisnis(jamPulang)} (shift ${shift.namaShift} berakhir ${jamSelesaiFmt} + ${menitKompensasi} menit). Untuk pulang lebih awal, ajukan Pulang Cepat di menu Pengajuan.`
+            : `Belum waktunya absen pulang: shift ${shift.namaShift} berakhir pukul ${jamSelesaiFmt}. Untuk pulang lebih awal, ajukan Pulang Cepat di menu Pengajuan dan tunggu persetujuan.`,
+        );
       }
     } else {
       // tipe masuk
       const existingMasuk = await this.absensiRepo.findOne({
         where: {
           idKaryawan: dto.idKaryawan,
-          jamMasukAktual: Between(
-            todayDate,
-            new Date(todayDate.getTime() + 24 * 60 * 60 * 1000),
-          ),
+          jamMasukAktual: Between(hariMulai, hariSelesai),
         },
       });
 
@@ -266,7 +282,7 @@ export class AbsensiService {
       // Buka akses absen masuk 120 menit (2 jam) sebelum jam mulai shift
       const batasBukaMasuk = new Date(shiftMulai.getTime() - 120 * 60 * 1000);
       if (now < batasBukaMasuk) {
-        const jamBukaFmt = `${String(batasBukaMasuk.getHours()).padStart(2, '0')}:${String(batasBukaMasuk.getMinutes()).padStart(2, '0')}`;
+        const jamBukaFmt = jamBisnis(batasBukaMasuk);
         throw new BadRequestException(
           `Belum waktunya absen masuk untuk ${shift.namaShift} (${jamMulaiFmt} - ${jamSelesaiFmt}). Absensi dibuka mulai pukul ${jamBukaFmt}`,
         );
@@ -330,7 +346,6 @@ export class AbsensiService {
 
     // Jika karyawan operasional masuk di hari libur nasional (bukan hari Minggu), berikan 1 saldo RO
     try {
-      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       await this.regularOffService.createSaldoRoIfEligible(
         dto.idKaryawan,
         todayStr,
@@ -420,9 +435,24 @@ export class AbsensiService {
     });
   }
 
+  /** Pengajuan pulang cepat aktif (menunggu / disetujui) pada tanggal tsb, yang disetujui diutamakan. */
+  private async pulangCepatHariIni(
+    idKaryawan: number,
+    tgl: string,
+  ): Promise<{ status: string; jam_mulai: string | null } | null> {
+    const [row] = await this.absensiRepo.manager.query(
+      `SELECT status, jam_mulai FROM pengajuan_izin
+        WHERE id_karyawan = $1 AND jenis_izin = 'pulang cepat'
+          AND status IN ('menunggu', 'menunggu_spv', 'menunggu_hrd', 'disetujui')
+          AND tanggal_mulai <= $2 AND tanggal_selesai >= $2
+        ORDER BY (status = 'disetujui') DESC LIMIT 1`,
+      [idKaryawan, tgl],
+    );
+    return row ?? null;
+  }
+
   /** Total menit izin sementara yang disetujui pada tanggal tsb (kompensasi jam pulang). */
-  private async menitIzinSementaraHariIni(idKaryawan: number, tanggal: Date): Promise<number> {
-    const tgl = `${tanggal.getFullYear()}-${String(tanggal.getMonth() + 1).padStart(2, '0')}-${String(tanggal.getDate()).padStart(2, '0')}`;
+  private async menitIzinSementaraHariIni(idKaryawan: number, tgl: string): Promise<number> {
     const rows: { jam_mulai: string; jam_selesai: string }[] = await this.absensiRepo.manager.query(
       `SELECT jam_mulai, jam_selesai FROM pengajuan_izin
         WHERE id_karyawan = $1 AND jenis_izin = 'izin sementara' AND status = 'disetujui'

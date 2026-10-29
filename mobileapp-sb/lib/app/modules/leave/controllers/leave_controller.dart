@@ -32,6 +32,8 @@ class LeaveController extends GetxController {
     'sakit': 'Izin Sakit',
     'cuti': 'Cuti Tahunan',
     'dinas luar': 'Dinas Luar',
+    'izin sementara': 'Izin Sementara',
+    'pulang cepat': 'Pulang Cepat',
   };
 
   static const _statusLabels = {

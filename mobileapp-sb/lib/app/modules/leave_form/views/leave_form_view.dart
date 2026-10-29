@@ -43,7 +43,9 @@ class LeaveFormView extends GetView<LeaveFormController> {
               const SizedBox(height: 20),
               Obx(() => controller.selectedTypeCode.value == 'izin sementara'
                   ? _buildJamIzinSementara(context)
-                  : const SizedBox.shrink()),
+                  : controller.isPulangCepat
+                      ? _buildJamPulangCepat(context)
+                      : const SizedBox.shrink()),
               
               _buildSectionTitle('Alasan'),
               const SizedBox(height: 12),
@@ -356,6 +358,56 @@ class LeaveFormView extends GetView<LeaveFormController> {
               durasi > 0
                   ? 'Durasi $durasi menit. Jadwal Anda tidak berubah; jam pulang hari itu otomatis diperpanjang $durasi menit untuk mengganti waktu izin.'
                   : 'Jadwal Anda tidak berubah. Jam pulang hari itu otomatis diperpanjang sesuai lama izin sementara.',
+              style: TextStyle(fontSize: 11.5, height: 1.35, color: Colors.blue.shade900),
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      );
+    });
+  }
+
+  Widget _buildJamPulangCepat(BuildContext context) {
+    return Obx(() {
+      final jam = controller.jamMulai.value;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle('Jam Pulang'),
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: () => controller.pickJam(context, mulai: true),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.borderGrey),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.schedule_rounded, size: 18, color: AppColors.redPrimary),
+                  const SizedBox(width: 6),
+                  Text(
+                    jam == null ? '--:--' : controller.fmtJam(jam),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.slateDark),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Text(
+              'Setelah disetujui, absen pulang dapat dilakukan mulai jam ini. Tanpa pengajuan yang disetujui, absen pulang baru bisa setelah shift berakhir.',
               style: TextStyle(fontSize: 11.5, height: 1.35, color: Colors.blue.shade900),
             ),
           ),

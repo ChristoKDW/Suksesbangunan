@@ -16,6 +16,7 @@
 
 ## Pembaruan terakhir (29 Okt 2026)
 - **Pencairan RO & Cuti** — karyawan mengajukan dari mobile (menu *Pencairan RO & Cuti*), disetujui SPV → HRD di web (menu *Keuangan → Pencairan RO & Cuti*). 1 hari = gaji pokok ÷ hari kerja periode, dibayar otomatis di slip periode saat HRD menyetujui (baris *Pencairan RO/Cuti*). Saldo RO dikunci saat diajukan; cuti yang dicairkan memotong sisa cuti.
+- **Absen pulang** baru bisa setelah shift berakhir; pulang lebih awal wajib pengajuan **Pulang Cepat** yang disetujui. Jam absen kini dihitung WITA.
 - **Hari penting HRD** (outing dll) dihitung hari kerja dibayar penuh + uang makan tanpa absen.
 - **Data Absensi** bisa difilter per departemen; **Karyawan** menampilkan masa kerja.
 - Detail lengkap: [`CATATAN_PERUBAHAN.md`](CATATAN_PERUBAHAN.md).

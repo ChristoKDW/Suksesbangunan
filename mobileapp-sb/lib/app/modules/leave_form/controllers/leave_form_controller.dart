@@ -32,8 +32,11 @@ class LeaveFormController extends GetxController {
   final Rxn<TimeOfDay> jamMulai = Rxn<TimeOfDay>();
   final Rxn<TimeOfDay> jamSelesai = Rxn<TimeOfDay>();
 
-  bool get isSatuHari =>
-      selectedTypeCode.value == 'izin' || selectedTypeCode.value == 'izin sementara';
+  bool get isSatuHari => const ['izin', 'izin sementara', 'pulang cepat']
+      .contains(selectedTypeCode.value);
+
+  /// Pulang cepat: absen pulang sebelum shift berakhir wajib pengajuan ini (jam pulang = jamMulai).
+  bool get isPulangCepat => selectedTypeCode.value == 'pulang cepat';
 
   String fmtJam(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
@@ -48,7 +51,7 @@ class LeaveFormController extends GetxController {
     final picked = await showTimePicker(
       context: context,
       initialTime: (mulai ? jamMulai.value : jamSelesai.value) ?? TimeOfDay.now(),
-      helpText: mulai ? 'Jam Mulai Keluar' : 'Jam Kembali',
+      helpText: isPulangCepat ? 'Jam Pulang' : (mulai ? 'Jam Mulai Keluar' : 'Jam Kembali'),
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
         child: child!,
@@ -69,6 +72,7 @@ class LeaveFormController extends GetxController {
   final Map<String, String> typeCodeMap = {
     'Izin': 'izin',
     'Izin Sementara': 'izin sementara',
+    'Pulang Cepat': 'pulang cepat',
     'Sakit': 'sakit',
     'Cuti Tahunan': 'cuti',
   };
@@ -126,6 +130,7 @@ class LeaveFormController extends GetxController {
   /// Kode jenis izin → kode batas pengajuan di server.
   String get _jenisKuota => switch (selectedTypeCode.value) {
         'izin sementara' => 'izin_sementara',
+        'pulang cepat' => 'pulang_cepat',
         'dinas luar' => 'dinas_luar',
         final kode => kode,
       };
@@ -453,6 +458,18 @@ class LeaveFormController extends GetxController {
       Get.rawSnackbar(
         title: 'Peringatan',
         message: 'Pilih jam mulai dan jam kembali izin sementara (jam kembali harus setelah jam mulai).',
+        backgroundColor: AppColors.warning,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
+      );
+      return;
+    }
+
+    if (isPulangCepat && jamMulai.value == null) {
+      Get.rawSnackbar(
+        title: 'Peringatan',
+        message: 'Pilih jam pulang yang diajukan.',
         backgroundColor: AppColors.warning,
         snackPosition: SnackPosition.BOTTOM,
         margin: const EdgeInsets.all(16),
@@ -813,7 +830,7 @@ class LeaveFormController extends GetxController {
         filePath: attachedFilePath.value,
         fileBytes: attachedFileBytes.value,
         fileName: attachedFileName.value,
-        jamMulai: selectedTypeCode.value == 'izin sementara' && jamMulai.value != null
+        jamMulai: (selectedTypeCode.value == 'izin sementara' || isPulangCepat) && jamMulai.value != null
             ? fmtJam(jamMulai.value!)
             : null,
         jamSelesai: selectedTypeCode.value == 'izin sementara' && jamSelesai.value != null

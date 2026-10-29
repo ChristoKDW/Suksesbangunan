@@ -158,6 +158,16 @@ export class PengajuanIzinService {
       }
     }
 
+    // --- 3c. Pulang cepat: absen pulang sebelum shift berakhir wajib pengajuan ini ---
+    if (dto.jenisIzin === 'pulang cepat') {
+      if (tglMulaiStr !== tglSelesaiStr) {
+        throw new BadRequestException('Pulang cepat hanya berlaku untuk 1 hari.');
+      }
+      if (!dto.jamMulai) {
+        throw new BadRequestException('Pulang cepat wajib mencantumkan jam pulang.');
+      }
+    }
+
     const menggunakanLokasi =
       dto.lokasiLat !== undefined &&
       dto.lokasiLat !== null &&
@@ -192,7 +202,7 @@ export class PengajuanIzinService {
       tanggalMulai: tglMulaiStr as any,
       tanggalSelesai: tglSelesaiStr as any,
       alasan: dto.alasan,
-      jamMulai: dto.jenisIzin === 'izin sementara' ? dto.jamMulai : null,
+      jamMulai: ['izin sementara', 'pulang cepat'].includes(dto.jenisIzin) ? dto.jamMulai : null,
       jamSelesai: dto.jenisIzin === 'izin sementara' ? dto.jamSelesai : null,
       filePendukung: filePendukung || undefined,
       tanggalPengajuan: new Date(),
@@ -348,7 +358,8 @@ export class PengajuanIzinService {
     if (isApproved) {
       // Izin sementara: karyawan tetap hadir & absen normal, tidak perlu record absensi izin.
       // Durasi izin otomatis dikompensasi pada perhitungan jam kerja payroll.
-      if (saved.jenisIzin !== 'izin sementara') {
+      // Pulang cepat: karyawan tetap hadir, hanya membuka absen pulang lebih awal
+      if (!['izin sementara', 'pulang cepat'].includes(saved.jenisIzin)) {
         // Buat / update record absensi secara otomatis
         await this.createAbsensiFromIzin(saved);
       }

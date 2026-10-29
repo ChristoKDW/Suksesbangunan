@@ -16,6 +16,17 @@ const jenisIzinLabelMap: Record<string, string> = {
   sakit: "Izin Sakit",
   cuti: "Cuti Tahunan",
   "dinas luar": "Dinas Luar",
+  "izin sementara": "Izin Sementara",
+  "pulang cepat": "Pulang Cepat",
+}
+
+/** Label jenis + jam (izin sementara: mulai–kembali, pulang cepat: jam pulang). */
+const labelJenis = (r: { jenisIzin: string; jamMulai?: string | null; jamSelesai?: string | null }) => {
+  const label = jenisIzinLabelMap[r.jenisIzin] || capitalize(r.jenisIzin)
+  if (r.jenisIzin === "pulang cepat" && r.jamMulai) return `${label} (${r.jamMulai.slice(0, 5)})`
+  if (r.jenisIzin === "izin sementara" && r.jamMulai && r.jamSelesai)
+    return `${label} (${r.jamMulai.slice(0, 5)}–${r.jamSelesai.slice(0, 5)})`
+  return label
 }
 
 const typeColors: Record<string, { bg: string; color: string }> = {
@@ -23,6 +34,7 @@ const typeColors: Record<string, { bg: string; color: string }> = {
   cuti: { bg: "#eff6ff", color: "#2563eb" },
   izin: { bg: "#faf5ff", color: "#9333ea" },
   "dinas luar": { bg: "#fffbeb", color: "#d97706" },
+  "pulang cepat": { bg: "#ecfdf5", color: "#047857" },
 }
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id"
@@ -486,7 +498,7 @@ export default function LeaveRequestsPage() {
                           </TableCell>
                           <TableCell>
                             <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: tc.bg, color: tc.color }}>
-                              {jenisIzinLabelMap[req.jenisIzin] || capitalize(req.jenisIzin)}
+                              {labelJenis(req)}
                             </span>
                           </TableCell>
                           <TableCell className="text-sm" style={{ color: "var(--text-secondary)" }}>
@@ -836,7 +848,7 @@ export default function LeaveRequestsPage() {
                 </div>
                 <div>
                   <div className="text-xs font-medium text-[var(--text-muted)] mb-1">Jenis</div>
-                  <div className="text-[var(--text-secondary)]">{jenisIzinLabelMap[selectedRequest.jenisIzin] || capitalize(selectedRequest.jenisIzin)}</div>
+                  <div className="text-[var(--text-secondary)]">{labelJenis(selectedRequest)}</div>
                 </div>
                 <div>
                   <div className="text-xs font-medium text-[var(--text-muted)] mb-1">Status</div>

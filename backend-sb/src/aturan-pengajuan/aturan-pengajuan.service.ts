@@ -16,6 +16,7 @@ import { businessToday } from '../common/utils/business-date.util.js';
 export type JenisPengajuan =
   | 'izin'
   | 'izin_sementara'
+  | 'pulang_cepat'
   | 'sakit'
   | 'dinas_luar'
   | 'cuti'
@@ -47,6 +48,13 @@ const ATURAN: Record<
     maksDefault: 3,
     keterangan: 'Keluar sementara saat jam kerja',
     sql: `SELECT count(*) FROM pengajuan_izin WHERE id_karyawan = $1 AND jenis_izin = 'izin sementara'
+          AND status NOT LIKE 'ditolak%' AND status <> 'dibatalkan' AND tanggal_mulai BETWEEN $2 AND $3`,
+  },
+  pulang_cepat: {
+    label: 'Pulang Cepat',
+    maksDefault: 0,
+    keterangan: 'Absen pulang sebelum shift berakhir; default tanpa batas',
+    sql: `SELECT count(*) FROM pengajuan_izin WHERE id_karyawan = $1 AND jenis_izin = 'pulang cepat'
           AND status NOT LIKE 'ditolak%' AND status <> 'dibatalkan' AND tanggal_mulai BETWEEN $2 AND $3`,
   },
   sakit: {
@@ -122,6 +130,7 @@ const BULAN = [
 export const JENIS_IZIN_KE_ATURAN: Record<string, JenisPengajuan> = {
   izin: 'izin',
   'izin sementara': 'izin_sementara',
+  'pulang cepat': 'pulang_cepat',
   sakit: 'sakit',
   'dinas luar': 'dinas_luar',
   cuti: 'cuti',

@@ -6,6 +6,22 @@
 
 ---
 
+## 2026-10-29 (siang, 2) · Claude Code — Absen pulang wajib setelah shift / pengajuan Pulang Cepat + perbaikan zona waktu absen
+
+- **Bug**: absen pulang bisa dilakukan kapan saja setelah absen masuk (hanya dicek bila ada izin sementara). Contoh: Musrini Muin absen pulang 11:44 WITA (shift sampai sore).
+- **Bug zona waktu**: `submitAbsensi` membandingkan jam shift dengan jam server (WIB, +07) padahal bisnis WITA (+08) → telat baru tercatat 1 jam setelah jam masuk shift
+  (mis. masuk 09:11 WITA untuk shift 08:15 tercatat "tepat waktu"), batas buka absen & akhir shift ikut bergeser 1 jam.
+- **Perbaikan `backend-sb/src/absensi/absensi.service.ts`**: tanggal & jam shift dihitung di WITA (`businessToday`, `businessDayRange`, `+08:00`);
+  absen pulang ditolak sebelum shift berakhir (+ izin sementara) kecuali ada pengajuan **pulang cepat** disetujui (dibuka mulai jam yang disetujui);
+  pesan berbeda bila pengajuan masih menunggu. Saldo RO hari libur memakai tanggal WITA.
+- **Jenis izin baru `pulang cepat`** (`pengajuan-izin`): 1 hari, wajib jam pulang (`jam_mulai`), alur SPV → HRD, tidak membuat record absensi izin.
+  Batas pengajuan baru `pulang_cepat` (default tanpa batas). Web Pengajuan menampilkan label + jam; mobile form punya opsi "Pulang Cepat" + pemilih jam. **Perlu build APK baru.**
+- **Dampak perilaku**: status telat sekarang akurat menurut WITA (lebih ketat 1 jam dari sebelumnya). Data lama tidak diubah.
+- **Data**: atas permintaan pemilik, absen pulang Musrini Muin 29 Okt (absensi #43, `jam_keluar_aktual` 2026-10-29 10:44:48 WIB) dikosongkan untuk pengujian.
+- **Tes**: `absensi-pulang.spec.ts` (4 kasus, termasuk WIB vs WITA). Backend 15 suites / 46 tes lulus; frontend build OK; `flutter analyze` tanpa error.
+
+---
+
 ## 2026-10-29 (siang) · Claude Code — Pencairan (diuangkan) RO & Cuti
 
 - **Keputusan pemilik**: 1 hari = gaji pokok ÷ hari kerja periode; alur SPV → HRD; diajukan dari mobile; dibayar di payroll periode saat HRD menyetujui.
