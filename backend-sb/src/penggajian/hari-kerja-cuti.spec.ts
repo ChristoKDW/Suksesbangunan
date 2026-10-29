@@ -50,7 +50,7 @@ describe('Hari kerja payroll berbasis jadwal', () => {
 });
 
 describe('Saldo cuti tahunan', () => {
-  const makeService = (izin: any[], karyawan: any) => {
+  const makeService = (izin: any[], karyawan: any, pencairan: any[] = []) => {
     const qb: any = {
       where: () => qb,
       andWhere: () => qb,
@@ -65,9 +65,22 @@ describe('Saldo cuti tahunan', () => {
       { findOne: jest.fn().mockResolvedValue(karyawan) } as any,
       {} as any,
       {} as any,
-      {} as any,
+      { query: jest.fn().mockResolvedValue(pencairan) } as any,
     );
   };
+
+  it('pencairan cuti (diuangkan) ikut memotong jatah', async () => {
+    const service = makeService([], { hakCuti: true, jatahCuti: 12 }, [
+      { status: 'disetujui', hari: '3' },
+      { status: 'menunggu_hrd', hari: '1' },
+    ]);
+    await expect(service.getSaldoCuti(7, 2099)).resolves.toMatchObject({
+      terpakai: 3,
+      menunggu: 1,
+      dicairkan: 3,
+      sisa: 8,
+    });
+  });
 
   it('jatah dikurangi cuti disetujui & menunggu (tanpa hari libur tetap Minggu)', async () => {
     const service = makeService(

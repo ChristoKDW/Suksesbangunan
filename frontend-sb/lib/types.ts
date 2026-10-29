@@ -276,6 +276,7 @@ export interface Penggajian {
   tunjanganKomunikasi: number
   tunjanganJabatan: number
   lembur: number
+  pencairanHak?: number
   totalPenghasilan: number
   potonganBpjs: number
   potonganTerlambat: number

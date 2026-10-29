@@ -534,7 +534,7 @@ export class ReportsService {
       'No', 'NIK', 'Nama Karyawan', 'Departemen', 'Jabatan',
       'Periode Awal', 'Periode Akhir', 'Hari Kerja', 'Hari Hadir',
       'Gaji Pokok', 'Gaji Sesuai Hari', 'Tunj. Konsumsi', 'Tunj. Transport',
-      'Tunj. Komunikasi', 'Tunj. Jabatan', 'Lembur', 'Total Penghasilan',
+      'Tunj. Komunikasi', 'Tunj. Jabatan', 'Lembur', 'Pencairan RO/Cuti', 'Total Penghasilan',
       'Pot. BPJS', 'Pot. Terlambat', 'Pot. Pinjaman', 'Pot. Lainnya',
       'Total Potongan', 'Take Home Pay', 'No. Rekening', 'Bank',
     ];
@@ -566,6 +566,7 @@ export class ReportsService {
         Number(r.tunjanganKomunikasi || 0),
         Number(r.tunjanganJabatan || 0),
         Number(r.lembur || 0),
+        Number(r.pencairanHak || 0),
         Number(r.totalPenghasilan || 0),
         Number(r.potonganBpjs || 0),
         Number(r.potonganTerlambat || 0),
@@ -576,7 +577,7 @@ export class ReportsService {
         r.karyawan?.noRekening || '-',
         r.karyawan?.namaBank || '-',
       ]);
-      for (let c = 10; c <= 23; c++) {
+      for (let c = 10; c <= 24; c++) {
         row.getCell(c).numFmt = '#,##0';
       }
     });
@@ -588,13 +589,13 @@ export class ReportsService {
         sum((r) => r.gajiPokok), sum((r) => r.gajiPokokSesuaiHari),
         sum((r) => r.tunjanganKonsumsi), sum((r) => r.tunjanganTransportasi),
         sum((r) => r.tunjanganKomunikasi), sum((r) => r.tunjanganJabatan),
-        sum((r) => r.lembur), sum((r) => r.totalPenghasilan),
+        sum((r) => r.lembur), sum((r) => r.pencairanHak), sum((r) => r.totalPenghasilan),
         sum((r) => r.potonganBpjs), sum((r) => r.potonganTerlambat),
         sum((r) => r.potonganPinjaman), sum((r) => r.potonganLainnya),
         sum((r) => r.potongan), sum((r) => r.totalGaji),
       ]);
       totalRow.font = { bold: true };
-      for (let c = 10; c <= 23; c++) totalRow.getCell(c).numFmt = '#,##0';
+      for (let c = 10; c <= 24; c++) totalRow.getCell(c).numFmt = '#,##0';
     }
     return sendWorkbook(
       res,
@@ -942,6 +943,7 @@ export class ReportsService {
       tunjanganKomunikasi: Number(r.tunjanganKomunikasi) || 0,
       tunjanganJabatan: Number(r.tunjanganJabatan) || 0,
       lembur: Number(r.lembur) || 0,
+      pencairanHak: Number(r.pencairanHak) || 0,
       totalPenghasilan: Number(r.totalPenghasilan) || 0,
       potonganBpjs: Number(r.potonganBpjs) || 0,
       potonganTerlambat: Number(r.potonganTerlambat) || 0,
@@ -1012,6 +1014,7 @@ export class ReportsService {
       tunjanganKomunikasi: Number(s.tunjanganKomunikasi) || 0,
       tunjanganJabatan: Number(s.tunjanganJabatan) || 0,
       lembur: Number(s.lembur) || 0,
+      pencairanHak: Number(s.pencairanHak) || 0,
       totalPenghasilan: Number(s.totalPenghasilan) || 0,
       potonganBpjs: Number(s.potonganBpjs) || 0,
       potonganTerlambat: Number(s.potonganTerlambat) || 0,

@@ -375,6 +375,18 @@ class HomeView extends GetView<HomeController> {
                   onTap: () => Get.toNamed(Routes.KASBON),
                 ),
               ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: _buildOperationalItem(
+                  icon: Icons.payments_rounded,
+                  title: 'Pencairan RO & Cuti',
+                  subtitle: 'Uangkan sisa RO / cuti',
+                  color: const Color(0xFF047857),
+                  bgColor: const Color(0xFFECFDF5),
+                  onTap: () => Get.toNamed(Routes.PENCAIRAN),
+                ),
+              ),
             ],
           );
         }),

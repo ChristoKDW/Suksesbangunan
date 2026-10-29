@@ -179,6 +179,7 @@ export interface SlipData {
   tunjanganKomunikasi: number;
   tunjanganJabatan: number;
   lembur: number;
+  pencairanHak?: number;
   totalPenghasilan: number;
   potonganBpjs: number;
   potonganTerlambat: number;
@@ -236,6 +237,7 @@ function slipLines(s: SlipData): SlipLine[] {
     { a: 'Tunjangan Komunikasi', c: s.tunjanganKomunikasi, money: true },
     { a: 'Tunjangan Jabatan', c: s.tunjanganJabatan, money: true },
     { a: 'Lembur', c: s.lembur, money: true },
+    ...(s.pencairanHak ? [{ a: 'Pencairan RO/Cuti', c: s.pencairanHak, money: true }] : []),
     { a: 'Total Penghasilan', c: s.totalPenghasilan, bold: true, money: true },
     {},
     { a: 'POTONGAN' },

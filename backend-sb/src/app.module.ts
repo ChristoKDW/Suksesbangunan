@@ -31,6 +31,7 @@ import { PertukaranJadwalModule } from './pertukaran-jadwal/pertukaran-jadwal.mo
 import { RegularOffModule } from './regular-off/regular-off.module.js';
 import { TundaOffModule } from './tunda-off/tunda-off.module.js';
 import { KasbonModule } from './kasbon/kasbon.module.js';
+import { PencairanModule } from './pencairan/pencairan.module.js';
 import { KebijakanLiburModule } from './kebijakan-libur/kebijakan-libur.module.js';
 import { AturanPengajuanModule } from './aturan-pengajuan/aturan-pengajuan.module.js';
 import { AsetModule } from './aset/aset.module.js';
@@ -103,6 +104,7 @@ import { RealtimeModule } from './realtime/realtime.module.js';
     RegularOffModule,
     TundaOffModule,
     KasbonModule,
+    PencairanModule,
     KebijakanLiburModule,
     AturanPengajuanModule,
     AsetModule,

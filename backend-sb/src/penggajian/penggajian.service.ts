@@ -19,6 +19,7 @@ import { KaryawanService } from '../karyawan/karyawan.service.js';
 import { AbsensiService } from '../absensi/absensi.service.js';
 import { JadwalKerjaService } from '../jadwal-kerja/jadwal-kerja.service.js';
 import { KasbonService } from '../kasbon/kasbon.service.js';
+import { PencairanService } from '../pencairan/pencairan.service.js';
 import { KebijakanLiburService } from '../kebijakan-libur/kebijakan-libur.service.js';
 import { UpdatePenggajianDto } from './dto/update-penggajian.dto.js';
 
@@ -74,6 +75,7 @@ export class PenggajianService {
     private readonly jadwalKerjaService: JadwalKerjaService,
     private readonly kasbonService?: KasbonService,
     private readonly kebijakanLibur?: KebijakanLiburService,
+    private readonly pencairanService?: PencairanService,
   ) {}
 
   /** Tanggal merah yang diliburkan perusahaan (sesuai Kebijakan Tanggal Merah). */
@@ -446,6 +448,19 @@ export class PenggajianService {
       });
       // Nilai yang diinput manual HRD dipertahankan saat payroll di-generate ulang
       const lembur = Number(penggajian?.lembur || 0);
+      // Pencairan RO/cuti disetujui HRD: 1 hari = gaji pokok ÷ hari kerja periode
+      const tarifHarian = totalHariKerja > 0 ? gajiPokok / totalHariKerja : 0;
+      const pencairanList =
+        (await this.pencairanService?.untukSlip(
+          karyawan.idKaryawan,
+          periodeAkhirStr,
+          penggajian?.idGaji,
+        )) ?? [];
+      const hariPencairan = pencairanList.reduce((t, p) => t + p.jumlahHari, 0);
+      const pencairanHak = pencairanList.reduce(
+        (t, p) => t + Math.round(tarifHarian * p.jumlahHari),
+        0,
+      );
 
       const totalPenghasilan =
         gajiPokokSesuaiHari +
@@ -453,7 +468,8 @@ export class PenggajianService {
         tunjanganTransportasi +
         tunjanganKomunikasi +
         tunjanganJabatan +
-        lembur;
+        lembur +
+        pencairanHak;
 
       const potonganBpjs = Number(karyawan.potonganBpjs) || 0;
       // Denda potongan terlambat otomatis dari riwayat absensi: menggunakan tarif dari pengaturan cut-off
@@ -502,6 +518,7 @@ export class PenggajianService {
       penggajian.tunjanganKomunikasi = tunjanganKomunikasi;
       penggajian.tunjanganJabatan = tunjanganJabatan;
       penggajian.lembur = lembur;
+      penggajian.pencairanHak = pencairanHak;
       penggajian.totalPenghasilan = totalPenghasilan;
       penggajian.potonganBpjs = potonganBpjs;
       penggajian.potonganTerlambat = potonganTerlambat;
@@ -544,6 +561,11 @@ export class PenggajianService {
       if (hariCuti > 0) {
         detailKehadiran.push(`${hariCuti} Hari Cuti Tahunan`);
       }
+      if (hariPencairan > 0) {
+        detailKehadiran.push(
+          `Pencairan RO/Cuti ${hariPencairan} Hari (Rp ${pencairanHak.toLocaleString('id-ID')})`,
+        );
+      }
       if (lateCount > 0) {
         detailKehadiran.push(
           `${lateCount}x Terlambat (Denda Rp ${potonganTerlambat.toLocaleString('id-ID')})`,
@@ -559,6 +581,7 @@ export class PenggajianService {
       if (rencanaKasbon) {
         await this.kasbonService!.simpanCicilan(saved.idGaji, periodeAkhirStr, rencanaKasbon);
       }
+      await this.pencairanService?.tandaiSlip(saved.idGaji, pencairanList, tarifHarian);
       results.push(saved);
     }
 
@@ -624,7 +647,8 @@ export class PenggajianService {
       Number(gaji.tunjanganTransportasi || 0) +
       Number(gaji.tunjanganKomunikasi || 0) +
       Number(gaji.tunjanganJabatan || 0) +
-      Number(gaji.lembur || 0);
+      Number(gaji.lembur || 0) +
+      Number(gaji.pencairanHak || 0);
 
     // Rekalkulasi total potongan
     const totalPotongan =
@@ -943,6 +967,7 @@ export class PenggajianService {
         periodeAkhir: periodeAkhirStr as any,
       },
     });
+    const idSlipPeriode = slipResmi?.idGaji;
     if (slipResmi && !slipResmi.tanggalBayar) {
       slipResmi = null; // belum final -> gunakan kalkulasi real-time
     }
@@ -987,6 +1012,14 @@ export class PenggajianService {
       ? Number(slipResmi.tunjanganJabatan)
       : Number(karyawan.tunjanganJabatan) || 0;
     const lembur = slipResmi ? Number(slipResmi.lembur) : 0;
+    // Pencairan RO/cuti yang akan dibayar di slip periode ini
+    const pencairanList = slipResmi
+      ? []
+      : ((await this.pencairanService?.untukSlip(idKaryawan, periodeAkhirStr, idSlipPeriode)) ?? []);
+    const tarifHarian = effTotalHariKerja > 0 ? gajiPokok / effTotalHariKerja : 0;
+    const pencairanHak = slipResmi
+      ? Number(slipResmi.pencairanHak || 0)
+      : pencairanList.reduce((t, p) => t + Math.round(tarifHarian * p.jumlahHari), 0);
 
     const totalPenghasilan = slipResmi
       ? Number(slipResmi.totalPenghasilan)
@@ -995,7 +1028,8 @@ export class PenggajianService {
         tunjanganTransportasi +
         tunjanganKomunikasi +
         tunjanganJabatan +
-        lembur;
+        lembur +
+        pencairanHak;
 
     const potonganBpjs = slipResmi
       ? Number(slipResmi.potonganBpjs)
@@ -1071,6 +1105,9 @@ export class PenggajianService {
       tunjanganKomunikasi,
       tunjanganJabatan,
       lembur,
+      pencairanHak,
+      hariPencairan: pencairanList.reduce((t, p) => t + p.jumlahHari, 0),
+      hariPenting,
       totalPenghasilan,
       potonganBpjs,
       potonganTerlambat,
@@ -1093,7 +1130,7 @@ export class PenggajianService {
         gajiPokokRumus: isOfficial
           ? `Nilai snapshot payroll resmi: Rp ${gajiPokokSesuaiHari.toLocaleString('id-ID')}`
           : `Prorata (${hariDibayarGajiPokok}/${effTotalHariKerja} Hari) × Rp ${gajiPokok.toLocaleString('id-ID')} = Rp ${gajiPokokSesuaiHari.toLocaleString('id-ID')}`,
-        uangMakanRumus: `${effTotalHariHadir} Hari Hadir Riil × Rp ${tarifKonsumsiPerHari.toLocaleString('id-ID')} = Rp ${tunjanganKonsumsi.toLocaleString('id-ID')}`,
+        uangMakanRumus: `${effTotalHariHadir} Hari Hadir Riil${!isOfficial && hariPenting > 0 ? ` + ${hariPenting} Hari Penting HRD` : ''} × Rp ${tarifKonsumsiPerHari.toLocaleString('id-ID')} = Rp ${tunjanganKonsumsi.toLocaleString('id-ID')}`,
         dendaTelatRumus: isOfficial
           ? `${jumlahTerlambat}x Terlambat pada snapshot = Rp ${potonganTerlambat.toLocaleString('id-ID')}`
           : `${jumlahTerlambat}x Terlambat × Rp ${tarifDenda.toLocaleString('id-ID')} = Rp ${potonganTerlambat.toLocaleString('id-ID')}`,

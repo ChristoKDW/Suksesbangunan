@@ -272,9 +272,10 @@ export default function PayrollPage() {
       Number(editForm.tunjanganTransportasi || 0) +
       Number(editForm.tunjanganKomunikasi || 0) +
       Number(editForm.tunjanganJabatan || 0) +
-      Number(editForm.lembur || 0)
+      Number(editForm.lembur || 0) +
+      Number(editingSlip?.pencairanHak || 0)
     )
-  }, [editForm])
+  }, [editForm, editingSlip])
 
   const editPreviewDeductions = useMemo(() => {
     return (
@@ -550,7 +551,8 @@ export default function PayrollPage() {
                     Number(p.tunjanganTransportasi || 0) +
                     Number(p.tunjanganKomunikasi || 0) +
                     Number(p.tunjanganJabatan || 0) +
-                    Number(p.lembur || 0)
+                    Number(p.lembur || 0) +
+                    Number(p.pencairanHak || 0)
 
                   return (
                     <TableRow key={p.idGaji}>
@@ -1060,6 +1062,13 @@ export default function PayrollPage() {
                     <td className="px-2 py-1 text-center"></td>
                     <td className="px-2 py-1 text-right font-mono">{fmt(viewingSlip.lembur)}</td>
                   </tr>
+                  {Number(viewingSlip.pencairanHak || 0) > 0 && (
+                    <tr>
+                      <td className="px-2 py-1">Pencairan RO/Cuti</td>
+                      <td className="px-2 py-1 text-center"></td>
+                      <td className="px-2 py-1 text-right font-mono">{fmt(viewingSlip.pencairanHak)}</td>
+                    </tr>
+                  )}
                   <tr className="font-bold border-t-2 border-black">
                     <td className="px-2 py-1">Total Penghasilan</td>
                     <td className="px-2 py-1 text-center"></td>
@@ -1071,7 +1080,8 @@ export default function PayrollPage() {
                             Number(viewingSlip.tunjanganTransportasi || 0) +
                             Number(viewingSlip.tunjanganKomunikasi || 0) +
                             Number(viewingSlip.tunjanganJabatan || 0) +
-                            Number(viewingSlip.lembur || 0)
+                            Number(viewingSlip.lembur || 0) +
+                            Number(viewingSlip.pencairanHak || 0)
                       )}
                     </td>
                   </tr>

@@ -6,6 +6,23 @@
 
 ---
 
+## 2026-10-29 (siang) · Claude Code — Pencairan (diuangkan) RO & Cuti
+
+- **Keputusan pemilik**: 1 hari = gaji pokok ÷ hari kerja periode; alur SPV → HRD; diajukan dari mobile; dibayar di payroll periode saat HRD menyetujui.
+- **Backend** modul baru `src/pencairan/` (entity `pengajuan_pencairan`, controller `/pencairan`):
+  - Mobile: `GET /pencairan/me/saldo`, `GET/POST /pencairan/me`, `PATCH /pencairan/me/:id/batal`.
+  - Web: `GET /pencairan` (SPV: departemennya), `PATCH /pencairan/:id/approval` (SPV tahap 1, HRD/Admin final; HRD bisa memproses `menunggu_spv` sebagai cadangan).
+  - RO: saldo dikunci FIFO (`saldo_ro.status='diajukan'`, kolom baru `saldo_ro.id_pencairan`) → `digunakan` saat disetujui / kembali `tersedia` saat ditolak/batal.
+  - Cuti: `PengajuanIzinService.getSaldoCuti` ikut mengurangi pencairan cuti (field baru `dicairkan`).
+  - Payroll: kolom baru `penggajian.pencairan_hak`, masuk total penghasilan di Generate, edit slip, dan slip real-time (`pencairanHak`, `hariPencairan`); `id_gaji` & `nominal` dicatat per pencairan (idempoten saat generate ulang).
+  - Slip PDF & Excel Laporan Penggajian: baris/kolom "Pencairan RO/Cuti". Batas pengajuan baru `pencairan` (default tanpa batas) di Aturan Pengajuan.
+- **Web**: halaman `/pencairan` (menu Keuangan → Pencairan RO & Cuti, untuk Admin/HRD/SPV); slip di Penggajian menampilkan baris pencairan.
+- **Mobile**: modul `pencairan` (menu di Beranda di bawah Kasbon) + baris pencairan di Slip Gaji. **Perlu build APK baru.**
+- **Tes**: `pencairan.service.spec.ts` (3 kasus) + saldo cuti dengan pencairan. Backend 14 suites / 42 tes lulus; frontend `tsc` & build OK; `flutter analyze` tanpa error.
+- **Dampak data**: tabel `pengajuan_pencairan`, kolom `saldo_ro.id_pencairan` & `penggajian.pencairan_hak` dibuat otomatis (TypeORM synchronize).
+
+---
+
 ## 2026-10-29 · Claude Code — Filter departemen absensi, hari penting HRD dibayar + uang makan, masa kerja karyawan
 
 - **Payroll (`backend-sb/src/penggajian/penggajian.service.ts`)**: hari penting/libur HRD (`hari_libur.is_libur=true`, mis. outing)

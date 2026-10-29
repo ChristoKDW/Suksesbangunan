@@ -90,6 +90,10 @@ export class SaldoRo {
   @JoinColumn({ name: 'id_pengajuan_ro' })
   pengajuanRo: PengajuanRo | null;
 
+  @ApiProperty({ description: 'ID Pengajuan Pencairan yang mengunci/mencairkan saldo ini', required: false })
+  @Column({ name: 'id_pencairan', type: 'int', nullable: true })
+  idPencairan: number | null;
+
   @ApiProperty({ description: 'Keterangan tambahan', required: false })
   @Column({ name: 'keterangan', type: 'text', nullable: true })
   keterangan: string | null;

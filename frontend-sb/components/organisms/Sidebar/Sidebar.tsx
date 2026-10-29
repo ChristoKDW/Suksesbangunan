@@ -20,6 +20,7 @@ import {
   FileText,
   DollarSign,
   HandCoins,
+  Banknote,
   BarChart3,
   MapPin,
   ChevronRight,
@@ -88,6 +89,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/payroll", label: "Penggajian", icon: DollarSign, roles: ["Admin", "HRD"] },
       { href: "/kasbon", label: "Kasbon", icon: HandCoins, roles: ["Admin", "HRD"] },
+      { href: "/pencairan", label: "Pencairan RO & Cuti", icon: Banknote, roles: ["Admin", "HRD", "SPV"] },
     ],
   },
   {

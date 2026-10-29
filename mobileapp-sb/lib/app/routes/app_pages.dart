@@ -43,6 +43,8 @@ import '../modules/splash/bindings/splash_binding.dart';
 import '../modules/splash/views/splash_view.dart';
 import '../modules/kasbon/bindings/kasbon_binding.dart';
 import '../modules/kasbon/views/kasbon_view.dart';
+import '../modules/pencairan/bindings/pencairan_binding.dart';
+import '../modules/pencairan/views/pencairan_view.dart';
 import '../modules/laporan_masalah/bindings/laporan_masalah_binding.dart';
 import '../modules/laporan_masalah/views/laporan_masalah_view.dart';
 
@@ -143,6 +145,11 @@ class AppPages {
       name: _Paths.KASBON,
       page: () => const KasbonView(),
       binding: KasbonBinding(),
+    ),
+    GetPage(
+      name: _Paths.PENCAIRAN,
+      page: () => const PencairanView(),
+      binding: PencairanBinding(),
     ),
     GetPage(
       name: _Paths.REGULAR_OFF,

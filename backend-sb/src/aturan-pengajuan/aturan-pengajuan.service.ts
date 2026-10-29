@@ -23,6 +23,7 @@ export type JenisPengajuan =
   | 'tukar_off'
   | 'tunda_off'
   | 'regular_off'
+  | 'pencairan'
   | 'kasbon';
 
 /**
@@ -94,6 +95,14 @@ const ATURAN: Record<
     maksDefault: 0,
     keterangan: 'Jumlah hari dibatasi saldo RO; ini batas jumlah pengajuan per bulan',
     sql: `SELECT count(*) FROM pengajuan_ro WHERE id_karyawan = $1
+          AND status NOT LIKE 'ditolak%' AND status <> 'dibatalkan'
+          AND (created_at AT TIME ZONE 'Asia/Makassar')::date BETWEEN $2 AND $3`,
+  },
+  pencairan: {
+    label: 'Pencairan RO/Cuti',
+    maksDefault: 0,
+    keterangan: 'Jumlah hari dibatasi saldo RO / sisa cuti; ini batas jumlah pengajuan per bulan',
+    sql: `SELECT count(*) FROM pengajuan_pencairan WHERE id_karyawan = $1
           AND status NOT LIKE 'ditolak%' AND status <> 'dibatalkan'
           AND (created_at AT TIME ZONE 'Asia/Makassar')::date BETWEEN $2 AND $3`,
   },

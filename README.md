@@ -14,6 +14,12 @@
 | `mobileapp-sb/` | Aplikasi karyawan Flutter (APK di `frontend-sb/public/apk/`) |
 | `scripts/` | Pemantau perubahan VPS & pengirim email pengingat |
 
+## Pembaruan terakhir (29 Okt 2026)
+- **Pencairan RO & Cuti** — karyawan mengajukan dari mobile (menu *Pencairan RO & Cuti*), disetujui SPV → HRD di web (menu *Keuangan → Pencairan RO & Cuti*). 1 hari = gaji pokok ÷ hari kerja periode, dibayar otomatis di slip periode saat HRD menyetujui (baris *Pencairan RO/Cuti*). Saldo RO dikunci saat diajukan; cuti yang dicairkan memotong sisa cuti.
+- **Hari penting HRD** (outing dll) dihitung hari kerja dibayar penuh + uang makan tanpa absen.
+- **Data Absensi** bisa difilter per departemen; **Karyawan** menampilkan masa kerja.
+- Detail lengkap: [`CATATAN_PERUBAHAN.md`](CATATAN_PERUBAHAN.md).
+
 ## Cek cepat: apakah ketiga tempat sudah sama?
 ```bash
 git fetch origin && git fetch vps

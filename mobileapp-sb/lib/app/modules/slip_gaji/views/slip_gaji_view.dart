@@ -375,6 +375,14 @@ class SlipGajiView extends GetView<SlipGajiController> {
                                 '',
                                 controller.formatCurrency(data['lembur']),
                               ),
+                              if ((num.tryParse('${data['pencairanHak'] ?? 0}') ?? 0) > 0) ...[
+                                _buildDivider(),
+                                _buildTableRow(
+                                  'Pencairan RO/Cuti',
+                                  '${data['hariPencairan'] ?? ''} hari',
+                                  controller.formatCurrency(data['pencairanHak']),
+                                ),
+                              ],
                               _buildDivider(thick: true),
                               _buildTableRow(
                                 'Total Penghasilan',

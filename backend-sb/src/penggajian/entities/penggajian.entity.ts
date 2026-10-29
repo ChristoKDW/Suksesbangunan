@@ -124,6 +124,16 @@ export class Penggajian {
   })
   lembur: number;
 
+  @ApiProperty({ description: 'Pencairan RO/cuti (otomatis dari menu Pencairan, tidak diedit manual)' })
+  @Column({
+    name: 'pencairan_hak',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
+  pencairanHak: number;
+
   @ApiProperty({ description: 'Total seluruh penghasilan kotor' })
   @Column({
     name: 'total_penghasilan',

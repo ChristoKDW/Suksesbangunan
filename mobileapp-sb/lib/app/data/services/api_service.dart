@@ -742,6 +742,38 @@ class ApiService extends GetConnect {
     return _handle(res);
   }
 
+  /// GET /pencairan/me/saldo → { ro, cuti: { sisa, hakCuti, tahun, ... } }.
+  Future<Map<String, dynamic>> getSaldoPencairan() async {
+    final res = await get('/pencairan/me/saldo');
+    return _handle(res);
+  }
+
+  /// GET /pencairan/me → riwayat pengajuan pencairan RO / cuti.
+  Future<List<dynamic>> getMyPencairan() async {
+    final res = await get('/pencairan/me');
+    return _handleDynamic(res) ?? [];
+  }
+
+  /// POST /pencairan/me → ajukan pencairan (1 hari = 1 hari kerja gaji pokok).
+  Future<Map<String, dynamic>> ajukanPencairan({
+    required String jenis,
+    required int jumlahHari,
+    String? alasan,
+  }) async {
+    final res = await post('/pencairan/me', {
+      'jenis': jenis,
+      'jumlahHari': jumlahHari,
+      if (alasan != null && alasan.isNotEmpty) 'alasan': alasan,
+    });
+    return _handle(res);
+  }
+
+  /// PATCH /pencairan/me/:id/batal → batalkan sebelum disetujui HRD.
+  Future<Map<String, dynamic>> batalkanPencairan(int id) async {
+    final res = await patch('/pencairan/me/$id/batal', {});
+    return _handle(res);
+  }
+
   /// GET /pengajuan-izin/me/saldo-cuti → { jatah, terpakai, menunggu, sisa, tahun }.
   Future<Map<String, dynamic>> getSaldoCuti() async {
     final res = await get('/pengajuan-izin/me/saldo-cuti');

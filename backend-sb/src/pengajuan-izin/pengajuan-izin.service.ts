@@ -519,6 +519,20 @@ export class PengajuanIzinService {
       if (izin.status === 'disetujui') terpakai += hari;
       else menunggu += hari;
     }
+    // Cuti yang dicairkan (diuangkan) ikut memotong jatah tahun tersebut
+    let dicairkan = 0;
+    const pencairan: { status: string; hari: string }[] = await this.dataSource.query(
+      `SELECT status, COALESCE(SUM(jumlah_hari), 0) AS hari FROM pengajuan_pencairan
+       WHERE id_karyawan = $1 AND jenis = 'cuti' AND tahun = $2
+         AND status IN ('menunggu_spv', 'menunggu_hrd', 'disetujui') GROUP BY status`,
+      [idKaryawan, tahun],
+    );
+    for (const row of pencairan) {
+      if (row.status === 'disetujui') {
+        dicairkan += Number(row.hari);
+        terpakai += Number(row.hari);
+      } else menunggu += Number(row.hari);
+    }
     const jatah = karyawan?.hakCuti ? Number(karyawan.jatahCuti ?? 12) : 0;
     return {
       tahun,
@@ -526,6 +540,7 @@ export class PengajuanIzinService {
       jatah,
       terpakai,
       menunggu,
+      dicairkan,
       sisa: Math.max(0, jatah - terpakai - menunggu),
     };
   }
