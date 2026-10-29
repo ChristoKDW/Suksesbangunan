@@ -6,6 +6,25 @@
 
 ---
 
+## 2026-10-29 (sore) · Antigravity — Integrasi Firebase Core & FlutterFire CLI (Mobile App)
+
+- **Aplikasi Mobile (`mobileapp-sb`)**:
+  - Konfigurasi dependensi `firebase_core: ^5.1.0` pada `pubspec.yaml`.
+  - Eksekusi instalasi global `flutterfire_cli` dan Firebase CLI.
+  - Registrasi & konfigurasi project Firebase `sukses-bangunan` via `flutterfire configure --project=sukses-bangunan`:
+    - Android: `com.comp_attendance.comp_attendance_mobile` (`android/app/google-services.json`).
+    - iOS & macOS: `com.compattendance.compAttendanceMobile` (`ios/Runner/GoogleService-Info.plist`, `macos/Runner/GoogleService-Info.plist`).
+    - Web & Windows: `comp_attendance_mobile (web)`, `comp_attendance_mobile (windows)`.
+    - Integrasi build otomatis via `android/app/build.gradle.kts` & `android/settings.gradle.kts`.
+  - Inisialisasi Firebase di `lib/main.dart`:
+    - Mengimpor `package:firebase_core/firebase_core.dart` dan `firebase_options.dart`.
+    - Menjalankan `await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)` tepat setelah `WidgetsFlutterBinding.ensureInitialized()`.
+- **Pengujian & Verifikasi**:
+  - `flutter analyze lib`: 0 errors.
+  - Gradle dry run (`./gradlew tasks --dry-run`): BUILD SUCCESSFUL (semua plugin dan dependensi Firebase terkompilasi tanpa konflik).
+
+---
+
 ## 2026-10-29 (siang, 2) · Claude Code — Absen pulang wajib setelah shift / pengajuan Pulang Cepat + perbaikan zona waktu absen
 
 - **Bug**: absen pulang bisa dilakukan kapan saja setelah absen masuk (hanya dicek bila ada izin sementara). Contoh: Musrini Muin absen pulang 11:44 WITA (shift sampai sore).
@@ -50,7 +69,7 @@
 - **Web Admin `attendance/page.tsx`**: filter **Departemen** di Data Absensi (tabel & kartu statistik mengikuti filter).
 - **Web Admin karyawan**: kolom Tgl Masuk menampilkan **masa kerja** (mis. "2 tahun 3 bulan"); detail karyawan punya baris "Masa Kerja". Helper `masaKerja()` di `lib/utils.ts`.
 - `AGENTS.md`/`agent.md`: aturan payroll hari penting diperbarui. Spec `hari-kerja-cuti.spec.ts` disesuaikan + kasus baru.
-- **Dampak data**: tidak ada migrasi. Slip yang belum dibayar akan berubah saat Generate ulang bila periodenya punya hari penting HRD.
+- **Dampak data**: tidak ada migrasi. Slip yang belum dibayar akan berubah saat Generate ulang bila periodenya punya hari penting HRD. (feat(mobile): integrasi firebase core dan flutterfire configuration)
 
 ---
 

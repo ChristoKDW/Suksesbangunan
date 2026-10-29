@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "861076310469",
+    "project_id": "sukses-bangunan",
+    "storage_bucket": "sukses-bangunan.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861076310469:android:5ce2044c720dfcde0b23ac",
+        "android_client_info": {
+          "package_name": "com.comp_attendance.comp_attendance_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAP-B93l221DQqsJ71N3H9RX9HhR3HtiVU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
