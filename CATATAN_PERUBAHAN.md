@@ -6,6 +6,21 @@
 
 ---
 
+## 2026-10-29 · Claude Code — Filter departemen absensi, hari penting HRD dibayar + uang makan, masa kerja karyawan
+
+- **Payroll (`backend-sb/src/penggajian/penggajian.service.ts`)**: hari penting/libur HRD (`hari_libur.is_libur=true`, mis. outing)
+  sekarang **dihitung hari kerja dibayar penuh + uang makan tanpa absen** (sebelumnya: dikeluarkan dari hari kerja → gaji pokok tidak terpotong, tetapi uang makan tidak dibayar).
+  - `hitungHariKerjaJadwal` mengembalikan `{ hariKerja, hariPenting }`; hari penting hanya dihitung bila tanggal itu memang hari kerja karyawan
+    (jadwal `sumber_upload='hari_penting'`, shift, atau tanpa jadwal Sen–Sab bukan tanggal merah). Off rutin/Minggu tidak dibayar dobel.
+  - Berlaku di Generate Payroll dan rincian slip real-time; catatan slip menampilkan "N Hari Penting HRD (Gaji Pokok & Uang Makan Dibayar)".
+  - Absen riil di hari penting tetap diabaikan (tidak dobel, tidak kena denda telat).
+- **Web Admin `attendance/page.tsx`**: filter **Departemen** di Data Absensi (tabel & kartu statistik mengikuti filter).
+- **Web Admin karyawan**: kolom Tgl Masuk menampilkan **masa kerja** (mis. "2 tahun 3 bulan"); detail karyawan punya baris "Masa Kerja". Helper `masaKerja()` di `lib/utils.ts`.
+- `AGENTS.md`/`agent.md`: aturan payroll hari penting diperbarui. Spec `hari-kerja-cuti.spec.ts` disesuaikan + kasus baru.
+- **Dampak data**: tidak ada migrasi. Slip yang belum dibayar akan berubah saat Generate ulang bila periodenya punya hari penting HRD.
+
+---
+
 ## 2026-10-28 (malam) · Antigravity — Modal Interaktif Rincian Karyawan per Departemen (Financial Insights)
 
 - **Backend API (`backend-sb`)**:

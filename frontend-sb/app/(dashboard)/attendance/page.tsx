@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Paginati
 import { Badge, Skeleton, TableRowSkeleton } from "@/components/atoms"
 import { Search, Download, UserCheck, UserX, Clock, Trash2, Loader2 } from "lucide-react"
 import { api } from "@/lib/api"
-import type { Absensi } from "@/lib/types"
+import type { Absensi, Departemen } from "@/lib/types"
 import { confirmDelete, showError } from "@/lib/swal"
 
 function formatTime(iso: string | null): string {
@@ -30,7 +30,9 @@ function getStatusBadge(status: string | null): { label: string; variant: "succe
 export default function AttendancePage() {
   // ponytail: SWR caching + background live sync (refreshInterval 15s)
   const { data: attendance = [], isLoading: loading, mutate } = useSWR<Absensi[]>("absensi", { refreshInterval: 15000 })
+  const { data: departments = [] } = useSWR<Departemen[]>("departemen")
   const [searchQuery, setSearchQuery] = useState("")
+  const [deptFilter, setDeptFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
@@ -52,6 +54,7 @@ export default function AttendancePage() {
 
   const todayData = attendance.filter(a => {
     if (!a.jamMasukAktual) return false
+    if (deptFilter !== "all" && a.karyawan?.idDepartemen !== Number(deptFilter)) return false
     const d = new Date(a.jamMasukAktual)
     return d >= today && d < tomorrow
   })
@@ -143,6 +146,20 @@ export default function AttendancePage() {
               style={{ color: "var(--text-primary)" }} 
             />
           </div>
+          <select
+            value={deptFilter}
+            onChange={e => {
+              setDeptFilter(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="w-full sm:w-56 rounded-lg px-3 py-2 text-sm outline-none"
+            style={{ background: "var(--bg-page)", border: "1px solid var(--border-default)", color: "var(--text-primary)" }}
+          >
+            <option value="all">Semua Departemen</option>
+            {departments.map(d => (
+              <option key={d.idDepartemen} value={d.idDepartemen}>{d.namaDepartemen}</option>
+            ))}
+          </select>
         </CardHeader>
         <CardContent className="p-0">
           <Table>

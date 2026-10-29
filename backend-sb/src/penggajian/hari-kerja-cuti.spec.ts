@@ -2,7 +2,7 @@ import { PenggajianService } from './penggajian.service';
 import { PengajuanIzinService } from '../pengajuan-izin/pengajuan-izin.service';
 
 describe('Hari kerja payroll berbasis jadwal', () => {
-  const makeService = (jadwal: { tanggal: string; isLibur: boolean }[]) =>
+  const makeService = (jadwal: { tanggal: string; isLibur: boolean; sumberUpload?: string }[]) =>
     new PenggajianService(
       {} as any,
       {} as any,
@@ -22,16 +22,30 @@ describe('Hari kerja payroll berbasis jadwal', () => {
       { tanggal: '2026-09-25', isLibur: false },
       { tanggal: '2026-09-26', isLibur: false },
     ]);
-    await expect(hitung(service)).resolves.toBe(26);
+    await expect(hitung(service)).resolves.toEqual({ hariKerja: 26, hariPenting: 0 });
   });
 
-  it('libur di jadwal & hari penting HRD mengurangi hari kerja, shift di hari Minggu menambah', async () => {
+  it('libur di jadwal mengurangi hari kerja, shift di hari Minggu menambah', async () => {
     const service = makeService([
       { tanggal: '2026-09-28', isLibur: true }, // Senin libur (off rutin)
       { tanggal: '2026-09-27', isLibur: false }, // Minggu masuk shift
     ]);
-    // 26 - 1 (off Senin) + 1 (Minggu masuk) - 1 (hari penting 2026-10-01)
-    await expect(hitung(service, new Set(['2026-10-01']))).resolves.toBe(25);
+    // 26 - 1 (off Senin) + 1 (Minggu masuk); hari penting 2026-10-01 tetap hari kerja dibayar
+    await expect(hitung(service, new Set(['2026-10-01']))).resolves.toEqual({
+      hariKerja: 26,
+      hariPenting: 1,
+    });
+  });
+
+  it('hari penting HRD dibayar hanya bila tanggal itu hari kerja karyawan', async () => {
+    const service = makeService([
+      { tanggal: '2026-10-01', isLibur: true, sumberUpload: 'hari_penting' }, // jadwal ditimpa HRD
+      { tanggal: '2026-10-02', isLibur: true, sumberUpload: 'regular_off' }, // memang off
+    ]);
+    // 26 - 1 (off 2 Okt); 1 Okt tetap hari kerja; Minggu 4 Okt tidak dihitung
+    await expect(
+      hitung(service, new Set(['2026-10-01', '2026-10-02', '2026-10-04'])),
+    ).resolves.toEqual({ hariKerja: 25, hariPenting: 1 });
   });
 });
 

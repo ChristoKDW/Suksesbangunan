@@ -102,8 +102,9 @@ APK dari keystore lain tidak bisa meng-update aplikasi yang sudah terpasang.
 - **Izin / sakit / dinas luar / izin sementara** tidak mengubah jadwal. Izin sementara disetujui → jam pulang diperpanjang sebesar durasinya (validasi absen pulang di `absensi.service.ts`).
 - **Hak atur jadwal**: SPV → staf departemennya. HRD → jadwal Supervisor & staf departemen tanpa SPV. Admin → semua (cadangan). Divalidasi di `jadwal-kerja.service.ts` (`validateKaryawanAccess`).
 - **Payroll** (`penggajian.service.ts`): periode = cut-off (default 25 → 24), bulan periode = bulan tanggal akhir.
-  Hari kerja dihitung per tanggal (jadwal bila ada, kalender Sen–Sab bila kosong, minus hari penting HRD).
-  Gaji pokok prorata hari dibayar (hadir + sakit resmi + dinas luar + cuti resmi). Uang makan × hari hadir riil.
+  Hari kerja dihitung per tanggal (jadwal bila ada, kalender Sen–Sab bila kosong, minus tanggal merah).
+  Hari penting/libur HRD (outing dll) = hari kerja dibayar penuh + uang makan tanpa absen, hanya bila tanggal itu hari kerja karyawan (bukan off rutin/Minggu).
+  Gaji pokok prorata hari dibayar (hadir + hari penting HRD + sakit resmi + dinas luar + cuti resmi). Uang makan × (hari hadir riil + hari penting HRD).
   Telat & kembali istirahat > 60 menit = denda per kejadian (Pengaturan Penggajian). Slip yang sudah dibayar (`tanggalBayar`) tidak bisa di-generate/diedit.
   Generate ulang mempertahankan lembur & potongan lain input HRD.
 - **Kasbon** (`backend-sb/src/kasbon`): cicilan dipotong otomatis saat Generate Payroll (tabel `kasbon_cicilan` per slip, idempoten), maksimal sisa & tidak membuat THP minus, otomatis `lunas`. Potongan kasbon di slip tidak boleh diedit manual.

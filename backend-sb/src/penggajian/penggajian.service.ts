@@ -84,7 +84,8 @@ export class PenggajianService {
 
   /**
    * Set tanggal hari penting/libur yang diatur HRD (isLibur = true) dalam periode.
-   * Hari seperti event outing dsb tidak dihitung jam kerja & tidak dapat uang harian.
+   * Hari seperti event outing dsb tetap dihitung hari kerja dibayar + uang makan
+   * tanpa perlu absen (lihat hitungHariKerjaJadwal).
    */
   async getHariPentingLiburSet(
     startDate: string,
@@ -101,7 +102,7 @@ export class PenggajianService {
 
   /**
    * Menghitung total hari kerja kalender dalam rentang tanggal:
-   * Senin s/d Sabtu, dikurangi hari penting/libur yang diatur HRD.
+   * Senin s/d Sabtu, dikurangi tanggal pada liburSet (mis. tanggal merah).
    */
   hitungHariKerjaKalender(
     startDate: string | Date,
@@ -176,8 +177,9 @@ export class PenggajianService {
   /**
    * Hari kerja karyawan dihitung per tanggal dalam periode:
    * - tanggal yang punya jadwal → hari kerja jika ada shift / cuti resmi (bukan libur)
-   * - tanggal tanpa jadwal → mengikuti kalender (Senin–Sabtu)
-   * - hari penting/libur yang diatur HRD → bukan hari kerja
+   * - tanggal tanpa jadwal → mengikuti kalender (Senin–Sabtu, kecuali tanggal merah)
+   * - hari penting/libur HRD (outing dll) → tetap hari kerja bila tanggal itu memang
+   *   hari kerja karyawan; dihitung terpisah sebagai `hariPenting` (dibayar + uang makan)
    * Dengan begitu jadwal yang baru diisi sebagian tidak membuat hari kerja terlalu
    * kecil (gaji pokok terbayar penuh walau jarang hadir).
    */
@@ -188,31 +190,29 @@ export class PenggajianService {
     baseTotalHariKerja: number,
     liburSet: Set<string> = new Set(),
     tanggalMerahSet: Set<string> = new Set(),
-  ): Promise<number> {
-    try {
-      const jadwalList = await this.jadwalKerjaService.findByKaryawanAndPeriode(
-        idKaryawan,
-        periodeAwalStr,
-        periodeAkhirStr,
-      );
-      if (!jadwalList || jadwalList.length === 0) return baseTotalHariKerja;
-      const jadwalPerTanggal = new Map<string, boolean>();
-      for (const j of jadwalList) {
-        const tgl = normalizeDateOnly(j.tanggal);
-        // Satu tanggal dianggap hari kerja bila salah satu barisnya bukan libur
-        jadwalPerTanggal.set(tgl, (jadwalPerTanggal.get(tgl) ?? false) || !j.isLibur);
-      }
-      const hariKerja = dateRange(periodeAwalStr, periodeAkhirStr).filter((tgl) => {
-        if (liburSet.has(tgl)) return false;
-        // Tanpa jadwal: Senin–Sabtu kecuali tanggal merah (kantor libur; yang dijadwalkan masuk dapat RO)
-        return jadwalPerTanggal.has(tgl)
-          ? jadwalPerTanggal.get(tgl)!
-          : !isSunday(tgl) && !tanggalMerahSet.has(tgl);
-      }).length;
-      return hariKerja > 0 ? hariKerja : baseTotalHariKerja;
-    } catch {
-      return baseTotalHariKerja;
+  ): Promise<{ hariKerja: number; hariPenting: number }> {
+    const jadwalList = await this.jadwalKerjaService
+      .findByKaryawanAndPeriode(idKaryawan, periodeAwalStr, periodeAkhirStr)
+      .catch(() => []);
+    const jadwalPerTanggal = new Map<string, boolean>();
+    for (const j of jadwalList ?? []) {
+      const tgl = normalizeDateOnly(j.tanggal);
+      // Libur hasil hari penting HRD tetap hari kerja dibayar
+      const kerja = !j.isLibur || j.sumberUpload === 'hari_penting';
+      // Satu tanggal dianggap hari kerja bila salah satu barisnya hari kerja
+      jadwalPerTanggal.set(tgl, (jadwalPerTanggal.get(tgl) ?? false) || kerja);
     }
+    // Tanpa jadwal: Senin–Sabtu kecuali tanggal merah (kantor libur; yang dijadwalkan masuk dapat RO)
+    const isHariKerja = (tgl: string) =>
+      jadwalPerTanggal.has(tgl)
+        ? jadwalPerTanggal.get(tgl)!
+        : !isSunday(tgl) && !tanggalMerahSet.has(tgl);
+    const hariPenting = [...liburSet].filter(isHariKerja).length;
+    if (jadwalPerTanggal.size === 0) {
+      return { hariKerja: baseTotalHariKerja, hariPenting };
+    }
+    const hariKerja = dateRange(periodeAwalStr, periodeAkhirStr).filter(isHariKerja).length;
+    return { hariKerja: hariKerja > 0 ? hariKerja : baseTotalHariKerja, hariPenting };
   }
 
   async generate(
@@ -250,18 +250,18 @@ export class PenggajianService {
         ? Number(dendaPerTelatCustom)
         : Number(settings?.dendaPerTelatDefault ?? 20000);
 
-    // Hari penting/libur yang diatur HRD (event outing dll): tidak dihitung hari/jam kerja
+    // Hari penting/libur yang diatur HRD (event outing dll): hari kerja dibayar + uang makan tanpa absen
     const liburSet = await this.getHariPentingLiburSet(
       periodeAwalStr,
       periodeAkhirStr,
     );
 
-    // Hitung hari kerja dinamis kalender periode cut-off (Senin s/d Sabtu, minus hari penting)
+    // Hitung hari kerja dinamis kalender periode cut-off (Senin s/d Sabtu, minus tanggal merah)
     const tanggalMerahSet = await this.getTanggalMerahSet(periodeAwalStr, periodeAkhirStr);
     const dynamicWorkingDays = this.hitungHariKerjaKalender(
       periodeAwalStr,
       periodeAkhirStr,
-      new Set([...liburSet, ...tanggalMerahSet]),
+      tanggalMerahSet,
       Number(settings?.standarHariKerja ?? 26),
     );
     const normalizedTotalHariKerjaCustom = Number(totalHariKerjaCustom);
@@ -301,17 +301,15 @@ export class PenggajianService {
 
     for (const karyawan of karyawanList) {
       // 1. Tentukan total hari kerja spesifik untuk karyawan:
-      let totalHariKerja = baseTotalHariKerja;
-      if (!hasValidTotalHariKerjaCustom) {
-        totalHariKerja = await this.hitungHariKerjaJadwal(
-          karyawan.idKaryawan,
-          periodeAwalStr,
-          periodeAkhirStr,
-          baseTotalHariKerja,
-          liburSet,
-          tanggalMerahSet,
-        );
-      }
+      const { hariKerja, hariPenting } = await this.hitungHariKerjaJadwal(
+        karyawan.idKaryawan,
+        periodeAwalStr,
+        periodeAkhirStr,
+        baseTotalHariKerja,
+        liburSet,
+        tanggalMerahSet,
+      );
+      const totalHariKerja = hasValidTotalHariKerjaCustom ? baseTotalHariKerja : hariKerja;
 
       // 1b. Data absensi riil dari database
       const absensiList = await this.absensiService.findByKaryawanDanPeriode(
@@ -331,7 +329,7 @@ export class PenggajianService {
         if (status === 'tepat waktu' || status === 'telat') {
           if (absensi.jamMasukAktual) {
             const dStr = businessDateOf(new Date(absensi.jamMasukAktual));
-            // Hari penting/event dari HRD: tidak dihitung jam kerja & uang harian
+            // Hari penting HRD sudah dibayar lewat hariPenting (hindari dobel & denda telat)
             if (liburSet.has(dStr)) continue;
             attendedDates.add(dStr);
             const completedBreaks = (absensi.istirahat || []).filter(
@@ -409,6 +407,7 @@ export class PenggajianService {
       const hariDibayarGajiPokok = Math.min(
         totalHariKerja,
         totalHariHadir +
+          hariPenting +
           hariSakitResmi +
           hariDinasLuarRaw +
           hariCuti,
@@ -417,6 +416,7 @@ export class PenggajianService {
         0,
         totalHariKerja -
           (totalHariHadir +
+            hariPenting +
             hariSakitResmi +
             hariDinasLuarRaw +
             hariCuti +
@@ -432,8 +432,8 @@ export class PenggajianService {
 
       const tarifKonsumsiPerHari =
         Number(karyawan.tunjanganKonsumsiHari) || 20000;
-      // Tunjangan konsumsi dihitung harian: tarif * kehadiran riil aktual
-      const tunjanganKonsumsi = tarifKonsumsiPerHari * totalHariHadir;
+      // Tunjangan konsumsi dihitung harian: tarif * (kehadiran riil + hari penting HRD)
+      const tunjanganKonsumsi = tarifKonsumsiPerHari * (totalHariHadir + hariPenting);
       const tunjanganTransportasi = Number(karyawan.tunjanganTransportasi) || 0;
       const tunjanganKomunikasi = Number(karyawan.tunjanganKomunikasi) || 0;
       const tunjanganJabatan = Number(karyawan.tunjanganJabatan) || 0;
@@ -511,6 +511,11 @@ export class PenggajianService {
       penggajian.potongan = totalPotongan;
       penggajian.totalGaji = totalGaji;
       const detailKehadiran: string[] = [`${totalHariHadir} Hari Hadir Riil`];
+      if (hariPenting > 0) {
+        detailKehadiran.push(
+          `${hariPenting} Hari Penting HRD (Gaji Pokok & Uang Makan Dibayar)`,
+        );
+      }
       if (hariSakitResmi > 0) {
         detailKehadiran.push(
           `${hariSakitResmi} Hari Sakit (Gaji Pokok Tetap, Potong Uang Makan)`,
@@ -768,7 +773,7 @@ export class PenggajianService {
       periodeAkhirStr,
     );
 
-    // Hari penting/libur HRD (event dll): tidak dihitung hari/jam kerja & uang harian
+    // Hari penting/libur HRD (event dll): hari kerja dibayar + uang makan tanpa absen
     const liburSet = await this.getHariPentingLiburSet(
       periodeAwalStr,
       periodeAkhirStr,
@@ -779,10 +784,10 @@ export class PenggajianService {
     const dynamicWorkingDays = this.hitungHariKerjaKalender(
       periodeAwalStr,
       periodeAkhirStr,
-      new Set([...liburSet, ...tanggalMerahSet]),
+      tanggalMerahSet,
       Number(settings?.standarHariKerja ?? 26),
     );
-    const standarHariKerja = await this.hitungHariKerjaJadwal(
+    const { hariKerja: standarHariKerja, hariPenting } = await this.hitungHariKerjaJadwal(
       idKaryawan,
       periodeAwalStr,
       periodeAkhirStr,
@@ -812,7 +817,7 @@ export class PenggajianService {
       if (!a.jamMasukAktual) continue;
       const d = new Date(a.jamMasukAktual);
       const dateKey = businessDateOf(d);
-      // Hari penting/event HRD tidak dihitung jam kerja & uang harian
+      // Hari penting HRD sudah dibayar lewat hariPenting (hindari dobel & denda telat)
       if (liburSet.has(dateKey)) continue;
       const status = (a.statusKehadiran || '').toLowerCase();
 
@@ -912,6 +917,7 @@ export class PenggajianService {
     const hariDibayarGajiPokok = Math.min(
       standarHariKerja,
       totalHariHadir +
+        hariPenting +
         hariSakitResmi +
         hariDinasLuar +
         hariCuti,
@@ -920,6 +926,7 @@ export class PenggajianService {
       0,
       standarHariKerja -
         (totalHariHadir +
+          hariPenting +
           hariSakitResmi +
           hariDinasLuar +
           hariCuti +
@@ -968,7 +975,7 @@ export class PenggajianService {
       : Number(karyawan.tunjanganKonsumsiHari) || 20000;
     const tunjanganKonsumsi = slipResmi
       ? Number(slipResmi.tunjanganKonsumsi)
-      : tarifKonsumsiPerHari * effTotalHariHadir;
+      : tarifKonsumsiPerHari * (effTotalHariHadir + hariPenting);
 
     const tunjanganTransportasi = slipResmi
       ? Number(slipResmi.tunjanganTransportasi)

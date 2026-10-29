@@ -29,6 +29,7 @@ import { Badge, Skeleton } from "@/components/atoms"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Karyawan } from "@/lib/types"
+import { masaKerja } from "@/lib/utils"
 import { confirmDelete, showError, showSuccess, showWarning } from "@/lib/swal"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id"
@@ -407,6 +408,13 @@ export default function EmployeeDetailPage({ params }: { params: Promise<{ id: s
               </span>
               <span className="font-semibold text-[var(--text-primary)]">
                 {formatTanggal(employee.tanggalMasuk)}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center py-1 border-b border-[var(--border-default)]/60">
+              <span className="text-xs text-[var(--text-muted)]">Masa Kerja</span>
+              <span className="font-semibold text-[var(--text-primary)]">
+                {masaKerja(employee.tanggalMasuk)}
               </span>
             </div>
 

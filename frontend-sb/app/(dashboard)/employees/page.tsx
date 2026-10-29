@@ -9,6 +9,7 @@ import { Search, Plus, Edit2, Trash2, Smartphone, Loader2, Key, Eye, ShieldCheck
 import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import type { Karyawan } from "@/lib/types"
+import { masaKerja } from "@/lib/utils"
 import { confirmDelete, confirmDialog, showError, showSuccess, showWarning } from "@/lib/swal"
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.larasbysuksesbangunan.my.id"
@@ -283,6 +284,9 @@ export default function EmployeesPage() {
                   </TableCell>
                   <TableCell className="text-sm text-[var(--text-secondary)]">
                     {formatTanggal(emp.tanggalMasuk)}
+                    {emp.tanggalMasuk && (
+                      <div className="text-xs text-[var(--text-muted)]">{masaKerja(emp.tanggalMasuk)}</div>
+                    )}
                   </TableCell>
                   <TableCell>
                     {emp.statusKaryawan === "External" ? (
