@@ -6,6 +6,25 @@
 
 ---
 
+## 2026-10-29 (17:25 WITA) · Antigravity — Build Release APK Baru & Pembaruan Barcode Unduhan Web
+
+- **Build APK Release (`mobileapp-sb`)**:
+  - `flutter build apk --release`: menghasilkan APK rilis terbaru (90.0 MB) dengan integrasi Firebase Core, modul Pencairan RO/Cuti, dan penyesuaian aturan Pulang Cepat WITA (+08:00).
+  - APK ditandatangani debug keystore resmi laptop pemilik.
+  - APK disalin ke VPS produksi: `/home/apps/suksesbangunan/frontend-sb/public/apk/app-release.apk` dan `LARAS.apk`.
+- **Web Admin Frontend (`frontend-sb`)**:
+  - `frontend-sb/app/download/page.tsx`: Pembaruan label ukuran unduhan menjadi `90.0 MB`.
+  - Regenerasi file barcode/QR Code unduhan langsung:
+    - `public/apk/qr-apk-direct.svg` & `qr-apk-direct.png` (menautkan langsung ke `https://larasbysuksesbangunan.my.id/apk/app-release.apk`).
+    - `public/apk/qr-download-page.svg` & `qr-download-page.png` (menautkan ke halaman download).
+  - Sinkronisasi aset QR Code ke direktori public VPS.
+- **Dokumentasi Obsidian Vault**:
+  - Pencatatan komprehensif seluruh sesi ke file `RINGKASAN_PERUBAHAN_SUPERADMIN.md` dengan tanggal dan jam resmi (29 Oktober 2026, 17:15 WITA).
+- **Pengujian & Verifikasi**:
+  - `cd frontend-sb && npx tsc --noEmit && npm run build`: 100% lulus tanpa error.
+
+---
+
 ## 2026-10-29 (sore) · Antigravity — Integrasi Firebase Core & FlutterFire CLI (Mobile App)
 
 - **Aplikasi Mobile (`mobileapp-sb`)**:

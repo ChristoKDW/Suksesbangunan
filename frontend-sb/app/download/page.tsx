@@ -231,7 +231,7 @@ export default function DownloadPage() {
                       className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-white text-emerald-800 font-bold text-sm shadow-lg hover:bg-emerald-50 hover:shadow-xl transition-all"
                     >
                       <Download className="w-4 h-4 text-emerald-700" />
-                      Unduh APK LARAS (87.6 MB)
+                      Unduh APK LARAS (90.0 MB)
                     </a>
 
                     <div className="text-center sm:text-left text-xs text-emerald-200">
